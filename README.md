@@ -7,7 +7,7 @@
 | 层 | 技术 |
 |------|------|
 | 前端 | React + react-app-rewired + JS |
-| 后端 | Koa + koa-router + JS |
+| 后端 | Koa + @koa/router + JS |
 | 实时通信 | Socket.IO |
 | 管理接口 | Koa REST 路由 |
 | 数据库 | 无（纯内存） |
@@ -35,6 +35,8 @@ family-war/
 │   ├── config-overrides.js
 │   └── package.json
 ├── server/                         # Koa 后端 (端口 4000)
+│   ├── __tests__/
+│   │   └── roomManager.test.js     # roomManager 单元测试（Jest）
 │   ├── src/
 │   │   ├── index.js                # Koa + Socket.IO 启动入口
 │   │   ├── socket/
@@ -42,7 +44,8 @@ family-war/
 │   │   │   ├── roomManager.js      # 房间/角色状态管理（内存）
 │   │   │   └── gameManager.js      # 猜拳判定 + 三局两胜 + 断线处理
 │   │   └── routes/
-│   │       └── admin.js            # Koa-router 管理接口
+│   │       └── admin.js            # Koa REST 管理接口
+│   ├── jsconfig.json               # VSCode JS 类型提示
 │   └── package.json
 └── package.json                    # 顶层 concurrent 启动
 ```
@@ -104,6 +107,37 @@ family-war/
 - 已完成对局记录（存在内存数组中）
 - API: `GET /api/admin/status` → 房间列表 + 历史对局
 
+## 测试
+
+| 项目 | 说明 |
+|------|------|
+| 框架 | Jest v29（server 目录下零配置） |
+| 文件 | `server/__tests__/roomManager.test.js` |
+| 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
+
+### 运行测试
+
+```bash
+# 整个项目
+npm test --prefix server
+
+# 单次运行（非 watch）
+npx jest --no-cache --prefix server
+```
+
+### 测试覆盖
+
+| 分组 | 用例数 |
+|------|--------|
+| joinRoom / leaveRoom | 5 |
+| selectRole / deselectRole | 7 |
+| handleDisconnect | 3 |
+| getRoomState | 2 |
+| broadcastRoomState | 2 |
+| getAdminStatus | 2 |
+| setGame / clearGame | 3 |
+| **总计** | **24** |
+
 ## 端口
 
 | 服务 | 端口 |
@@ -115,10 +149,10 @@ client 通过 `config-overrides.js` 代理 `/api` 和 socket 请求到 4000。
 
 ## 实现步骤
 
-1. 初始化项目结构：client（CRA+rewired）、server（Koa+socket.io）、根 package.json
-2. roomManager.js — 房间 CRUD、角色分配、在线状态管理
-3. gameManager.js — 猜拳判定、三局两胜赛制、平局重赛、断线结束比赛
-4. handler.js — 注册所有 socket 事件
-5. admin.js — GET /api/admin/status 管理接口
-6. Client 页面：Home.js、Room.js、Admin.js + react-router 路由
-7. Client 组件：RoleCard.js、GameBoard.js、MatchResult.js + 动画
+- [x] 1. 初始化项目结构：client（CRA+rewired）、server（Koa+socket.io）、根 package.json
+- [x] 2. roomManager.js — 房间 CRUD、角色分配、在线状态管理（含 24 个单元测试）
+- [ ] 3. gameManager.js — 猜拳判定、三局两胜赛制、平局重赛、断线结束比赛
+- [ ] 4. handler.js — 注册所有 socket 事件
+- [ ] 5. admin.js — GET /api/admin/status 管理接口
+- [ ] 6. Client 页面：Home.js、Room.js、Admin.js + react-router 路由
+- [ ] 7. Client 组件：RoleCard.js、GameBoard.js、MatchResult.js + 动画
