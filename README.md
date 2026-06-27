@@ -112,31 +112,38 @@ family-war/
 | 项目 | 说明 |
 |------|------|
 | 框架 | Jest v29（server 目录下零配置） |
-| 文件 | `server/__tests__/roomManager.test.js` |
+| 文件 | `server/__tests__/roomManager.test.js`、`server/__tests__/gameManager.test.js` |
 | 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
 
 ### 运行测试
 
 ```bash
-# 整个项目
+# 根目录运行（推荐）
+npm test
+
+# server 目录运行
 npm test --prefix server
 
-# 单次运行（非 watch）
-npx jest --no-cache --prefix server
+# watch 模式
+npm test:watch --prefix server
 ```
 
 ### 测试覆盖
 
-| 分组 | 用例数 |
-|------|--------|
-| joinRoom / leaveRoom | 5 |
-| selectRole / deselectRole | 7 |
-| handleDisconnect | 3 |
-| getRoomState | 2 |
-| broadcastRoomState | 2 |
-| getAdminStatus | 2 |
-| setGame / clearGame | 3 |
-| **总计** | **24** |
+| 分组 | 模块 | 用例数 |
+|------|------|--------|
+| joinRoom / leaveRoom | roomManager | 5 |
+| selectRole / deselectRole | roomManager | 7 |
+| handleDisconnect | roomManager | 3 |
+| getRoomState | roomManager | 2 |
+| broadcastRoomState | roomManager | 2 |
+| getAdminStatus | roomManager | 2 |
+| setGame / clearGame | roomManager | 3 |
+| createGame | gameManager | 1 |
+| submitMove | gameManager | 11 |
+| handleDisconnect | gameManager | 4 |
+| getGame | gameManager | 3 |
+| **总计** | | **43** |
 
 ## 端口
 
@@ -151,7 +158,7 @@ client 通过 `config-overrides.js` 代理 `/api` 和 socket 请求到 4000。
 
 - [x] 1. 初始化项目结构：client（CRA+rewired）、server（Koa+socket.io）、根 package.json
 - [x] 2. roomManager.js — 房间 CRUD、角色分配、在线状态管理（含 24 个单元测试）
-- [ ] 3. gameManager.js — 猜拳判定、三局两胜赛制、平局重赛、断线结束比赛
+- [x] 3. gameManager.js — 猜拳判定、三局两胜赛制、平局重赛、断线结束比赛（含 19 个单元测试）
 - [ ] 4. handler.js — 注册所有 socket 事件
 - [ ] 5. admin.js — GET /api/admin/status 管理接口
 - [ ] 6. Client 页面：Home.js、Room.js、Admin.js + react-router 路由

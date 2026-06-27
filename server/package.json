@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "jest",
+    "test": "jest --verbose --no-cache",
     "test:watch": "jest --watch"
   },
   "dependencies": {
