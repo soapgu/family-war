@@ -24,13 +24,13 @@ family-war/
 │   │   └── index.html
 │   ├── src/
 │   │   ├── __tests__/
-│   │   │   ├── Home.test.js                   # 首页 TDD 测试 (6 个)
-│   │   │   ├── Room.test.js                   # 房间页 TDD 测试 (8 个)
+│   │   │   ├── Home.test.js                   # 首页 TDD 测试 (5 个)
+│   │   │   ├── Room.test.js                   # 房间页 TDD 测试 (9 个)
 │   │   │   ├── RoleCard.test.js               # 角色卡片 TDD 测试 (7 个)
 │   │   │   └── Admin.test.js                  # 后台页 TDD 测试 (1 个)
 │   │   ├── pages/
-│   │   │   ├── Home.js                        # 首页：输入昵称进入房间
-│   │   │   ├── Room.js                        # 房间页：选角色、挑战、对战
+│   │   │   ├── Home.js                        # 首页：输入昵称（纯 UI，无 socket/routing）
+│   │   │   ├── Room.js                        # 房间页：选角色、挑战、对战（纯 props 组件）
 │   │   │   └── Admin.js                       # 后台：房间状态 + 对局记录
 │   │   ├── components/
 │   │   │   ├── RoleCard.js                    # 角色卡片（空闲/选中/对战中）
@@ -42,7 +42,7 @@ family-war/
 │   │   │   └── useSocket.js                   # Socket.IO 模块级单例
 │   │   ├── setupProxy.js                      # CRA 代理 /api → :4000
 │   │   ├── setupTests.js                      # Jest 全局配置 + 抑制 React Router 警告
-│   │   ├── App.js
+│   │   ├── App.js                             # GameApp 容器，state 控制 Home/Room 切换
 │   │   └── index.js
 │   ├── jsconfig.json
 │   ├── config-overrides.js
@@ -65,6 +65,23 @@ family-war/
 │   └── package.json
 └── package.json                    # 顶层 concurrent 启动
 ```
+
+## 前端架构
+
+```
+App (BrowserRouter)
+├── /admin → Admin
+└── * → GameApp (状态容器)
+    ├── roomState = null  →  Home
+    │   └── onEnter(nickname) → emit room:join → setRoomState
+    └── roomState ≠ null  →  Room
+        ├── 选角色 / 挑战 / 对战
+        └── onBack() → setRoomState(null) 返回首页
+```
+
+- Home 和 Room 之间没有 URL 切换，由 `GameApp` 的 state 控制渲染
+- 刷新页面时 state 丢失，回退到 Home 界面，不产生死页面
+- `socket.io` 客户端是模块级单例，不受 React 生命周期影响
 
 ## 游戏流程
 
@@ -166,12 +183,11 @@ npm test --prefix client
 | getGame | gameManager | 单元 | 3 |
 | getMatchHistory | gameManager | 单元 | 3 |
 | 完整游戏流程 | handler | 集成 | 21 |
-| Home 渲染 | client Home | 前端单元 | 3 |
-| Home 进入游戏 | client Home | 前端单元 | 3 |
-| Room 渲染 + 交互 | client Room | 前端单元 | 8 |
+| Home 渲染 + 回调 | client Home | 前端单元 | 5 |
+| Room 渲染 + 交互 | client Room | 前端单元 | 9 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
 | Admin 渲染 | client Admin | 前端单元 | 1 |
-| **总计** | | | **68** |
+| **总计** | | | **67** |
 
 ## 端口
 
@@ -185,10 +201,7 @@ npm test --prefix client
 - 开发环境下 socket.io 客户端直连 `http://localhost:4000`（CORS 已配置）
 - `/api` 请求通过 CRA 代理 (`setupProxy.js`) 转发到 4000
 
-## 前端安全保护
 
-- **Room 页自动跳转**：直接访问 `/room`（未通过 Home 进入）时，3 秒后自动跳回首页
-- **Home → Room 状态传递**：Home 收到 `room:state` 后通过路由 state 传给 Room，Room 以此判断是否来自正常流程
 
 ## 实现步骤
 
@@ -207,7 +220,7 @@ npm test --prefix client
 - [x] 6b. 为三页面写 TDD 测试（空状态渲染），配置 useSocket mock
 
 **第二阶段：功能分步实现**
-- [x] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → 收到 room:state 跳转 /room
+- [x] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → GameApp 收到 room:state 切换为 Room
 - [x] 7b. **B — 角色选择**：Room + RoleCard 展示三角色，选/弃角色，实时同步
 - [ ] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
 - [ ] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜

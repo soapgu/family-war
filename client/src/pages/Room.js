@@ -1,36 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { Typography, Space, Spin, Button } from 'antd'
+import { Typography, Space, Button } from 'antd'
 import useSocket from '../hooks/useSocket'
 import RoleCard from '../components/RoleCard'
 
 const ROLES = ['爸爸', '妈妈', '儿子']
 
-function Room() {
+function Room({ nickname, roomState, onBack }) {
   const socket = useSocket()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const hasInitialState = useRef(Boolean(location.state?.roomState))
-  const [roomState, setRoomState] = useState(location.state?.roomState || null)
-
-  useEffect(() => {
-    if (!hasInitialState.current) {
-      var timer = setTimeout(() => navigate('/'), 3000)
-    }
-
-    const handler = (state) => {
-      if (timer) clearTimeout(timer)
-      setRoomState(state)
-    }
-    socket.on('room:state', handler)
-
-    return () => {
-      socket.off('room:state', handler)
-      if (timer) clearTimeout(timer)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const me = roomState?.players.find((p) => p.id === socket.id)
   const myRole = me?.role || null
 
@@ -63,21 +38,15 @@ function Room() {
         </Space>
       </div>
 
-      {!roomState && (
-        <div style={{ marginTop: 24, textAlign: 'center' }}>
-          <Spin />
-          <div style={{ marginTop: 8, marginBottom: 16, color: '#999' }}>
-            未加入房间，3秒后自动跳转...
-          </div>
-          <Button onClick={() => navigate('/')}>返回首页</Button>
-        </div>
-      )}
-
       {me && !myRole && (
         <div style={{ marginTop: 16, color: '#999' }}>
           选择一个角色加入游戏
         </div>
       )}
+
+      <div style={{ marginTop: 24 }}>
+        <Button onClick={onBack}>返回首页</Button>
+      </div>
     </div>
   )
 }

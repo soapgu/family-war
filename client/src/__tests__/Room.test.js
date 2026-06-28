@@ -1,29 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BrowserRouter } from 'react-router-dom'
 import useSocket from '../hooks/useSocket'
 import Room from '../pages/Room'
 
 jest.mock('../hooks/useSocket')
-
-const mockNavigate = jest.fn()
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}))
-
-function renderRoom() {
-  return render(<BrowserRouter><Room /></BrowserRouter>)
-}
-
-/**
- * 触发 socket 事件，模拟服务器推送
- */
-function triggerSocketEvent(event, data) {
-  const socket = useSocket()
-  const handler = socket.on.mock.calls.find(([e]) => e === event)?.[1]
-  if (handler) handler(data)
-}
 
 const MOCK_ROOM_STATE = {
   id: 'default',
@@ -37,6 +17,12 @@ const MOCK_ROOM_STATE = {
     { id: 's2', nickname: '小红', role: '妈妈', online: true },
   ],
   game: null,
+}
+
+function renderRoom(roomState = MOCK_ROOM_STATE) {
+  return render(
+    <Room nickname="小明" roomState={roomState} onBack={jest.fn()} />
+  )
 }
 
 describe('Room', () => {
@@ -54,14 +40,6 @@ describe('Room', () => {
     expect(screen.getByText(/default/)).toBeInTheDocument()
   })
 
-  it('redirects to / after 3s if no room:state received', () => {
-    jest.useFakeTimers()
-    renderRoom()
-    jest.advanceTimersByTime(3000)
-    expect(mockNavigate).toHaveBeenCalledWith('/')
-    jest.useRealTimers()
-  })
-
   it('renders three role cards', () => {
     renderRoom()
     expect(screen.getByText('爸爸')).toBeInTheDocument()
@@ -69,11 +47,9 @@ describe('Room', () => {
     expect(screen.getByText('儿子')).toBeInTheDocument()
   })
 
-  it('updates roles on room:state', async () => {
+  it('shows roles from state', () => {
     renderRoom()
-    triggerSocketEvent('room:state', MOCK_ROOM_STATE)
-
-    await waitFor(() => expect(screen.getByText('已占用')).toBeInTheDocument())
+    expect(screen.getByText('已占用')).toBeInTheDocument()
     const freeLabels = screen.getAllByText('空闲')
     expect(freeLabels).toHaveLength(2)
   })
@@ -81,7 +57,6 @@ describe('Room', () => {
   it('emits role:select when clicking free role', async () => {
     const socket = useSocket()
     renderRoom()
-    triggerSocketEvent('room:state', MOCK_ROOM_STATE)
 
     await userEvent.click(screen.getAllByRole('button')[0])
     expect(socket.emit).toHaveBeenCalledWith('role:select', { role: '爸爸' })
@@ -89,8 +64,6 @@ describe('Room', () => {
 
   it('emits role:deselect when clicking own role', async () => {
     const socket = useSocket()
-    renderRoom()
-
     const state = {
       ...MOCK_ROOM_STATE,
       roles: { ...MOCK_ROOM_STATE.roles, '儿子': { id: 'test-socket-id', nickname: '小明' } },
@@ -98,30 +71,21 @@ describe('Room', () => {
         p.id === 'test-socket-id' ? { ...p, role: '儿子' } : p
       ),
     }
-    triggerSocketEvent('room:state', state)
+    renderRoom(state)
 
-    // 等待角色更新
-    await waitFor(() => expect(screen.getByText(/我/)).toBeInTheDocument())
-
-    const buttons = screen.getAllByRole('button')
-    await userEvent.click(buttons[2])
+    await userEvent.click(screen.getAllByRole('button')[2])
     expect(socket.emit).toHaveBeenCalledWith('role:deselect')
   })
 
   it('does not emit when clicking role occupied by others', async () => {
     const socket = useSocket()
     renderRoom()
-    triggerSocketEvent('room:state', MOCK_ROOM_STATE)
 
-    await waitFor(() => expect(screen.getByText('已占用')).toBeInTheDocument())
-
-    const buttons = screen.getAllByRole('button')
-    await userEvent.click(buttons[1])
+    await userEvent.click(screen.getAllByRole('button')[1])
     expect(socket.emit).not.toHaveBeenCalled()
   })
 
-  it('shows "我" on own role', async () => {
-    renderRoom()
+  it('shows "我" on own role', () => {
     const state = {
       ...MOCK_ROOM_STATE,
       roles: { ...MOCK_ROOM_STATE.roles, '爸爸': { id: 'test-socket-id', nickname: '小明' } },
@@ -129,8 +93,16 @@ describe('Room', () => {
         p.id === 'test-socket-id' ? { ...p, role: '爸爸' } : p
       ),
     }
-    triggerSocketEvent('room:state', state)
+    renderRoom(state)
 
-    await waitFor(() => expect(screen.getByText(/我/)).toBeInTheDocument())
+    expect(screen.getByText(/我/)).toBeInTheDocument()
+  })
+
+  it('calls onBack when back button is clicked', async () => {
+    const onBack = jest.fn()
+    render(<Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} />)
+
+    await userEvent.click(screen.getByText('返回首页'))
+    expect(onBack).toHaveBeenCalled()
   })
 })

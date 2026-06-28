@@ -1,25 +1,15 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { Typography, Input, Button, Space, message } from 'antd'
-import useSocket from '../hooks/useSocket'
 
-function Home() {
+function Home({ onEnter }) {
   const [nickname, setNickname] = useState('')
-  const navigate = useNavigate()
-  const socket = useSocket()
-
-  useEffect(() => {
-    const handler = (state) => navigate('/room', { state: { roomState: state } })
-    socket.on('room:state', handler)
-    return () => socket.off('room:state', handler)
-  }, [socket, navigate])
 
   function handleEnter() {
     if (!nickname.trim()) {
       message.error('请输入昵称')
       return
     }
-    socket.emit('room:join', { nickname: nickname.trim() })
+    onEnter(nickname.trim())
   }
 
   function handleKeyDown(e) {
