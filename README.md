@@ -8,7 +8,7 @@
 |------|------|
 | 前端 | React + react-app-rewired + Antd + JS |
 | 后端 | Koa + @koa/router + JS |
-| 实时通信 | Socket.IO |
+| 实时通信 | Socket.IO（模块级单例，不依赖 React 生命周期） |
 | 管理接口 | Koa REST 路由 |
 | 数据库 | 无（纯内存） |
 
@@ -16,27 +16,39 @@
 
 ```
 family-war/
-├── client/                         # React 前端 (端口 3000)
+├── client/                                   # React 前端 (端口 3000)
 │   ├── public/
 │   │   └── index.html
 │   ├── src/
+│   │   ├── __tests__/
+│   │   │   ├── Home.test.js                   # 首页 TDD 测试 (6 个)
+│   │   │   ├── Room.test.js                   # 房间页 TDD 测试 (2 个)
+│   │   │   └── Admin.test.js                  # 后台页 TDD 测试 (1 个)
 │   │   ├── pages/
-│   │   │   ├── Home.js             # 首页：输入昵称进入房间
-│   │   │   ├── Room.js             # 房间页：选角色、挑战、对战
-│   │   │   └── Admin.js            # 后台：房间状态 + 对局记录
+│   │   │   ├── Home.js                        # 首页：输入昵称进入房间
+│   │   │   ├── Room.js                        # 房间页：选角色、挑战、对战
+│   │   │   └── Admin.js                       # 后台：房间状态 + 对局记录
 │   │   ├── components/
-│   │   │   ├── RoleCard.js         # 角色卡片（空闲/选中/对战中）
-│   │   │   ├── GameBoard.js        # 对战面板（石头剪刀布按钮）
-│   │   │   └── MatchResult.js      # 结算弹窗
+│   │   │   ├── RoleCard.js                    # 角色卡片（空闲/选中/对战中）
+│   │   │   ├── GameBoard.js                   # 对战面板（石头剪刀布按钮）
+│   │   │   └── MatchResult.js                 # 结算弹窗
 │   │   ├── hooks/
-│   │   │   └── useSocket.js        # Socket.IO 封装
+│   │   │   ├── __mocks__/
+│   │   │   │   └── useSocket.js               # Socket mock（测试用）
+│   │   │   └── useSocket.js                   # Socket.IO 模块级单例
+│   │   ├── setupProxy.js                      # CRA 代理 /api → :4000
+│   │   ├── setupTests.js                      # Jest 全局配置 + 抑制 React Router 警告
 │   │   ├── App.js
 │   │   └── index.js
+│   ├── jsconfig.json
 │   ├── config-overrides.js
 │   └── package.json
 ├── server/                         # Koa 后端 (端口 4000)
 │   ├── __tests__/
-│   │   └── roomManager.test.js     # roomManager 单元测试（Jest）
+│   │   ├── roomManager.test.js     # roomManager 单元测试 (24 个)
+│   │   └── gameManager.test.js     # gameManager 单元测试 (22 个)
+│   ├── tests/
+│   │   └── integration.js          # 集成测试 (21 个断言)
 │   ├── src/
 │   │   ├── index.js                # Koa + Socket.IO 启动入口
 │   │   ├── socket/
@@ -150,7 +162,11 @@ npm test --prefix client
 | getGame | gameManager | 单元 | 3 |
 | getMatchHistory | gameManager | 单元 | 3 |
 | 完整游戏流程 | handler | 集成 | 21 |
-| **总计** | | | **46** |
+| Home 渲染 | client Home | 前端单元 | 3 |
+| Home 进入游戏 | client Home | 前端单元 | 3 |
+| Room 渲染 | client Room | 前端单元 | 2 |
+| Admin 渲染 | client Admin | 前端单元 | 1 |
+| **总计** | | | **55** |
 
 ## 端口
 
@@ -159,7 +175,10 @@ npm test --prefix client
 | client (React) | 3000 |
 | server (Koa) | 4000 |
 
-client 通过 `config-overrides.js` 代理 `/api` 和 socket 请求到 4000。
+- **server**: 4000（Koa + Socket.IO）
+- **client**: 3000（React 开发服务器）
+- 开发环境下 socket.io 客户端直连 `http://localhost:4000`（CORS 已配置）
+- `/api` 请求通过 CRA 代理 (`setupProxy.js`) 转发到 4000
 
 ## 实现步骤
 
@@ -174,16 +193,13 @@ client 通过 `config-overrides.js` 代理 `/api` 和 socket 请求到 4000。
 ### 前端（进行中）
 
 **第一阶段：脚手架 + TDD 基础设施**
-- [ ] 6a. 安装 antd + 测试依赖，建空壳页面 Home/Room/Admin，确认路由切换正常
-- [ ] 6b. 为三页面写 TDD 测试（空状态渲染），配置 useSocket mock
+- [x] 6a. 安装 antd + 测试依赖，建空壳页面 Home/Room/Admin，确认路由切换正常
+- [x] 6b. 为三页面写 TDD 测试（空状态渲染），配置 useSocket mock
 
 **第二阶段：功能分步实现**
-- [ ] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → 收到 room:state 跳转 /room
+- [x] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → 收到 room:state 跳转 /room
 - [ ] 7b. **B — 角色选择**：Room + RoleCard 展示三角色，选/弃角色，实时同步
 - [ ] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
 - [ ] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
 - [ ] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
 - [ ] 7f. **F — 重赛+认输+断线**：流程闭环，各边界状态处理
-
-**第三阶段：测试完善**
-- [ ] 8. 前端组件测试 + 前后端集成测试

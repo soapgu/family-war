@@ -1,15 +1,8 @@
-import { useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 
+const serverUrl = process.env.NODE_ENV === 'development' ? 'http://localhost:4000' : '/'
+const socket = io(serverUrl, { transports: ['websocket', 'polling'] })
+
 export default function useSocket() {
-  const socketRef = useRef(null)
-
-  useEffect(() => {
-    socketRef.current = io('/', { transports: ['websocket', 'polling'] })
-    return () => {
-      socketRef.current.close()
-    }
-  }, [])
-
-  return socketRef.current
+  return socket
 }
