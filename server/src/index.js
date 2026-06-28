@@ -3,6 +3,7 @@ const Router = require('@koa/router')
 const cors = require('@koa/cors')
 const { Server } = require('socket.io')
 const http = require('http')
+const registerHandlers = require('./socket/handler')
 
 const app = new Koa()
 const router = new Router()
@@ -21,14 +22,8 @@ router.get('/api/health', (ctx) => {
   ctx.body = { status: 'ok' }
 })
 
-// Socket handler placeholder
-io.on('connection', (socket) => {
-  console.log(`[connect] ${socket.id}`)
-
-  socket.on('disconnect', () => {
-    console.log(`[disconnect] ${socket.id}`)
-  })
-})
+// Socket 事件注册
+registerHandlers(io)
 
 const PORT = process.env.PORT || 4000
 server.listen(PORT, () => {

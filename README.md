@@ -112,38 +112,43 @@ family-war/
 | 项目 | 说明 |
 |------|------|
 | 框架 | Jest v29（server 目录下零配置） |
-| 文件 | `server/__tests__/roomManager.test.js`、`server/__tests__/gameManager.test.js` |
+| 单元测试 | `server/__tests__/roomManager.test.js`、`server/__tests__/gameManager.test.js` |
+| 集成测试 | `server/tests/integration.js`（真实 Socket 连接走完整流程） |
 | 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
 
 ### 运行测试
 
 ```bash
-# 根目录运行（推荐）
+# 单元测试（根目录）
 npm test
 
-# server 目录运行
+# 单元测试（server 目录）
 npm test --prefix server
 
-# watch 模式
+# 单元测试 watch 模式
 npm test:watch --prefix server
+
+# 集成测试（需单独运行）
+npm run test:integration
 ```
 
 ### 测试覆盖
 
-| 分组 | 模块 | 用例数 |
-|------|------|--------|
-| joinRoom / leaveRoom | roomManager | 5 |
-| selectRole / deselectRole | roomManager | 7 |
-| handleDisconnect | roomManager | 3 |
-| getRoomState | roomManager | 2 |
-| broadcastRoomState | roomManager | 2 |
-| getAdminStatus | roomManager | 2 |
-| setGame / clearGame | roomManager | 3 |
-| createGame | gameManager | 1 |
-| submitMove | gameManager | 11 |
-| handleDisconnect | gameManager | 4 |
-| getGame | gameManager | 3 |
-| **总计** | | **43** |
+| 分组 | 模块 | 类型 | 用例数 |
+|------|------|------|--------|
+| joinRoom / leaveRoom | roomManager | 单元 | 5 |
+| selectRole / deselectRole | roomManager | 单元 | 7 |
+| handleDisconnect | roomManager | 单元 | 3 |
+| getRoomState | roomManager | 单元 | 2 |
+| broadcastRoomState | roomManager | 单元 | 2 |
+| getAdminStatus | roomManager | 单元 | 2 |
+| setGame / clearGame | roomManager | 单元 | 3 |
+| createGame | gameManager | 单元 | 1 |
+| submitMove | gameManager | 单元 | 11 |
+| handleDisconnect | gameManager | 单元 | 4 |
+| getGame | gameManager | 单元 | 3 |
+| 完整游戏流程 | handler | 集成 | 21 |
+| **总计** | | | **64** |
 
 ## 端口
 
@@ -159,7 +164,7 @@ client 通过 `config-overrides.js` 代理 `/api` 和 socket 请求到 4000。
 - [x] 1. 初始化项目结构：client（CRA+rewired）、server（Koa+socket.io）、根 package.json
 - [x] 2. roomManager.js — 房间 CRUD、角色分配、在线状态管理（含 24 个单元测试）
 - [x] 3. gameManager.js — 猜拳判定、三局两胜赛制、平局重赛、断线结束比赛（含 19 个单元测试）
-- [ ] 4. handler.js — 注册所有 socket 事件
+- [x] 4. handler.js — 注册所有 socket 事件（含集成测试 21 个断言验证）
 - [ ] 5. admin.js — GET /api/admin/status 管理接口
 - [ ] 6. Client 页面：Home.js、Room.js、Admin.js + react-router 路由
 - [ ] 7. Client 组件：RoleCard.js、GameBoard.js、MatchResult.js + 动画
