@@ -147,8 +147,9 @@ npm run test:integration
 | submitMove | gameManager | 单元 | 11 |
 | handleDisconnect | gameManager | 单元 | 4 |
 | getGame | gameManager | 单元 | 3 |
+| getMatchHistory | gameManager | 单元 | 3 |
 | 完整游戏流程 | handler | 集成 | 21 |
-| **总计** | | | **64** |
+| **总计** | | | **46** |
 
 ## 端口
 
@@ -165,6 +166,6 @@ client 通过 `config-overrides.js` 代理 `/api` 和 socket 请求到 4000。
 - [x] 2. roomManager.js — 房间 CRUD、角色分配、在线状态管理（含 24 个单元测试）
 - [x] 3. gameManager.js — 猜拳判定、三局两胜赛制、平局重赛、断线结束比赛（含 19 个单元测试）
 - [x] 4. handler.js — 注册所有 socket 事件（含集成测试 21 个断言验证）
-- [ ] 5. admin.js — GET /api/admin/status 管理接口
+- [x] 5. admin.js — GET /api/admin/status 管理接口（含对局历史记录）
 - [ ] 6. Client 页面：Home.js、Room.js、Admin.js + react-router 路由
 - [ ] 7. Client 组件：RoleCard.js、GameBoard.js、MatchResult.js + 动画

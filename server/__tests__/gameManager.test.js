@@ -20,6 +20,7 @@ function mockRoom(game) {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  gameManager.matchHistory = []
 })
 
 // ==================== createGame ====================
@@ -227,5 +228,51 @@ describe('getGame', () => {
   it('房间 game 为 null 时返回 null', () => {
     roomManager.getRoom.mockReturnValue(mockRoom(null))
     expect(gameManager.getGame(ROOM_ID)).toBeNull()
+  })
+})
+
+// ==================== getMatchHistory ====================
+
+describe('getMatchHistory', () => {
+  it('比赛结束后记录历史', () => {
+    const game = gameManager.createGame(ROOM_ID, P1, P2)
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+
+    gameManager.submitMove(ROOM_ID, P1, 'rock')
+    gameManager.submitMove(ROOM_ID, P2, 'scissors')
+    gameManager.submitMove(ROOM_ID, P1, 'paper')
+    gameManager.submitMove(ROOM_ID, P2, 'rock')
+
+    const history = gameManager.getMatchHistory()
+    expect(history).toHaveLength(1)
+    expect(history[0].matchWinner).toBe(P1)
+    expect(history[0].roomId).toBe(ROOM_ID)
+    expect(history[0].players).toEqual([P1, P2])
+    expect(history[0].scores).toEqual({ [P1]: 2, [P2]: 0 })
+    expect(typeof history[0].endedAt).toBe('number')
+  })
+
+  it('多场比赛累积记录', () => {
+    // 第 1 场
+    const g1 = gameManager.createGame(ROOM_ID, P1, P2)
+    roomManager.getRoom.mockReturnValue(mockRoom(g1))
+    gameManager.submitMove(ROOM_ID, P1, 'rock')
+    gameManager.submitMove(ROOM_ID, P2, 'scissors')
+    gameManager.submitMove(ROOM_ID, P1, 'paper')
+    gameManager.submitMove(ROOM_ID, P2, 'rock')
+
+    // 第 2 场
+    const g2 = gameManager.createGame(ROOM_ID, P1, P2)
+    roomManager.getRoom.mockReturnValue(mockRoom(g2))
+    gameManager.submitMove(ROOM_ID, P1, 'rock')
+    gameManager.submitMove(ROOM_ID, P2, 'scissors')
+    gameManager.submitMove(ROOM_ID, P1, 'paper')
+    gameManager.submitMove(ROOM_ID, P2, 'rock')
+
+    expect(gameManager.getMatchHistory()).toHaveLength(2)
+  })
+
+  it('没有比赛时返回空数组', () => {
+    expect(gameManager.getMatchHistory()).toEqual([])
   })
 })

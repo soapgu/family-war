@@ -4,6 +4,7 @@ const cors = require('@koa/cors')
 const { Server } = require('socket.io')
 const http = require('http')
 const registerHandlers = require('./socket/handler')
+const registerAdminRoutes = require('./routes/admin')
 
 const app = new Koa()
 const router = new Router()
@@ -24,6 +25,9 @@ router.get('/api/health', (ctx) => {
 
 // Socket 事件注册
 registerHandlers(io)
+
+// 管理接口
+registerAdminRoutes(router)
 
 const PORT = process.env.PORT || 4000
 server.listen(PORT, () => {

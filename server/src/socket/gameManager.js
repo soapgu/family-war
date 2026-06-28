@@ -14,6 +14,11 @@ function getChoiceResult(move1, move2) {
 }
 
 class GameManager {
+  constructor() {
+    /** @type {MatchRecord[]} */
+    this.matchHistory = []
+  }
+
   /**
    * 创建新游戏
    * @param {string} roomId
@@ -102,6 +107,17 @@ class GameManager {
     if (game.scores[p1] >= 2 || game.scores[p2] >= 2) {
       const matchWinner = game.scores[p1] >= 2 ? p1 : p2
       game.status = 'match_end'
+
+      this.matchHistory.push({
+        id: game.id,
+        roomId,
+        players: [...game.players],
+        scores: { ...game.scores },
+        matchWinner,
+        history: [...game.history],
+        endedAt: Date.now(),
+      })
+
       roomManager.clearGame(roomId)
 
       return {
@@ -152,12 +168,29 @@ class GameManager {
     const room = roomManager.getRoom(roomId)
     return room && room.game ? room.game : null
   }
+
+  /**
+   * 获取已结束的对局历史（管理后台使用）
+   * @returns {MatchRecord[]}
+   */
+  getMatchHistory() {
+    return this.matchHistory
+  }
 }
 
 const gameManager = new GameManager()
 module.exports = gameManager
 
 /**
+ * @typedef {Object} MatchRecord
+ * @property {string} id
+ * @property {string} roomId
+ * @property {string[]} players
+ * @property {Object<string, number>} scores
+ * @property {string} matchWinner
+ * @property {Array} history
+ * @property {number} endedAt
+ *
  * @typedef {Object} Game
  * @property {string} id
  * @property {string} roomId
