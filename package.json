@@ -6,7 +6,7 @@
     "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run start --prefix client\"",
     "server": "npm run dev --prefix server",
     "client": "npm run start --prefix client",
-    "test": "npm test --prefix server -- --verbose --no-cache",
+    "test": "concurrently -n server,client -c blue,green \"npm test --prefix server -- --verbose --no-cache\" \"npm test --prefix client -- --watchAll=false --no-cache\"",
     "test:integration": "npm run test:integration --prefix server"
   },
   "devDependencies": {
