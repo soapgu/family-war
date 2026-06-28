@@ -6,7 +6,7 @@
 
 | 层 | 技术 |
 |------|------|
-| 前端 | React + react-app-rewired + JS |
+| 前端 | React + react-app-rewired + Antd + JS |
 | 后端 | Koa + @koa/router + JS |
 | 实时通信 | Socket.IO |
 | 管理接口 | Koa REST 路由 |
@@ -111,25 +111,26 @@ family-war/
 
 | 项目 | 说明 |
 |------|------|
-| 框架 | Jest v29（server 目录下零配置） |
-| 单元测试 | `server/__tests__/roomManager.test.js`、`server/__tests__/gameManager.test.js` |
-| 集成测试 | `server/tests/integration.js`（真实 Socket 连接走完整流程） |
+| 框架 | Jest v29（server/ 和 client/ 均使用） |
+| 服务端单元测试 | `server/__tests__/roomManager.test.js`、`server/__tests__/gameManager.test.js` |
+| 服务端集成测试 | `server/tests/integration.js`（真实 Socket 连接走完整流程） |
+| 前端单元测试 | `client/src/__tests__/*.test.js`（React Testing Library + Antd） |
 | 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
 
 ### 运行测试
 
 ```bash
-# 单元测试（根目录）
+# 服务端单元测试（根目录）
 npm test
 
-# 单元测试（server 目录）
-npm test --prefix server
-
-# 单元测试 watch 模式
+# 服务端单元测试（watch 模式）
 npm test:watch --prefix server
 
-# 集成测试（需单独运行）
+# 服务端集成测试
 npm run test:integration
+
+# 前端单元测试（需 cd client）
+npm test --prefix client
 ```
 
 ### 测试覆盖
@@ -162,10 +163,27 @@ client 通过 `config-overrides.js` 代理 `/api` 和 socket 请求到 4000。
 
 ## 实现步骤
 
+### 服务端（已完成）
+
 - [x] 1. 初始化项目结构：client（CRA+rewired）、server（Koa+socket.io）、根 package.json
 - [x] 2. roomManager.js — 房间 CRUD、角色分配、在线状态管理（含 24 个单元测试）
 - [x] 3. gameManager.js — 猜拳判定、三局两胜赛制、平局重赛、断线结束比赛（含 19 个单元测试）
 - [x] 4. handler.js — 注册所有 socket 事件（含集成测试 21 个断言验证）
 - [x] 5. admin.js — GET /api/admin/status 管理接口（含对局历史记录）
-- [ ] 6. Client 页面：Home.js、Room.js、Admin.js + react-router 路由
-- [ ] 7. Client 组件：RoleCard.js、GameBoard.js、MatchResult.js + 动画
+
+### 前端（进行中）
+
+**第一阶段：脚手架 + TDD 基础设施**
+- [ ] 6a. 安装 antd + 测试依赖，建空壳页面 Home/Room/Admin，确认路由切换正常
+- [ ] 6b. 为三页面写 TDD 测试（空状态渲染），配置 useSocket mock
+
+**第二阶段：功能分步实现**
+- [ ] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → 收到 room:state 跳转 /room
+- [ ] 7b. **B — 角色选择**：Room + RoleCard 展示三角色，选/弃角色，实时同步
+- [ ] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
+- [ ] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
+- [ ] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
+- [ ] 7f. **F — 重赛+认输+断线**：流程闭环，各边界状态处理
+
+**第三阶段：测试完善**
+- [ ] 8. 前端组件测试 + 前后端集成测试
