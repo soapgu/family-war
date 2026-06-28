@@ -30,3 +30,8 @@ body {
   25% { transform: rotate(20deg); }
   75% { transform: rotate(-15deg); }
 }
+
+@keyframes challengePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,77,79,0.4); }
+  50% { box-shadow: 0 0 0 10px rgba(255,77,79,0); }
+}

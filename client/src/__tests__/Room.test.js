@@ -49,7 +49,7 @@ describe('Room', () => {
 
   it('shows roles from state', () => {
     renderRoom()
-    expect(screen.getByText('已占用')).toBeInTheDocument()
+    expect(screen.getByText('小红')).toBeInTheDocument()
     const freeLabels = screen.getAllByText('空闲')
     expect(freeLabels).toHaveLength(2)
   })
@@ -59,7 +59,7 @@ describe('Room', () => {
     renderRoom()
 
     const cards = within(screen.getByTestId('role-cards'))
-    await userEvent.click(cards.getAllByRole('button')[0])
+    await userEvent.click(cards.getByText('爸爸'))
     expect(socket.emit).toHaveBeenCalledWith('role:select', { role: '爸爸' })
   })
 
@@ -75,7 +75,7 @@ describe('Room', () => {
     renderRoom(state)
 
     const cards = within(screen.getByTestId('role-cards'))
-    await userEvent.click(cards.getAllByRole('button')[2])
+    await userEvent.click(cards.getByText('儿子'))
     expect(socket.emit).toHaveBeenCalledWith('role:deselect')
   })
 
@@ -84,7 +84,7 @@ describe('Room', () => {
     renderRoom()
 
     const cards = within(screen.getByTestId('role-cards'))
-    await userEvent.click(cards.getAllByRole('button')[1])
+    await userEvent.click(cards.getByText('妈妈'))
     expect(socket.emit).not.toHaveBeenCalled()
   })
 
@@ -106,6 +106,16 @@ describe('Room', () => {
     render(<Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} />)
 
     await userEvent.click(screen.getByText('返回首页'))
+    expect(onBack).toHaveBeenCalled()
+  })
+
+  it('emits room:leave when exit button is clicked', async () => {
+    const socket = useSocket()
+    const onBack = jest.fn()
+    render(<Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} />)
+
+    await userEvent.click(screen.getByText('退出房间'))
+    expect(socket.emit).toHaveBeenCalledWith('room:leave')
     expect(onBack).toHaveBeenCalled()
   })
 })

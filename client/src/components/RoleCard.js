@@ -1,4 +1,4 @@
-import { Card, Button, Tag } from 'antd'
+import { Card, Tag } from 'antd'
 
 const ROLE_EMOJI = {
   '爸爸': '👨',
@@ -51,58 +51,36 @@ function RoleCard({ role, occupant, isMine, onClick }) {
         }
       }}
     >
-      {/* Raised hand badge when selected */}
-      {isMine && (
-        <div
-          style={{
-            position: 'absolute',
-            top: -14,
-            right: -8,
-            fontSize: 26,
-            lineHeight: 1,
-            animation: 'wave 1.2s ease-in-out infinite',
-            transformOrigin: 'bottom center',
-          }}
-        >
-          🙋
-        </div>
-      )}
-
-      {/* Occupied indicator */}
-      {disabled && !isFree && (
-        <div
-          style={{
-            position: 'absolute',
-            top: -8,
-            right: -4,
-            fontSize: 20,
-            lineHeight: 1,
-          }}
-        >
-          🪑
-        </div>
-      )}
-
-      <div style={{ fontSize: 48, lineHeight: 1.2, marginTop: isMine ? 4 : 0 }}>
-        {ROLE_EMOJI[role]}
-      </div>
-      <div style={{ fontSize: 17, fontWeight: 600, margin: '6px 0 10px' }}>{role}</div>
-      <div style={{ marginBottom: 10 }}>
-        {isFree ? (
-          <Tag>空闲</Tag>
-        ) : (
-          <Tag color={isMine ? 'blue' : 'default'}>{isMine ? '我' : occupant.nickname}</Tag>
+      <div onClick={handleClick} style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}>
+        {/* Raised hand badge when selected */}
+        {isMine && (
+          <div
+            style={{
+              position: 'absolute',
+              top: -14,
+              right: -8,
+              fontSize: 26,
+              lineHeight: 1,
+              animation: 'wave 1.2s ease-in-out infinite',
+              transformOrigin: 'bottom center',
+            }}
+          >
+            🙋
+          </div>
         )}
+
+        <div style={{ fontSize: 48, lineHeight: 1.2, marginTop: isMine ? 4 : 0 }}>
+          {ROLE_EMOJI[role]}
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 600, margin: '6px 0 10px' }}>{role}</div>
+        <div style={{ marginBottom: 4 }}>
+          {isFree ? (
+            <Tag>空闲</Tag>
+          ) : (
+            <Tag color={isMine ? 'blue' : 'default'}>{isMine ? '我' : occupant.nickname}</Tag>
+          )}
+        </div>
       </div>
-      <Button
-        type={isFree ? 'primary' : 'default'}
-        block
-        disabled={disabled}
-        onClick={handleClick}
-        style={{ borderRadius: 6 }}
-      >
-        {isFree ? '选择' : isMine ? '放弃' : '已占用'}
-      </Button>
     </Card>
   )
 }

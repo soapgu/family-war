@@ -229,7 +229,7 @@ npm test --prefix client
 - [x] 7o3. **Room 房间页优化**：玩家在线列表、进出房间 Toast 通知、响应式布局
 
 **第四阶段：游戏核心功能**
-- [ ] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
+- [x] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
 - [ ] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
 - [ ] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
 - [ ] 7f. **F — 重赛+认输+断线**：流程闭环，各边界状态处理

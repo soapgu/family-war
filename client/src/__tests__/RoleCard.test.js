@@ -26,21 +26,21 @@ describe('RoleCard', () => {
   it('calls onClick with role when free and clicked', async () => {
     const onClick = jest.fn()
     render(<RoleCard role="爸爸" occupant={null} isMine={false} onClick={onClick} />)
-    await userEvent.click(screen.getByRole('button'))
+    await userEvent.click(screen.getByText('爸爸'))
     expect(onClick).toHaveBeenCalledWith('爸爸')
   })
 
   it('does not call onClick when occupied by others', async () => {
     const onClick = jest.fn()
     render(<RoleCard role="爸爸" occupant={{ nickname: '小明' }} isMine={false} onClick={onClick} />)
-    await userEvent.click(screen.getByRole('button'))
+    await userEvent.click(screen.getByText('爸爸'))
     expect(onClick).not.toHaveBeenCalled()
   })
 
   it('calls onClick when isMine (deselect)', async () => {
     const onClick = jest.fn()
     render(<RoleCard role="爸爸" occupant={{ nickname: '小明' }} isMine={true} onClick={onClick} />)
-    await userEvent.click(screen.getByRole('button'))
+    await userEvent.click(screen.getByText('爸爸'))
     expect(onClick).toHaveBeenCalledWith('爸爸')
   })
 })
