@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useSocket from '../hooks/useSocket'
 import Room from '../pages/Room'
@@ -58,7 +58,8 @@ describe('Room', () => {
     const socket = useSocket()
     renderRoom()
 
-    await userEvent.click(screen.getAllByRole('button')[0])
+    const cards = within(screen.getByTestId('role-cards'))
+    await userEvent.click(cards.getAllByRole('button')[0])
     expect(socket.emit).toHaveBeenCalledWith('role:select', { role: '爸爸' })
   })
 
@@ -73,7 +74,8 @@ describe('Room', () => {
     }
     renderRoom(state)
 
-    await userEvent.click(screen.getAllByRole('button')[2])
+    const cards = within(screen.getByTestId('role-cards'))
+    await userEvent.click(cards.getAllByRole('button')[2])
     expect(socket.emit).toHaveBeenCalledWith('role:deselect')
   })
 
@@ -81,7 +83,8 @@ describe('Room', () => {
     const socket = useSocket()
     renderRoom()
 
-    await userEvent.click(screen.getAllByRole('button')[1])
+    const cards = within(screen.getByTestId('role-cards'))
+    await userEvent.click(cards.getAllByRole('button')[1])
     expect(socket.emit).not.toHaveBeenCalled()
   })
 

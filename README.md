@@ -222,6 +222,13 @@ npm test --prefix client
 **第二阶段：功能分步实现**
 - [x] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → GameApp 收到 room:state 切换为 Room
 - [x] 7b. **B — 角色选择**：Room + RoleCard 展示三角色，选/弃角色，实时同步
+
+**第三阶段：UI 全面优化**
+- [x] 7o1. **Home 首页优化**：渐变背景、玻璃态卡片、加载态按钮、自动聚焦、错误处理
+- [x] 7o2. **RoleCard 角色卡片优化**：Emoji 图标、角色专属配色、视觉提升
+- [x] 7o3. **Room 房间页优化**：玩家在线列表、进出房间 Toast 通知、响应式布局
+
+**第四阶段：游戏核心功能**
 - [ ] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
 - [ ] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
 - [ ] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
