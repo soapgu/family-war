@@ -9,6 +9,9 @@
 | 前端 | React + react-app-rewired + Antd + JS |
 | 后端 | Koa + @koa/router + JS |
 | 实时通信 | Socket.IO（模块级单例，不依赖 React 生命周期） |
+| UI 库 | Antd v5 |
+| 测试框架 | Jest + React Testing Library |
+| 测试策略 | TDD（先写测试后实现） |
 | 管理接口 | Koa REST 路由 |
 | 数据库 | 无（纯内存） |
 
@@ -22,7 +25,8 @@ family-war/
 │   ├── src/
 │   │   ├── __tests__/
 │   │   │   ├── Home.test.js                   # 首页 TDD 测试 (6 个)
-│   │   │   ├── Room.test.js                   # 房间页 TDD 测试 (2 个)
+│   │   │   ├── Room.test.js                   # 房间页 TDD 测试 (8 个)
+│   │   │   ├── RoleCard.test.js               # 角色卡片 TDD 测试 (7 个)
 │   │   │   └── Admin.test.js                  # 后台页 TDD 测试 (1 个)
 │   │   ├── pages/
 │   │   │   ├── Home.js                        # 首页：输入昵称进入房间
@@ -164,9 +168,10 @@ npm test --prefix client
 | 完整游戏流程 | handler | 集成 | 21 |
 | Home 渲染 | client Home | 前端单元 | 3 |
 | Home 进入游戏 | client Home | 前端单元 | 3 |
-| Room 渲染 | client Room | 前端单元 | 2 |
+| Room 渲染 + 交互 | client Room | 前端单元 | 8 |
+| RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
 | Admin 渲染 | client Admin | 前端单元 | 1 |
-| **总计** | | | **55** |
+| **总计** | | | **68** |
 
 ## 端口
 
@@ -179,6 +184,11 @@ npm test --prefix client
 - **client**: 3000（React 开发服务器）
 - 开发环境下 socket.io 客户端直连 `http://localhost:4000`（CORS 已配置）
 - `/api` 请求通过 CRA 代理 (`setupProxy.js`) 转发到 4000
+
+## 前端安全保护
+
+- **Room 页自动跳转**：直接访问 `/room`（未通过 Home 进入）时，3 秒后自动跳回首页
+- **Home → Room 状态传递**：Home 收到 `room:state` 后通过路由 state 传给 Room，Room 以此判断是否来自正常流程
 
 ## 实现步骤
 
@@ -198,7 +208,7 @@ npm test --prefix client
 
 **第二阶段：功能分步实现**
 - [x] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → 收到 room:state 跳转 /room
-- [ ] 7b. **B — 角色选择**：Room + RoleCard 展示三角色，选/弃角色，实时同步
+- [x] 7b. **B — 角色选择**：Room + RoleCard 展示三角色，选/弃角色，实时同步
 - [ ] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
 - [ ] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
 - [ ] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）

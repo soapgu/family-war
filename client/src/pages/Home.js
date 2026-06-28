@@ -9,8 +9,9 @@ function Home() {
   const socket = useSocket()
 
   useEffect(() => {
-    socket.on('room:state', () => navigate('/room'))
-    return () => socket.off('room:state')
+    const handler = (state) => navigate('/room', { state: { roomState: state } })
+    socket.on('room:state', handler)
+    return () => socket.off('room:state', handler)
   }, [socket, navigate])
 
   function handleEnter() {

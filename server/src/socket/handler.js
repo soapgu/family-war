@@ -7,10 +7,25 @@ const gameManager = require('./gameManager')
  */
 function registerHandlers(io) {
   io.on('connection', (socket) => {
-    console.log(`[connect] ${socket.id}`)
+    console.log(`[${ts()}] [connect] ${socket.id}`)
 
     /** @type {string|null} */
     let currentRoom = null
+
+    /**
+     * 获取当前 socket 的昵称
+     */
+    function getNickname() {
+      const room = currentRoom && roomManager.getRoom(currentRoom)
+      return room?.players[socket.id]?.nickname || '?'
+    }
+
+    /**
+     * 当前时间戳
+     */
+    function ts() {
+      return new Date().toLocaleTimeString()
+    }
 
     // ==================== 房间 ====================
 
@@ -24,6 +39,8 @@ function registerHandlers(io) {
       currentRoom = roomId
       const state = roomManager.joinRoom(socket, roomId, nickname.trim())
 
+      console.log(`[${ts()}] [join] ${socket.id} (${nickname.trim()}) → ${roomId}`)
+
       socket.emit('room:state', state)
       socket.to(`room:${roomId}`).emit('player:joined', {
         id: socket.id,
@@ -35,6 +52,8 @@ function registerHandlers(io) {
     socket.on('room:leave', () => {
       if (!currentRoom) return
       const roomId = currentRoom
+
+      console.log(`[${ts()}] [leave] ${socket.id} (${getNickname()}) ← ${roomId}`)
 
       cancelGameIfActive(roomId, socket.id)
 
@@ -62,6 +81,7 @@ function registerHandlers(io) {
         return
       }
 
+      console.log(`[${ts()}] [role] ${socket.id} (${getNickname()}) → ${role}`)
       roomManager.broadcastRoomState(rid, io)
     })
 
@@ -79,6 +99,7 @@ function registerHandlers(io) {
         return
       }
 
+      console.log(`[${ts()}] [role] ${socket.id} (${getNickname()}) → 放弃`)
       roomManager.broadcastRoomState(rid, io)
     })
 
@@ -151,6 +172,8 @@ function registerHandlers(io) {
 
       const game = gameManager.createGame(rid, socket.id, targetId)
 
+      console.log(`[${ts()}] [challenge] ${getNickname()} → ${target.nickname}`)
+
       io.to(socket.id).emit('game:start', {
         opponent: { id: targetId, nickname: target.nickname, role: target.role },
         round: game.round,
@@ -185,12 +208,20 @@ function registerHandlers(io) {
       }
 
       if (result.action === 'waiting') {
+        console.log(`[${ts()}] [move] ${getNickname()} → ${choice} (等待对手)`)
         socket.emit('game:waiting')
         return
       }
 
+      console.log(`[${ts()}] [move] ${getNickname()} → ${choice}`)
+
       if (result.action === 'round_result') emitRoundResult(game, result)
-      if (result.action === 'match_result') emitMatchResult(game, result, rid)
+      if (result.action === 'match_result') {
+        const winnerNick = game.players.find((id) => id === result.matchWinner)
+        const room = roomManager.getRoom(rid)
+        console.log(`[${ts()}] [result] 比赛结束 → 胜者: ${room?.players[result.matchWinner]?.nickname || result.matchWinner}`)
+        emitMatchResult(game, result, rid)
+      }
     })
 
     /** 请求重赛 → 用同一对玩家重新开局 */
@@ -225,6 +256,8 @@ function registerHandlers(io) {
       roomManager.clearGame(rid)
       const game = gameManager.createGame(rid, p1, p2)
 
+      console.log(`[${ts()}] [rematch] ${getNickname()}`)
+
       io.to(p1).emit('game:start', {
         opponent: { id: p2, nickname: room.players[p2]?.nickname, role: room.players[p2]?.role },
         round: game.round,
@@ -247,6 +280,8 @@ function registerHandlers(io) {
 
       roomManager.clearGame(rid)
 
+      console.log(`[${ts()}] [forfeit] ${getNickname()}`)
+
       const otherPlayer = game.players.find((id) => id !== socket.id)
       if (otherPlayer) {
         io.to(otherPlayer).emit('game:forfeited', {
@@ -261,9 +296,13 @@ function registerHandlers(io) {
 
     /** 断线 → 取消比赛 → 清理玩家 → 通知房间 */
     socket.on('disconnect', () => {
-      console.log(`[disconnect] ${socket.id}`)
-      if (!currentRoom) return
+      if (!currentRoom) {
+        console.log(`[${ts()}] [disconnect] ${socket.id} (未加入房间)`)
+        return
+      }
       const roomId = currentRoom
+
+      console.log(`[${ts()}] [disconnect] ${socket.id} (${getNickname()}) ← ${roomId}`)
 
       cancelGameIfActive(roomId, socket.id)
 
@@ -285,10 +324,13 @@ function registerHandlers(io) {
       if (!game || game.status !== 'playing') return
       if (!game.players.includes(socketId)) return
 
+      const room = roomManager.getRoom(roomId)
+
       gameManager.handleDisconnect(roomId, socketId)
 
       const otherPlayer = game.players.find((id) => id !== socketId)
       if (otherPlayer) {
+        console.log(`[${ts()}] [cancel] ${room?.players[socketId]?.nickname || socketId} 离开，比赛取消`)
         io.to(otherPlayer).emit('game:cancelled', { message: '对手离开了房间' })
       }
     }

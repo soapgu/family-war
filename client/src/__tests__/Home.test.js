@@ -59,11 +59,12 @@ describe('Home', () => {
     expect(socket.emit).not.toHaveBeenCalled()
   })
 
-  it('navigates to /room on room:state', () => {
+  it('navigates to /room with roomState on room:state', () => {
     const socket = useSocket()
     renderHome()
     const handler = socket.on.mock.calls.find(([e]) => e === 'room:state')[1]
-    handler({ id: 'default', players: [] })
-    expect(mockNavigate).toHaveBeenCalledWith('/room')
+    const mockState = { id: 'default', players: [] }
+    handler(mockState)
+    expect(mockNavigate).toHaveBeenCalledWith('/room', { state: { roomState: mockState } })
   })
 })
