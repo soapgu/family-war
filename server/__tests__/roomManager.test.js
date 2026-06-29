@@ -38,9 +38,10 @@ describe('joinRoom / leaveRoom', () => {
 
     expect(state).not.toBeNull()
     expect(state.id).toBe('default')
-    expect(state.players).toHaveLength(1)
-    expect(state.players[0].nickname).toBe('小明')
-    expect(state.players[0].role).toBeNull()
+    const humans = state.players.filter((p) => p.id !== '__robot__')
+    expect(humans).toHaveLength(1)
+    expect(humans[0].nickname).toBe('小明')
+    expect(humans[0].role).toBeNull()
     expect(socket.join).toHaveBeenCalledWith('room:default')
   })
 
@@ -51,7 +52,8 @@ describe('joinRoom / leaveRoom', () => {
     roomManager.joinRoom(s2, 'default', '小红')
 
     const state = roomManager.getRoomState('default')
-    expect(state.players).toHaveLength(2)
+    const humans = state.players.filter((p) => p.id !== '__robot__')
+    expect(humans).toHaveLength(2)
   })
 
   it('离开房间释放角色', () => {
@@ -143,7 +145,8 @@ describe('selectRole / deselectRole', () => {
 
     const { roomState } = roomManager.deselectRole(socket, 'default')
     expect(roomState.roles['爸爸']).toBeNull()
-    expect(roomState.players[0].role).toBeNull()
+    const human = roomState.players.find((p) => p.id === 's1')
+    expect(human.role).toBeNull()
   })
 
   it('在不存在的房间放弃角色返回错误', () => {
@@ -166,9 +169,10 @@ describe('handleDisconnect', () => {
 
     const state = roomManager.handleDisconnect(s1)
 
-    // s1 被移除
-    expect(state.players).toHaveLength(1)
-    expect(state.players[0].id).toBe('s2')
+    // s1 被移除（剩余机器人和 s2）
+    const humans = state.players.filter((p) => p.id !== '__robot__')
+    expect(humans).toHaveLength(1)
+    expect(humans[0].id).toBe('s2')
     // 爸爸角色释放
     expect(state.roles['爸爸']).toBeNull()
   })
@@ -205,8 +209,10 @@ describe('getRoomState', () => {
         '爸爸': { id: 's1', nickname: '小明' },
         '妈妈': null,
         '儿子': null,
+        '机器人': { id: '__robot__', nickname: '机器人' },
       },
       players: [
+        { id: '__robot__', nickname: '机器人', role: '机器人', online: true },
         { id: 's1', nickname: '小明', role: '爸爸', online: true },
       ],
       game: null,
@@ -254,7 +260,8 @@ describe('getAdminStatus', () => {
     const status = roomManager.getAdminStatus()
 
     expect(status).toHaveLength(2)
-    expect(status[0].players[0].nickname).toBe('小明')
+    const humanPlayer = status[0].players.find((p) => p.nickname === '小明')
+    expect(humanPlayer.nickname).toBe('小明')
     expect(status[1].id).toBe('room2')
   })
 

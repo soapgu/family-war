@@ -11,10 +11,12 @@ const MOCK_ROOM_STATE = {
     '爸爸': null,
     '妈妈': { id: 's2', nickname: '小红' },
     '儿子': null,
+    '机器人': { id: '__robot__', nickname: '机器人' },
   },
   players: [
     { id: 'test-socket-id', nickname: '小明', role: null, online: true },
     { id: 's2', nickname: '小红', role: '妈妈', online: true },
+    { id: '__robot__', nickname: '机器人', role: '机器人', online: true },
   ],
   game: null,
 }
@@ -40,11 +42,12 @@ describe('Room', () => {
     expect(screen.getByText(/default/)).toBeInTheDocument()
   })
 
-  it('renders three role cards', () => {
+  it('renders role cards', () => {
     renderRoom()
     expect(screen.getByText('爸爸')).toBeInTheDocument()
     expect(screen.getByText('妈妈')).toBeInTheDocument()
     expect(screen.getByText('儿子')).toBeInTheDocument()
+    expect(screen.getAllByText('机器人').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows roles from state', () => {

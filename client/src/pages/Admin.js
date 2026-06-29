@@ -6,6 +6,7 @@ const ROLE_EMOJI = {
   '爸爸': '👨',
   '妈妈': '👩',
   '儿子': '👦',
+  '机器人': '🤖',
 }
 
 function Admin() {

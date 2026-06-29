@@ -1,3 +1,6 @@
+const ROBOT_ID = '__robot__'
+const ROBOT_ROLE = '机器人'
+
 /**
  * 房间管理器（单例）
  * 管理房间、角色分配、玩家在线状态，纯内存操作。
@@ -20,9 +23,16 @@ class RoomManager {
       this.rooms[roomId] = {
         id: roomId,
         // 角色 → socketId 映射，null 表示空闲
-        roles: { '爸爸': null, '妈妈': null, '儿子': null },
+        roles: { '爸爸': null, '妈妈': null, '儿子': null, [ROBOT_ROLE]: ROBOT_ID },
         // socketId → 玩家信息
-        players: {},
+        players: {
+          [ROBOT_ID]: {
+            id: ROBOT_ID,
+            nickname: ROBOT_ROLE,
+            role: ROBOT_ROLE,
+            online: true,
+          },
+        },
         // 进行中的游戏对象，由 gameManager 管理
         game: null,
       }
@@ -84,8 +94,8 @@ class RoomManager {
     delete room.players[socket.id]
     socket.leave(`room:${roomId}`)
 
-    // 房间没人了，自动删除
-    if (Object.keys(room.players).length === 0) {
+    // 房间没真人了，自动删除（排除机器人）
+    if (Object.keys(room.players).filter((id) => id !== ROBOT_ID).length === 0) {
       delete this.rooms[roomId]
       return null
     }
@@ -107,6 +117,10 @@ class RoomManager {
   selectRole(socket, roomId, role) {
     const room = this.getRoom(roomId)
     if (!room) return { error: '房间不存在' }
+
+    if (role === ROBOT_ROLE) {
+      return { error: '机器人角色不可被选择' }
+    }
 
     if (!(role in room.roles)) {
       return { error: '无效的角色' }
@@ -216,7 +230,7 @@ class RoomManager {
         }
         delete room.players[socket.id]
 
-        if (Object.keys(room.players).length === 0) {
+        if (Object.keys(room.players).filter((id) => id !== ROBOT_ID).length === 0) {
           delete this.rooms[roomId]
           return null
         }
@@ -273,6 +287,7 @@ class RoomManager {
 
 const roomManager = new RoomManager()
 module.exports = roomManager
+module.exports.ROBOT_ID = ROBOT_ID
 
 // ==================== 类型定义 ====================
 

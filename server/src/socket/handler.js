@@ -1,5 +1,12 @@
 const roomManager = require('./roomManager')
 const gameManager = require('./gameManager')
+const ROBOT_ID = roomManager.ROBOT_ID
+
+const CHOICES = ['rock', 'paper', 'scissors']
+
+function randomChoice() {
+  return CHOICES[Math.floor(Math.random() * CHOICES.length)]
+}
 
 /**
  * 注册所有 Socket 事件
@@ -227,6 +234,17 @@ function registerHandlers(io) {
       }
 
       if (result.action === 'waiting') {
+        // 对手是机器人 → 立即为机器人出随机拳并结算
+        if (game.players.includes(ROBOT_ID)) {
+          const robotChoice = randomChoice()
+          console.log(`[${ts()}] [move] ${getNickname()} → ${choice} | 机器人 → ${robotChoice}`)
+
+          const robotResult = gameManager.submitMove(rid, ROBOT_ID, robotChoice)
+          if (robotResult.action === 'round_result') emitRoundResult(game, robotResult)
+          if (robotResult.action === 'match_result') emitMatchResult(game, robotResult, rid)
+          return
+        }
+
         console.log(`[${ts()}] [move] ${getNickname()} → ${choice} (等待对手)`)
         socket.emit('game:waiting')
         return

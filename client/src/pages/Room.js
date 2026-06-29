@@ -4,18 +4,20 @@ import useSocket from '../hooks/useSocket'
 import RoleCard from '../components/RoleCard'
 import GameBoard from '../components/GameBoard'
 
-const ROLES = ['爸爸', '妈妈', '儿子']
+const ROLES = ['爸爸', '妈妈', '儿子', '机器人']
 
 const ROLE_EMOJI = {
   '爸爸': '👨',
   '妈妈': '👩',
   '儿子': '👦',
+  '机器人': '🤖',
 }
 
 const ROLE_COLORS = {
   '爸爸': '#1677ff',
   '妈妈': '#eb2f96',
   '儿子': '#52c41a',
+  '机器人': '#722ed1',
 }
 
 function Room({ nickname, roomState, onBack }) {
@@ -25,6 +27,10 @@ function Room({ nickname, roomState, onBack }) {
   const me = useMemo(() => roomState?.players.find((p) => p.id === socket.id), [roomState, socket.id])
   const myRole = me?.role || null
   const playerList = useMemo(() => roomState?.players || [], [roomState])
+  const humanCount = useMemo(
+    () => playerList.filter((p) => p.id !== '__robot__').length,
+    [playerList]
+  )
 
   const challengableRoles = useMemo(
     () => ROLES.filter((role) => {
@@ -69,6 +75,7 @@ function Room({ nickname, roomState, onBack }) {
   }, [socket, roomState])
 
   function handleRoleClick(role) {
+    if (role === '机器人') return
     if (myRole === role) {
       socket.emit('role:deselect')
     } else if (!roomState?.roles[role]) {
@@ -107,9 +114,9 @@ function Room({ nickname, roomState, onBack }) {
             </Typography.Title>
             <Typography.Text type="secondary" style={{ fontSize: 13 }}>
               房间 ID: <Typography.Text code>default</Typography.Text>
-              <Tag style={{ marginLeft: 8 }}>
-                {playerList.length} 人在线
-              </Tag>
+                <Tag style={{ marginLeft: 8 }}>
+                  {humanCount} 人在线
+                </Tag>
             </Typography.Text>
           </div>
           <Space>
@@ -144,7 +151,7 @@ function Room({ nickname, roomState, onBack }) {
               }}
             >
               <Typography.Text strong style={{ fontSize: 14 }}>
-                在线玩家 ({playerList.length})
+                在线玩家 ({humanCount})
               </Typography.Text>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                 {playerList.map((p) => (

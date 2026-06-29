@@ -4,12 +4,14 @@ const ROLE_EMOJI = {
   '爸爸': '👨',
   '妈妈': '👩',
   '儿子': '👦',
+  '机器人': '🤖',
 }
 
 const ROLE_COLORS = {
   '爸爸': { border: '#1677ff', bg: '#e6f4ff', shadow: 'rgba(22,119,255,0.25)' },
   '妈妈': { border: '#eb2f96', bg: '#fff0f6', shadow: 'rgba(235,47,150,0.25)' },
   '儿子': { border: '#52c41a', bg: '#f6ffed', shadow: 'rgba(82,196,26,0.25)' },
+  '机器人': { border: '#722ed1', bg: '#f9f0ff', shadow: 'rgba(114,46,209,0.25)' },
 }
 
 function RoleCard({ role, occupant, isMine, onClick }) {
