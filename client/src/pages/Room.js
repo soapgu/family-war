@@ -1,8 +1,72 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Typography, Button, Tag, message, Space } from 'antd'
 import useSocket from '../hooks/useSocket'
 import RoleCard from '../components/RoleCard'
 import GameBoard from '../components/GameBoard'
+
+function getAudioContext(audioCtxRef) {
+  if (!audioCtxRef.current) {
+    audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+  }
+  if (audioCtxRef.current.state === 'suspended') {
+    audioCtxRef.current.resume()
+  }
+  return audioCtxRef.current
+}
+
+function playSfx(audioCtxRef, freqStart, freqEnd, duration = 0.12) {
+  const ctx = getAudioContext(audioCtxRef)
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(freqStart, ctx.currentTime)
+  osc.frequency.linearRampToValueAtTime(freqEnd, ctx.currentTime + duration * 0.7)
+  gain.gain.setValueAtTime(0.18, ctx.currentTime)
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration)
+  osc.start(ctx.currentTime)
+  osc.stop(ctx.currentTime + duration)
+}
+
+function playBattleSfx(audioCtxRef) {
+  const ctx = getAudioContext(audioCtxRef)
+
+  const osc1 = ctx.createOscillator()
+  osc1.type = 'square'
+  osc1.frequency.setValueAtTime(150, ctx.currentTime)
+  osc1.frequency.linearRampToValueAtTime(400, ctx.currentTime + 0.12)
+  osc1.frequency.linearRampToValueAtTime(500, ctx.currentTime + 0.22)
+
+  const gain1 = ctx.createGain()
+  gain1.gain.setValueAtTime(0, ctx.currentTime)
+  gain1.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.02)
+  gain1.gain.setValueAtTime(0.12, ctx.currentTime + 0.1)
+  gain1.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.25)
+
+  osc1.connect(gain1)
+  gain1.connect(ctx.destination)
+
+  const osc2 = ctx.createOscillator()
+  osc2.type = 'sawtooth'
+  osc2.frequency.setValueAtTime(300, ctx.currentTime)
+  osc2.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.12)
+  osc2.frequency.linearRampToValueAtTime(1000, ctx.currentTime + 0.22)
+
+  const gain2 = ctx.createGain()
+  gain2.gain.setValueAtTime(0, ctx.currentTime)
+  gain2.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.02)
+  gain2.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 0.1)
+  gain2.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.25)
+
+  osc2.connect(gain2)
+  gain2.connect(ctx.destination)
+
+  osc1.start(ctx.currentTime)
+  osc1.stop(ctx.currentTime + 0.25)
+  osc2.start(ctx.currentTime)
+  osc2.stop(ctx.currentTime + 0.25)
+}
 
 const ROLES = ['爸爸', '妈妈', '儿子', '机器人']
 
@@ -20,10 +84,11 @@ const ROLE_COLORS = {
   '机器人': '#722ed1',
 }
 
-function Room({ nickname, roomState, onBack }) {
+function Room({ nickname, roomState, onBack, onReturnToRoom }) {
   const socket = useSocket()
   const [gameInfo, setGameInfo] = useState(null)
   const [gameKey, setGameKey] = useState(0)
+  const audioCtxRef = useRef(null)
   const me = useMemo(() => roomState?.players.find((p) => p.id === socket.id), [roomState, socket.id])
   const myRole = me?.role || null
   const playerList = useMemo(() => roomState?.players || [], [roomState])
@@ -77,8 +142,10 @@ function Room({ nickname, roomState, onBack }) {
   function handleRoleClick(role) {
     if (role === '机器人') return
     if (myRole === role) {
+      playSfx(audioCtxRef, 587, 440)
       socket.emit('role:deselect')
     } else if (!roomState?.roles[role]) {
+      playSfx(audioCtxRef, 523, 659)
       socket.emit('role:select', { role })
     }
   }
@@ -137,6 +204,7 @@ function Room({ nickname, roomState, onBack }) {
             myRole={myRole}
             opponent={gameInfo.opponent}
             onFinish={() => setGameInfo(null)}
+            onReturnToRoom={onReturnToRoom}
           />
         ) : (
           <>
@@ -213,7 +281,10 @@ function Room({ nickname, roomState, onBack }) {
                         danger
                         size="large"
                         icon={<span style={{ fontSize: 18 }}>⚔️</span>}
-                        onClick={() => socket.emit('game:challenge', { targetId: target.id })}
+                        onClick={() => {
+                          playBattleSfx(audioCtxRef)
+                          socket.emit('game:challenge', { targetId: target.id })
+                        }}
                         style={{
                           borderRadius: 8,
                           height: 46,

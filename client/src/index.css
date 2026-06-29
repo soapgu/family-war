@@ -70,3 +70,27 @@ body {
   80% { transform: translate(calc(-50% + 6px), -50%) rotate(4deg); }
   100% { transform: translate(-50%, -50%); }
 }
+
+@keyframes choiceShake {
+  0%, 100% { transform: translateY(0); }
+  33% { transform: translateY(-6px); }
+  66% { transform: translateY(3px); }
+}
+
+@keyframes rollStop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+@keyframes readyGoBounceIn {
+  0%   { opacity: 0; transform: scale(0.3); }
+  50%  { opacity: 1; transform: scale(1.15); }
+  70%  { transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes readyGoOverlay {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}

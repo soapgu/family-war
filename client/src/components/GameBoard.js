@@ -17,12 +17,52 @@ const CHOICES = [
 ]
 
 const CHOICE_LABEL = { rock: '✊', paper: '✋', scissors: '✌️' }
+const CHOICE_EMOJIS = ['✊', '✋', '✌️']
 
 const RESULT_EMOJI = { win: '🎉', lose: '😢', draw: '🤝' }
 const RESULT_TEXT = { win: '你赢了！', lose: '你输了', draw: '平局！' }
 const RESULT_COLOR = { win: '#52c41a', lose: '#ff4d4f', draw: '#faad14' }
 const RESULT_BG = { win: '#f6ffed', lose: '#fff2f0', draw: '#fffbe6' }
 const RESULT_BORDER = { win: '#b7eb8f', lose: '#ffccc7', draw: '#ffe58f' }
+
+function getAudioContext(audioCtxRef) {
+  if (!audioCtxRef.current) {
+    audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+  }
+  if (audioCtxRef.current.state === 'suspended') {
+    audioCtxRef.current.resume()
+  }
+  return audioCtxRef.current
+}
+
+function playPunchSfx(audioCtxRef) {
+  const ctx = getAudioContext(audioCtxRef)
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = 'square'
+  osc.frequency.setValueAtTime(100, ctx.currentTime)
+  osc.frequency.linearRampToValueAtTime(30, ctx.currentTime + 0.12)
+  gain.gain.setValueAtTime(0.35, ctx.currentTime)
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.18)
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start(ctx.currentTime)
+  osc.stop(ctx.currentTime + 0.18)
+}
+
+function playRollTickSfx(audioCtxRef) {
+  const ctx = getAudioContext(audioCtxRef)
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(800, ctx.currentTime)
+  gain.gain.setValueAtTime(0.04, ctx.currentTime)
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.03)
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.start(ctx.currentTime)
+  osc.stop(ctx.currentTime + 0.03)
+}
 
 function RoundResultBanner({ winType, myMove, oppMove, myScore, oppScore, myName, oppName }) {
   const [animStage, setAnimStage] = useState('idle')
@@ -98,23 +138,33 @@ function RoundResultBanner({ winType, myMove, oppMove, myScore, oppScore, myName
   )
 }
 
-function GameBoard({ nickname, myRole, opponent, onFinish }) {
+function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
   const socket = useSocket()
   const [myMove, setMyMove] = useState(null)
   const [oppMove, setOppMove] = useState(null)
   const [round, setRound] = useState(1)
-  const [phase, setPhase] = useState('choosing') // choosing | waiting | roundResult | matchResult | forfeited
+  const [phase, setPhase] = useState('readyGo') // readyGo | choosing | waiting | roundResult | matchResult | forfeited
   const [resultMsg, setResultMsg] = useState('')
   const [winner, setWinner] = useState(null)
   const [scores, setScores] = useState({})
   const [matchResult, setMatchResult] = useState(null) // { matchWinner, scores, history }
   const [mySid, setMySid] = useState(null)
   const [forfeitMsg, setForfeitMsg] = useState('')
+  const [readyGoStage, setReadyGoStage] = useState(null) // 'ready' | 'go' | null
+  const [readyGoFadeOut, setReadyGoFadeOut] = useState(false)
 
   const myId = useMemo(() => mySid || socket.id, [mySid, socket.id])
   const roundTimer = useRef(null)
+  const rollIntervalRef = useRef(null)
+  const audioCtxRef = useRef(null)
+  const readyGoAudioRef = useRef(null)
+  const readyGoTimerRef = useRef(null)
   const onFinishRef = useRef(onFinish)
   onFinishRef.current = onFinish
+
+  const [rollIndex, setRollIndex] = useState(0)
+  const [rollStopped, setRollStopped] = useState(false)
+  const [pendingChoice, setPendingChoice] = useState(null)
 
   useEffect(() => {
     setMySid(socket.id)
@@ -185,11 +235,65 @@ function GameBoard({ nickname, myRole, opponent, onFinish }) {
     }
   }, [socket])
 
+  useEffect(() => {
+    if (phase === 'choosing') {
+      setRollStopped(false)
+      setPendingChoice(null)
+      setRollIndex(0)
+      let tickCount = 0
+      rollIntervalRef.current = setInterval(() => {
+        setRollIndex((i) => (i + 1) % 3)
+        tickCount++
+        if (tickCount % 2 === 0) {
+          playRollTickSfx(audioCtxRef)
+        }
+      }, 120)
+      return () => clearInterval(rollIntervalRef.current)
+    }
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'readyGo') return
+
+    setReadyGoStage(null)
+    setReadyGoFadeOut(false)
+    const audio = new Audio('/readygo.mp3')
+    audio.volume = 0.7
+    audio.play().catch(() => {})
+    readyGoAudioRef.current = audio
+
+    requestAnimationFrame(() => setReadyGoStage('ready'))
+
+    readyGoTimerRef.current = setTimeout(() => setReadyGoStage('go'), 1500)
+
+    const fadeTimer = setTimeout(() => setReadyGoFadeOut(true), 2500)
+
+    const doneTimer = setTimeout(() => setPhase('choosing'), 3000)
+
+    return () => {
+      clearTimeout(readyGoTimerRef.current)
+      clearTimeout(fadeTimer)
+      clearTimeout(doneTimer)
+      if (readyGoAudioRef.current) {
+        readyGoAudioRef.current.pause()
+        readyGoAudioRef.current = null
+      }
+    }
+  }, [phase])
+
   function handleChoice(key) {
-    clearTimeout(roundTimer.current)
-    setMyMove(key)
-    setPhase('waiting')
-    socket.emit('game:move', { choice: key })
+    if (rollStopped) return
+    clearInterval(rollIntervalRef.current)
+    setRollStopped(true)
+    setPendingChoice(key)
+    playPunchSfx(audioCtxRef)
+
+    setTimeout(() => {
+      clearTimeout(roundTimer.current)
+      setMyMove(key)
+      setPhase('waiting')
+      socket.emit('game:move', { choice: key })
+    }, 350)
   }
 
   function handleForfeit() {
@@ -203,12 +307,15 @@ function GameBoard({ nickname, myRole, opponent, onFinish }) {
     setMyMove(null)
     setOppMove(null)
     setScores({})
-    setPhase('choosing')
+    setPhase('readyGo')
     setRound(1)
+    setRollStopped(false)
+    setPendingChoice(null)
   }
 
   function handleBackAfterMatch() {
     setMatchResult(null)
+    onReturnToRoom?.()
     onFinish()
   }
 
@@ -216,6 +323,50 @@ function GameBoard({ nickname, myRole, opponent, onFinish }) {
 
   return (
     <div style={{ textAlign: 'center', padding: '24px 0', animation: 'fadeInUp 0.4s ease' }}>
+      {/* Ready Go overlay */}
+      {phase === 'readyGo' && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: readyGoFadeOut ? 'readyGoOverlay 0.5s ease forwards' : 'none',
+          }}
+        >
+          {readyGoStage === 'ready' && (
+            <span
+              style={{
+                fontSize: 56,
+                fontWeight: 800,
+                color: '#faad14',
+                textShadow: '0 0 24px rgba(250,173,20,0.5)',
+                animation: 'readyGoBounceIn 0.5s ease both',
+              }}
+            >
+              READY
+            </span>
+          )}
+          {readyGoStage === 'go' && (
+            <span
+              style={{
+                fontSize: 72,
+                fontWeight: 900,
+                color: '#ff4d4f',
+                textShadow: '0 0 32px rgba(255,77,79,0.5)',
+                animation: 'readyGoBounceIn 0.5s ease both',
+              }}
+            >
+              GO!
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Round title */}
       {!matchEnded && (
         <Typography.Title level={4} style={{ marginBottom: 24 }}>
@@ -297,6 +448,47 @@ function GameBoard({ nickname, myRole, opponent, onFinish }) {
         </div>
       )}
 
+      {/* Rolling display */}
+      {phase === 'choosing' && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            marginBottom: 24,
+          }}
+        >
+          <div
+            style={{
+              width: 120,
+              height: 120,
+              borderRadius: 16,
+              border: `3px solid ${rollStopped && pendingChoice ? '#52c41a' : '#d9d9d9'}`,
+              background: rollStopped && pendingChoice ? '#f6ffed' : '#fafafa',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: rollStopped ? 64 : 56,
+              transition: 'all 0.2s',
+              animation: rollStopped && pendingChoice ? 'rollStop 0.35s ease' : 'none',
+              boxShadow: rollStopped && pendingChoice
+                ? '0 0 24px rgba(82,196,26,0.35)'
+                : '0 2px 8px rgba(0,0,0,0.06)',
+            }}
+          >
+            {rollStopped && pendingChoice
+              ? CHOICE_LABEL[pendingChoice]
+              : CHOICE_EMOJIS[rollIndex]
+            }
+          </div>
+          {!rollStopped && (
+            <span style={{ marginTop: 8, fontSize: 13, color: '#999' }}>
+              👆 选一个出拳
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Choice buttons */}
       {phase === 'choosing' && (
         <>
@@ -308,40 +500,51 @@ function GameBoard({ nickname, myRole, opponent, onFinish }) {
               marginBottom: 20,
             }}
           >
-            {CHOICES.map((c) => (
-              <Button
-                key={c.key}
-                size="large"
-                onClick={() => handleChoice(c.key)}
-                style={{
-                  width: 90,
-                  height: 90,
-                  borderRadius: 12,
-                  fontSize: 36,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                  transition: 'all 0.2s',
-                  border: '2px solid #e8e8e8',
-                  background: '#fafafa',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#1677ff'
-                  e.currentTarget.style.transform = 'translateY(-4px)'
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(22,119,255,0.15)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#e8e8e8'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-              >
-                <span style={{ fontSize: 36 }}>{c.emoji}</span>
-                <span style={{ fontSize: 12, fontWeight: 500 }}>{c.label}</span>
-              </Button>
-            ))}
+            {CHOICES.map((c) => {
+              const isSelected = rollStopped && pendingChoice === c.key
+              const notSelected = rollStopped && pendingChoice !== c.key
+
+              return (
+                <Button
+                  key={c.key}
+                  size="large"
+                  onClick={() => handleChoice(c.key)}
+                  disabled={rollStopped}
+                  style={{
+                    width: 90,
+                    height: 90,
+                    borderRadius: 12,
+                    fontSize: 36,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    transition: 'all 0.2s',
+                    border: isSelected ? '2px solid #52c41a' : '2px solid #e8e8e8',
+                    background: isSelected ? '#f6ffed' : '#fafafa',
+                    transform: isSelected ? 'scale(1.15)' : 'translateY(0)',
+                    opacity: notSelected ? 0.3 : 1,
+                    boxShadow: isSelected ? '0 4px 20px rgba(82,196,26,0.4)' : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (rollStopped) return
+                    e.currentTarget.style.borderColor = '#1677ff'
+                    e.currentTarget.style.transform = 'translateY(-4px)'
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(22,119,255,0.15)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (rollStopped) return
+                    e.currentTarget.style.borderColor = '#e8e8e8'
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                >
+                  <span style={{ fontSize: 36 }}>{c.emoji}</span>
+                  <span style={{ fontSize: 12, fontWeight: 500 }}>{c.label}</span>
+                </Button>
+              )
+            })}
           </div>
 
           <Button
