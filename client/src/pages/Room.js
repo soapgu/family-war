@@ -21,6 +21,7 @@ const ROLE_COLORS = {
 function Room({ nickname, roomState, onBack }) {
   const socket = useSocket()
   const [gameInfo, setGameInfo] = useState(null)
+  const [gameKey, setGameKey] = useState(0)
   const me = useMemo(() => roomState?.players.find((p) => p.id === socket.id), [roomState, socket.id])
   const myRole = me?.role || null
   const playerList = useMemo(() => roomState?.players || [], [roomState])
@@ -43,12 +44,10 @@ function Room({ nickname, roomState, onBack }) {
     }
     function onGameStart(data) {
       setGameInfo(data)
+      setGameKey((k) => k + 1)
     }
     function onGameCancelled({ message: msg }) {
       message.info(msg || '比赛已取消')
-      setGameInfo(null)
-    }
-    function onMatchResult() {
       setGameInfo(null)
     }
     function onError({ message: msg }) {
@@ -59,14 +58,12 @@ function Room({ nickname, roomState, onBack }) {
     socket.on('player:left', onLeft)
     socket.on('game:start', onGameStart)
     socket.on('game:cancelled', onGameCancelled)
-    socket.on('game:matchResult', onMatchResult)
     socket.on('game:error', onError)
     return () => {
       socket.off('player:joined', onJoined)
       socket.off('player:left', onLeft)
       socket.off('game:start', onGameStart)
       socket.off('game:cancelled', onGameCancelled)
-      socket.off('game:matchResult', onMatchResult)
       socket.off('game:error', onError)
     }
   }, [socket, roomState])
@@ -126,11 +123,11 @@ function Room({ nickname, roomState, onBack }) {
         </div>
 
         {gameInfo ? (
-          <GameBoard
+          <GameBoard key={gameKey}
             nickname={nickname}
             myRole={myRole}
             opponent={gameInfo.opponent}
-            round={gameInfo.round}
+            onFinish={() => setGameInfo(null)}
           />
         ) : (
           <>

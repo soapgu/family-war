@@ -110,6 +110,15 @@ function registerHandlers(io) {
      */
     function emitRoundResult(game, result) {
       const [a, b] = game.players
+      const room = roomManager.getRoom(game.roomId)
+      const nameA = room?.players[a]?.nickname || a
+      const nameB = room?.players[b]?.nickname || b
+      const moveA = result.moves[a]
+      const moveB = result.moves[b]
+      const winnerName = result.winner === 'draw' ? '平局' : room?.players[result.winner]?.nickname || result.winner
+
+      console.log(`[${ts()}] [round] 第${result.round}局 — ${nameA}(${moveA}) vs ${nameB}(${moveB}) → ${winnerName} 胜`)
+
       for (const id of [a, b]) {
         io.to(id).emit('game:roundResult', {
           round: result.round,
@@ -125,6 +134,15 @@ function registerHandlers(io) {
      * 向双方广播赛果，并更新房间状态
      */
     function emitMatchResult(game, result, roomId) {
+      const room = roomManager.getRoom(roomId)
+      const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
+      const scoresStr = Object.entries(result.scores)
+        .map(([id, s]) => `${room?.players[id]?.nickname || id} ${s}分`)
+        .join(' ')
+
+      console.log(`[${ts()}] [match] 比赛结束 → 胜者: ${winnerNick} (${scoresStr})`)
+      console.log(`[${ts()}] [match] 历史: ${result.history.length}局`)
+
       const data = {
         matchWinner: result.matchWinner,
         scores: result.scores,
@@ -148,10 +166,11 @@ function registerHandlers(io) {
         return
       }
 
-      if (room.game) {
+      if (room.game && room.game.status === 'playing') {
         socket.emit('game:error', { message: '当前房间已有进行中的比赛' })
         return
       }
+      if (room.game) roomManager.clearGame(rid)
 
       const challenger = room.players[socket.id]
       const target = room.players[targetId]
@@ -245,8 +264,12 @@ function registerHandlers(io) {
       }
 
       const existingGame = room.game
-      if (!existingGame || existingGame.status !== 'match_end') {
+      if (!existingGame) {
         socket.emit('game:error', { message: '没有可重赛的已结束比赛' })
+        return
+      }
+      if (existingGame.status !== 'match_end') {
+        // 对方已先行发起重赛，游戏已重新开始，静默忽略
         return
       }
 

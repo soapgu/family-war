@@ -93,6 +93,8 @@ class GameManager {
     } else if (result === 'player2') {
       game.scores[p2]++
       roundWinner = p2
+    } else {
+      roundWinner = 'draw'
     }
 
     game.history.push({
@@ -117,8 +119,6 @@ class GameManager {
         history: [...game.history],
         endedAt: Date.now(),
       })
-
-      roomManager.clearGame(roomId)
 
       return {
         action: 'match_result',

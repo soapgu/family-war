@@ -21,6 +21,8 @@
 family-war/
 ├── client/                                   # React 前端 (端口 3000)
 │   ├── public/
+│   │   ├── favicon.svg
+│   │   ├── logo.svg
 │   │   └── index.html
 │   ├── src/
 │   │   ├── __tests__/
@@ -92,11 +94,11 @@ App (BrowserRouter)
 | 步骤 | 行为 | 通讯 |
 |------|------|------|
 | 进入房间 | 输入昵称，加入默认房间 | `socket.emit('room:join', { nickname })` |
-| 选角色 | 点击 爸爸/妈妈/儿子（已有人用的角色禁用） | `socket.emit('role:select', { role })` |
-| 发起挑战 | 点击对手角色卡片 | `socket.emit('game:challenge', { targetId })` |
-| 双方出拳 | 各选 石头/剪刀/布 | `socket.emit('game:move', { choice })` |
+| 选角色 | 点击 爸爸/妈妈/儿子 角色卡（整卡可点击） | `socket.emit('role:select', { role })` |
+| 发起挑战 | 选角后点击下方 ⚔️ 挑战按钮 | `socket.emit('game:challenge', { targetId })` |
+| 双方出拳 | 各选 石头/剪刀/布（交锋动画后展示结果） | `socket.emit('game:move', { choice })` |
 | 判定结果 | 服务器比对，广播本局结果 | 客户端收到 `game:roundResult` |
-| 赛果 | 先赢 2 局者胜 | 客户端收到 `game:matchResult` |
+| 赛果 | 先赢 2 局者胜（平局不占胜局，继续下一局） | 客户端收到 `game:matchResult` |
 
 ## 游戏规则
 
@@ -125,11 +127,13 @@ App (BrowserRouter)
 | C→S | `game:forfeit` | — | 认输回房 |
 | S→C | `room:state` | 完整房间 | 每次状态变更推送 |
 | S→C | `game:start` | `{ opponent, round }` | 开局 |
-| S→C | `game:roundStart` | `{ round }` | 新一轮开始 |
-| S→C | `game:roundResult` | `{ winner, yourMove, oppMove, scores }` | 本局结果 |
-| S→C | `game:matchResult` | `{ winner }` | 赛果 |
+| S→C | `game:waiting` | — | 等待对手出拳 |
+| S→C | `game:roundResult` | `{ round, winner, yourMove, oppMove, scores }` | 本局结果（含交锋动画） |
+| S→C | `game:matchResult` | `{ matchWinner, scores, history }` | 赛果弹窗 |
+| S→C | `game:cancelled` | `{ message }` | 比赛因对手离开取消 |
+| S→C | `game:forfeited` | `{ message }` | 对手认输 |
 | S→C | `game:error` | `{ message }` | 错误提示 |
-| S→C | `player:joined` | `{ player }` | 有人进房 |
+| S→C | `player:joined` | `{ nickname }` | 有人进房 |
 | S→C | `player:left` | `{ socketId }` | 有人离房 |
 
 ## 后台管理
@@ -184,10 +188,10 @@ npm test --prefix client
 | getMatchHistory | gameManager | 单元 | 3 |
 | 完整游戏流程 | handler | 集成 | 21 |
 | Home 渲染 + 回调 | client Home | 前端单元 | 5 |
-| Room 渲染 + 交互 | client Room | 前端单元 | 9 |
+| Room 渲染 + 交互 | client Room | 前端单元 | 10 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
 | Admin 渲染 | client Admin | 前端单元 | 1 |
-| **总计** | | | **67** |
+| **总计** | | | **90** |
 
 ## 端口
 
@@ -198,7 +202,7 @@ npm test --prefix client
 
 - **server**: 4000（Koa + Socket.IO）
 - **client**: 3000（React 开发服务器）
-- 开发环境下 socket.io 客户端直连 `http://localhost:4000`（CORS 已配置）
+- 开发环境下 socket.io 客户端通过 `window.location.hostname` 动态拼接服务器地址，支持局域网 IP 访问（CORS 已配置）
 - `/api` 请求通过 CRA 代理 (`setupProxy.js`) 转发到 4000
 
 
@@ -230,6 +234,6 @@ npm test --prefix client
 
 **第四阶段：游戏核心功能**
 - [x] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
-- [ ] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
+- [x] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
 - [ ] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
 - [ ] 7f. **F — 重赛+认输+断线**：流程闭环，各边界状态处理

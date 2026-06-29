@@ -74,7 +74,7 @@ describe('submitMove', () => {
     const result = gameManager.submitMove(ROOM_ID, P2, 'rock')
 
     expect(result.action).toBe('round_result')
-    expect(result.winner).toBeNull()
+    expect(result.winner).toBe('draw')
     expect(result.scores[P1]).toBe(0)
     expect(result.scores[P2]).toBe(0)
     expect(result.round).toBe(1)
@@ -93,7 +93,9 @@ describe('submitMove', () => {
     expect(result.matchWinner).toBe(P1)
     expect(result.scores[P1]).toBe(2)
 
-    expect(roomManager.clearGame).toHaveBeenCalledWith(ROOM_ID)
+    const game = gameManager.getGame(ROOM_ID)
+    expect(game).not.toBeNull()
+    expect(game.status).toBe('match_end')
   })
 
   it('2-1 反转获胜', () => {
