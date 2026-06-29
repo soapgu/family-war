@@ -113,9 +113,11 @@ function Room({ nickname, roomState, onBack }) {
             </Typography.Text>
           </div>
           <Space>
-            <Button onClick={onBack} ghost size="small">
-              返回首页
-            </Button>
+            {!gameInfo && (
+              <Button onClick={onBack} ghost size="small">
+                返回首页
+              </Button>
+            )}
             <Button onClick={handleLeave} danger ghost size="small">
               退出房间
             </Button>

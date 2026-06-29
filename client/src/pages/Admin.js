@@ -47,7 +47,7 @@ function Admin() {
       <Typography.Title level={5} style={{ marginBottom: 12 }}>📡 房间状态</Typography.Title>
       {rooms.length === 0 && <Typography.Text type="secondary">暂无活跃房间</Typography.Text>}
       {rooms.map((room) => (
-        <Card key={room.id} size="small" title={<span>📦 {room.id}</span>} extra={room.game ? <Tag color="orange">对战中</Tag> : <Tag>空闲</Tag>} style={{ marginBottom: 8 }}>
+        <Card key={room.id} size="small" title={<span>📦 {room.id}</span>} extra={room.game?.status === 'playing' ? <Tag color="orange">对战中</Tag> : <Tag>空闲</Tag>} style={{ marginBottom: 8 }}>
           {room.players.map((p) => (
             <div key={p.nickname} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span>{p.role ? ROLE_EMOJI[p.role] : '🤷'}</span>
