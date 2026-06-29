@@ -114,8 +114,10 @@ class GameManager {
         id: game.id,
         roomId,
         players: [...game.players],
+        playerNames: Object.fromEntries(game.players.map((id) => [id, room?.players[id]?.nickname || id])),
         scores: { ...game.scores },
         matchWinner,
+        matchWinnerName: room?.players[matchWinner]?.nickname || matchWinner,
         history: [...game.history],
         endedAt: Date.now(),
       })

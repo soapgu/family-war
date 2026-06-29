@@ -29,7 +29,7 @@ family-war/
 │   │   │   ├── Home.test.js                   # 首页 TDD 测试 (5 个)
 │   │   │   ├── Room.test.js                   # 房间页 TDD 测试 (9 个)
 │   │   │   ├── RoleCard.test.js               # 角色卡片 TDD 测试 (7 个)
-│   │   │   └── Admin.test.js                  # 后台页 TDD 测试 (1 个)
+│   │   │   └── Admin.test.js                  # 后台页 TDD 测试 (3 个)
 │   │   ├── pages/
 │   │   │   ├── Home.js                        # 首页：输入昵称（纯 UI，无 socket/routing）
 │   │   │   ├── Room.js                        # 房间页：选角色、挑战、对战（纯 props 组件）
@@ -43,7 +43,7 @@ family-war/
 │   │   │   │   └── useSocket.js               # Socket mock（测试用）
 │   │   │   └── useSocket.js                   # Socket.IO 模块级单例
 │   │   ├── setupProxy.js                      # CRA 代理 /api → :4000
-│   │   ├── setupTests.js                      # Jest 全局配置 + 抑制 React Router 警告
+│   │   ├── setupTests.js                      # Jest 全局配置 + matchMedia mock + 抑制 React Router 警告
 │   │   ├── App.js                             # GameApp 容器，state 控制 Home/Room 切换
 │   │   └── index.js
 │   ├── jsconfig.json
@@ -88,7 +88,7 @@ App (BrowserRouter)
 ## 游戏流程
 
 ```
-首页 (输入昵称) → 进入房间 → 选择角色(自动ready) → 点击对手角色 → 开始对战 → 猜拳 → 结算
+首页 (输入昵称) → 进入房间 → 选择角色 → 点击挑战按钮 → 开始对战 → 猜拳 → 结算
 ```
 
 | 步骤 | 行为 | 通讯 |
@@ -105,7 +105,7 @@ App (BrowserRouter)
 | 规则 | 内容 |
 |------|------|
 | 赛制 | 三局两胜（先赢 2 局者获胜） |
-| 挑战 | 点击对手角色 → 直接开始，无确认弹窗 |
+| 挑战 | 选角后点击下方 ⚔️ 挑战按钮 → 直接开始，无确认弹窗 |
 | 平局 | 该局无效，双方不得分，继续下一局直到出现赢家 |
 | 断线 | 立即结束比赛，整场比赛结果无效，双方回到房间空闲状态 |
 | 记分 | 不计分，纯判定胜负 |
@@ -190,8 +190,8 @@ npm test --prefix client
 | Home 渲染 + 回调 | client Home | 前端单元 | 5 |
 | Room 渲染 + 交互 | client Room | 前端单元 | 10 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
-| Admin 渲染 | client Admin | 前端单元 | 1 |
-| **总计** | | | **90** |
+| Admin 渲染 + 数据 | client Admin | 前端单元 | 3 |
+| **总计** | | | **92** |
 
 ## 端口
 
@@ -235,5 +235,5 @@ npm test --prefix client
 **第四阶段：游戏核心功能**
 - [x] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
 - [x] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
-- [ ] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
+- [x] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
 - [ ] 7f. **F — 重赛+认输+断线**：流程闭环，各边界状态处理
