@@ -88,17 +88,19 @@ App (BrowserRouter)
 ## 游戏流程
 
 ```
-首页 (输入昵称) → 进入房间 → 选择角色 → 点击挑战按钮 → 开始对战 → 猜拳 → 结算
+首页(输入昵称) → 进入房间 → 选择角色 → 挑战 → Ready Go(首局) → 翻骰动画 → 出拳 → 结算
 ```
 
 | 步骤 | 行为 | 通讯 |
 |------|------|------|
-| 进入房间 | 输入昵称，加入默认房间 | `socket.emit('room:join', { nickname })` |
-| 选角色 | 点击 爸爸/妈妈/儿子 角色卡（整卡可点击） | `socket.emit('role:select', { role })` |
-| 发起挑战 | 选角后点击下方 ⚔️ 挑战按钮 | `socket.emit('game:challenge', { targetId })` |
-| 双方出拳 | 各选 石头/剪刀/布（交锋动画后展示结果） | `socket.emit('game:move', { choice })` |
+| 进入房间 | 输入昵称，加入默认房间，开始播放大厅 BGM | `socket.emit('room:join', { nickname })` |
+| 选角色 | 点击 爸爸/妈妈/儿子 角色卡，伴有选中/取消音效 | `socket.emit('role:select', { role })` |
+| 发起挑战 | 选角后点击 ⚔️ 挑战按钮，伴有冲锋号角音效 | `socket.emit('game:challenge', { targetId })` |
+| Ready Go | 比赛首局播放 3 秒倒计时动画，切换到对战 BGM | 客户端本地动画 |
+| 翻骰动画 | 出拳阶段上方滚筒轮换 ✊✋✌️，伴有翻骰节拍音效 | 客户端本地动画 |
+| 双方出拳 | 点击出拳按钮，滚筒定格 + punch 音效 → 交锋动画展示结果 | `socket.emit('game:move', { choice })` |
 | 判定结果 | 服务器比对，广播本局结果 | 客户端收到 `game:roundResult` |
-| 赛果 | 先赢 2 局者胜（平局不占胜局，继续下一局） | 客户端收到 `game:matchResult` |
+| 赛果 | 先赢 2 局者胜，切换到结算 BGM | 客户端收到 `game:matchResult` |
 
 ## 游戏规则
 
@@ -126,6 +128,79 @@ App (BrowserRouter)
 | 重赛/认输 | 和普通对局一样，支持重赛和认输 |
 | 对局历史 | 与机器人的对局同样记录到对局历史和管理后台 |
 | 角色卡片 | 机器人角色卡片为紫色主题(🤖)，始终不可点击 |
+
+## 音效与背景音乐 🎵
+
+### 背景音乐（BGM）
+
+通过监听 `roomState.game.status` 自动切换三种 BGM，由 `App.js` 统一管理：
+
+| 阶段 | 触发条件 | 文件路径 | 循环 |
+|------|---------|---------|------|
+| 大厅 | 进入房间 / 比赛结束返回 | `/bgm.mp3` | ✅ |
+| 对战 | `game.status === 'playing'` | `/bgm_battle.mp3` | ✅ |
+| 结算 | `game.status === 'match_end'` | `/bgm_result.mp3` | ✅ |
+
+三首 BGM 均循环播放，音量 0.3。离开房间或组件卸载时自动停止。点击「返回房间」时主动切回大厅 BGM。
+
+### UI 交互音效（Web Audio API）
+
+所有 UI 音效由 Web Audio API 实时合成，无需外部音频文件：
+
+| 音效 | 触发 | 实现 | 听感 |
+|------|------|------|------|
+| 选中角色 | 点击空闲角色卡 | 正弦波 C5↗E5，120ms | 「叮↑」积极肯定 |
+| 取消角色 | 点击已选角色卡 | 正弦波 D5↘A4，120ms | 「叮↓」释放 |
+| 挑战 | 点击 ⚔️ 挑战按钮 | 方波 150↗500Hz + 锯齿波 300↗1000Hz，250ms | 冲锋号角 |
+| 出拳 | 点击出拳按钮 | 方波 100↘30Hz，180ms | 「砰」击打感 |
+| 翻骰节拍 | 出拳滚筒每 2 次跳动 | 正弦波 800Hz，30ms | 微弱滴答节拍 |
+
+技术细节：
+- `getAudioContext(audioCtxRef)` — 复用单一 `AudioContext` 实例，自动处理浏览器 `suspended` 恢复
+- `playSfx(audioCtxRef, freqStart, freqEnd, duration)` — 通用正弦波滑音
+- `playBattleSfx(audioCtxRef)` — 双层波形合成（square + sawtooth）
+- `playPunchSfx(audioCtxRef)` / `playRollTickSfx(audioCtxRef)` — 出拳阶段专用
+
+### 音频文件部署
+
+```
+client/public/
+├── bgm.mp3          # 大厅背景音乐
+├── bgm_battle.mp3   # 对战背景音乐
+├── bgm_result.mp3   # 结算背景音乐
+└── readygo.mp3      # Ready Go 音效（≈3秒）
+```
+
+## Ready Go 动画 ⚡
+
+每场**比赛首局**开始前播放 3 秒倒计时动画，参考泡泡龙风格：
+
+```
+0s        1.5s       2.5s      3s
+├─ READY ─┤─ GO! ────┤ 淡出 ──┤ 进入出拳阶段
+├────── readygo.mp3 播放 ──────────┤
+```
+
+- **READY**：金黄色 56px，弹缩入场（`readyGoBounceIn`：0.3→1.15→0.9→1.0）
+- **GO!**：红色 72px，更大冲击力的弹缩入场
+- **遮罩**：`position: fixed` 全屏半透明黑底（`rgba(0,0,0,0.6)`），GO 后 2.5s 开始渐隐出
+- 仅比赛首局出现，后续局数直接进入出拳阶段
+- 重赛时重新播放
+
+## 出拳翻骰动画 🎰
+
+`choosing` 阶段上方有一个独立滚筒区域，快速轮换 ✊→✋→✌️（120ms/次），下方三个出拳按钮保持静态：
+
+```
+     ┌──────────────┐
+     │     ✊       │  ← 120ms 快速轮换 + 翻骰节拍音效
+     │  👆 选一个出拳 │
+     └──────────────┘
+
+   [✊ 石头]  [✋ 布]  [✌️ 剪刀]   ← 静态按钮，hover 高亮
+```
+
+点击后：滚筒定格在选中 emoji（放大 + 绿色光晕 + `rollStop` 弹跳动画）+ punch 音效 → 350ms 后进入 waiting。
 
 ## Socket 事件清单
 
@@ -252,3 +327,9 @@ npm test --prefix client
 - [x] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
 - [x] 7f. **F — 重赛+认输+断线**：流程闭环，各边界状态处理
 - [x] 7g. **G — 机器人对战**：新增常驻机器人角色，纯随机出牌，支持挑战/结算/重赛
+
+**第五阶段：音效与动画**
+- [x] 8a. **UI 交互音效**：角色选中/取消、挑战冲锋号、出拳 punch、翻骰节拍（Web Audio API 合成）
+- [x] 8b. **出拳翻骰动画**：choosing 阶段独立滚筒区域快速轮换 ✊✋✌️，点击定格 + punch 音效
+- [x] 8c. **Ready Go 动画**：比赛首局 3 秒倒计时动效，READY→GO! 弹缩入场 + 遮罩渐隐
+- [x] 8d. **背景音乐系统**：大厅/对战/结算三阶段 BGM 自动切换，`roomState.game.status` 驱动
