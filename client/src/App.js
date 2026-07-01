@@ -48,7 +48,9 @@ function GameApp() {
 
     if (status === prev) return
 
-    if (status === 'playing') {
+    if (!roomState) {
+      stopBgm()
+    } else if (status === 'playing') {
       startBgm(BGM_BATTLE)
     } else if (status === 'match_end') {
       startBgm(BGM_RESULT)
