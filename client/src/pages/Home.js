@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Typography, Input, Button, Space, message } from 'antd'
 import useSocket from '../hooks/useSocket'
 
+const APP_VERSION = '0.1.0'
+
 const QUOTES = [
   { role: '爸爸', emoji: '👨', text: '谁输谁洗碗' },
   { role: '妈妈', emoji: '👩', text: '输了快滚去写作业' },
@@ -119,6 +121,9 @@ function Home({ onEnter }) {
             进入房间
           </Button>
         </Space>
+      </div>
+      <div style={{ position: 'fixed', bottom: 12, right: 16, fontSize: 11, color: '#666' }}>
+        v{APP_VERSION}
       </div>
     </div>
   )
