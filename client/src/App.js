@@ -50,9 +50,14 @@ function GameApp() {
 
     if (!roomState) {
       stopBgm()
-    } else if (status === 'playing') {
+      return
+    }
+
+    const isInGame = roomState.game?.players?.includes(socket.id) ?? false
+
+    if (status === 'playing' && isInGame) {
       startBgm(BGM_BATTLE)
-    } else if (status === 'match_end') {
+    } else if (status === 'match_end' && isInGame) {
       startBgm(BGM_RESULT)
     } else {
       startBgm(BGM_LOBBY)
