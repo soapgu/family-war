@@ -1,6 +1,6 @@
-# Family War 🎮
+# Family War 🎮 v2.0
 
-一个线上石头剪刀布游戏系统，支持多人在线对战以及和机器人对局。
+一个线上多人游戏系统，支持**石头剪刀布**（1v1 对战）和**算术达人**（全员抢答）两种玩法，以及和机器人对局。
 
 ## 技术栈
 
@@ -36,8 +36,10 @@ family-war/
 │   │   │   └── Admin.js                       # 后台：房间状态 + 对局记录
 │   │   ├── components/
 │   │   │   ├── RoleCard.js                    # 角色卡片（空闲/选中/对战中）
-│   │   │   ├── GameBoard.js                   # 对战面板（石头剪刀布按钮）
-│   │   │   └── MatchResult.js                 # 结算弹窗
+│   │   │   ├── GameBoard.js                   # RPS 对战面板（石头剪刀布按钮）
+│   │   │   ├── ArithmeticBoard.js             # 算术达人面板（v2.0 新增）
+│   │   │   ├── MatchResult.js                 # 结算弹窗（v2.0 拆为 RpsMatchResult + ArithmeticMatchResult 子组件）
+│   │   │   └── ArithmeticMatchResult.js       # 算术结算（v2.0 新增）
 │   │   ├── hooks/
 │   │   │   ├── __mocks__/
 │   │   │   │   └── useSocket.js               # Socket mock（测试用）
@@ -77,7 +79,9 @@ App (BrowserRouter)
     ├── roomState = null  →  Home
     │   └── onEnter(nickname) → emit room:join → setRoomState
     └── roomState ≠ null  →  Room
-        ├── 选角色 / 挑战 / 对战
+        ├── 选角色 / 切换游戏模式 (RPS / 算术)
+        ├── gameType === 'rps'        → GameBoard → RpsMatchResult
+        ├── gameType === 'arithmetic' → ArithmeticBoard → ArithmeticMatchResult
         └── onBack() → setRoomState(null) 返回首页
 ```
 
@@ -87,6 +91,8 @@ App (BrowserRouter)
 
 ## 游戏流程
 
+### 石头剪刀布（v1.0）
+
 ```
 首页(输入昵称) → 进入房间 → 选择角色 → 挑战 → Ready Go(首局) → 翻骰动画 → 出拳 → 结算
 ```
@@ -95,14 +101,31 @@ App (BrowserRouter)
 |------|------|------|
 | 进入房间 | 输入昵称，加入默认房间，开始播放大厅 BGM | `socket.emit('room:join', { nickname })` |
 | 选角色 | 点击 爸爸/妈妈/儿子 角色卡，伴有选中/取消音效 | `socket.emit('role:select', { role })` |
-| 发起挑战 | 选角后点击 ⚔️ 挑战按钮，伴有冲锋号角音效 | `socket.emit('game:challenge', { targetId })` |
+| 发起挑战 | 选角后点击 ⚔️ 挑战按钮，伴有冲锋号角音效 | `socket.emit('game:challenge', { mode: 'rps', targetId })` |
 | Ready Go | 比赛首局播放 3 秒倒计时动画，切换到对战 BGM | 客户端本地动画 |
 | 翻骰动画 | 出拳阶段上方滚筒轮换 ✊✋✌️，伴有翻骰节拍音效 | 客户端本地动画 |
 | 双方出拳 | 点击出拳按钮，滚筒定格 + punch 音效 → 交锋动画展示结果 | `socket.emit('game:move', { choice })` |
 | 判定结果 | 服务器比对，广播本局结果 | 客户端收到 `game:roundResult` |
 | 赛果 | 先赢 2 局者胜，切换到结算 BGM | 客户端收到 `game:matchResult` |
 
+### 算术达人（v2.0）
+
+```
+选角色 → 切换算术模式 → 开始算术挑战 → 出题 → 抢答 → 结算
+```
+
+| 步骤 | 行为 | 通讯 |
+|------|------|------|
+| 切换模式 | 在房间内点击 "算术达人" 模式切换 | `socket.emit('game:setMode', { mode: 'arithmetic' })` |
+| 开始游戏 | 点击 🧮 开始算术挑战按钮（需至少 1 人已选角色） | `socket.emit('game:challenge', { mode: 'arithmetic' })` |
+| 出题 | 所有参战玩家收到算术题（+/-，结果 0-100） | 客户端收到 `game:question` |
+| 抢答 | 在输入框中填写答案并提交 | `socket.emit('game:answer', { questionId, answer })` |
+| 判定 | 首位答对者得 1 分；机器人固定 20 秒后自动答对 | 客户端收到 `game:roundResult` |
+| 赛果 | 先得 5 分者胜，切换到结算 BGM | 客户端收到 `game:matchResult` |
+
 ## 游戏规则
+
+### 石头剪刀布
 
 | 规则 | 内容 |
 |------|------|
@@ -111,13 +134,33 @@ App (BrowserRouter)
 | 平局 | 该局无效，双方不得分，继续下一局直到出现赢家 |
 | 断线 | 立即结束比赛，整场比赛结果无效，双方回到房间空闲状态 |
 | 记分 | 不计分，纯判定胜负 |
+
+### 算术达人
+
+| 规则 | 内容 |
+|------|------|
+| 参赛 | 所有已选角色的人类玩家 + 机器人，全员参加 |
+| 题目 | 随机 +/- 计算题，结果范围 0-100，标准难度 |
+| 答题 | 数字输入框填写答案，提交后不可修改 |
+| 抢答 | 首位答对者得 1 分，其余玩家不得分 |
+| 机器人 | 固定 20 秒后自动提交正确答案，若 20 秒内无人答对则机器人得 1 分 |
+| 赛制 | 先得 5 分者获胜，游戏结束 |
+| 断线 | 玩家断线不影响算术游戏继续（仍在局中不扣分） |
+
+### 通用规则
+
+| 规则 | 内容 |
+|------|------|
 | 房间 | 默认 `default`，后期支持多房间（设计预留 roomId） |
-| 角色 | 爸爸/妈妈/儿子/机器人，一人一角色，选了自动 ready。机器人角色不可被选择 |
+| 角色 | 爸爸/妈妈/儿子/机器人，一人一角色，选了自动 ready。机器人角色不可被人类选择 |
+| 模式切换 | 房间级切换，全体玩家在同一模式下游戏 |
 | 旁观 | 暂不支持 |
 
 ## 机器人 🤖
 
 房间中有一个**常驻机器人**，不可被人类选择，永远在线。
+
+### 石头剪刀布模式
 
 | 特性 | 说明 |
 |------|------|
@@ -128,6 +171,16 @@ App (BrowserRouter)
 | 重赛/认输 | 和普通对局一样，支持重赛和认输 |
 | 对局历史 | 与机器人的对局同样记录到对局历史和管理后台 |
 | 角色卡片 | 机器人角色卡片为紫色主题(🤖)，始终不可点击 |
+
+### 算术达人模式
+
+| 特性 | 说明 |
+|------|------|
+| 参赛方式 | 自动参战，作为固定选手参与抢答 |
+| 答题策略 | 固定 20 秒后自动提交正确答案 |
+| 答题时机 | 每道题发题后启动 20s 定时器，20s 到立刻提交正确结果 |
+| 计分 | 答对同样得 1 分，机器人也可能赢得整场比赛 |
+| 对局历史 | 与人类的对局同样记录到对局历史和管理后台 |
 
 ## 音效与背景音乐 🎵
 
@@ -202,28 +255,73 @@ client/public/
 
 点击后：滚筒定格在选中 emoji（放大 + 绿色光晕 + `rollStop` 弹跳动画）+ punch 音效 → 350ms 后进入 waiting。
 
-## Socket 事件清单
+## 协议设计（v2.0）
 
-| 方向 | 事件 | 数据 | 说明 |
-|------|------|------|------|
-| C→S | `room:join` | `{ nickname }` | 加入默认房间 |
-| C→S | `room:leave` | — | 离开 |
-| C→S | `role:select` | `{ role }` | 选角色（爸爸/妈妈/儿子，机器人不可选） |
-| C→S | `role:deselect` | — | 放弃当前角色 |
-| C→S | `game:challenge` | `{ targetId }` | 点击对手发起挑战 |
-| C→S | `game:move` | `{ choice }` | 出拳（rock/paper/scissors） |
-| C→S | `game:rematch` | — | 再来一局 |
-| C→S | `game:forfeit` | — | 认输回房 |
-| S→C | `room:state` | 完整房间 | 每次状态变更推送 |
-| S→C | `game:start` | `{ opponent, round }` | 开局 |
-| S→C | `game:waiting` | — | 等待对手出拳 |
-| S→C | `game:roundResult` | `{ round, winner, yourMove, oppMove, scores }` | 本局结果（含交锋动画） |
-| S→C | `game:matchResult` | `{ matchWinner, scores, history }` | 赛果弹窗 |
-| S→C | `game:cancelled` | `{ message }` | 比赛因对手离开取消 |
-| S→C | `game:forfeited` | `{ message }` | 对手认输 |
-| S→C | `game:error` | `{ message }` | 错误提示 |
-| S→C | `player:joined` | `{ nickname }` | 有人进房 |
-| S→C | `player:left` | `{ socketId }` | 有人离房 |
+v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空间：
+
+- `game:start` / `game:roundResult` / `game:matchResult` / `game:waiting` / `game:forfeited` 全部复用
+- 每个事件增加 `gameType: 'rps' | 'arithmetic'` 字段区分模式
+- 仅新增 2 个事件：`game:question`（S→C 出题）、`game:answer`（C→S 答题）
+- `game:challenge` 增加必传 `mode` 字段，服务端根据 `mode` 路由到不同游戏逻辑
+
+### Socket 事件清单
+
+#### 客户端 → 服务端
+
+| 事件 | 数据 | 说明 |
+|------|------|------|
+| `room:join` | `{ nickname, roomId? }` | 加入默认房间 |
+| `room:leave` | — | 离开 |
+| `role:select` | `{ role }` | 选角色（爸爸/妈妈/儿子，机器人不可选） |
+| `role:deselect` | — | 放弃当前角色 |
+| `game:setMode` | `{ mode: 'rps' \| 'arithmetic' }` | 切换房间游戏模式 |
+| `game:challenge` | RPS: `{ mode: 'rps', targetId }`<br>算术: `{ mode: 'arithmetic' }` | 发起挑战（mode 必传） |
+| `game:move` | `{ choice }` | 出拳（rock/paper/scissors） |
+| `game:answer` | `{ questionId, answer }` | 提交算术题答案 |
+| `game:rematch` | — | 再来一局 |
+| `game:forfeit` | — | 认输回房 |
+
+#### 服务端 → 客户端
+
+| 事件 | RPS 数据 | 算术数据 |
+|------|----------|----------|
+| `room:state` | `{ ..., gameMode: 'rps' }` | `{ ..., gameMode: 'arithmetic' }` |
+| `player:joined` | `{ nickname }` | 相同 |
+| `player:left` | `{ socketId }` | 相同 |
+| `game:start` | `{ opponent, round }` | `{ gameType: 'arithmetic', players: [...], round }` |
+| `game:question` | — | `{ questionId, expression, round }` |
+| `game:waiting` | 等待对手出拳 | 等待其他人 / 机器人倒计时 |
+| `game:roundResult` | `{ round, winner, yourMove, oppMove, scores }` | `{ gameType: 'arithmetic', round, questionId, expression, correctAnswer, yourAnswer, winner, scores }` |
+| `game:matchResult` | `{ matchWinner, scores, history }` | `{ gameType: 'arithmetic', matchWinner, scores, ranking, history }` |
+| `game:cancelled` | `{ message }` | 相同（算术模式下断线不影响其他玩家） |
+| `game:forfeited` | `{ message }` | 相同 |
+| `game:error` | `{ message }` | 相同 |
+
+### room:state 新增字段
+
+```json
+{
+  ...原有字段,
+  "gameMode": "rps" | "arithmetic"  // ← 新增
+}
+```
+
+## MatchResult 架构
+
+v2.0 将 `MatchResult.js` 重构为内部根据 `gameType` 分发子组件，预留未来扩展：
+
+```
+MatchResult.js
+├── 接收完整 data（含 gameType）
+├── Modal 壳（antd Modal）
+├── 内部 switch:
+│   ├── gameType === 'arithmetic' → <ArithmeticMatchResult />
+│   └── default (rps)            → <RpsMatchResult />
+└── 新增子组件只需加一条 case
+```
+
+- `RpsMatchResult` — 现有逻辑搬入（历史回放 + 🏆/😢 + 比分）
+- `ArithmeticMatchResult` — 终榜排名（🥇🥈🥉）+ 每题回放
 
 ## 后台管理
 
@@ -298,38 +396,62 @@ npm test --prefix client
 
 ## 实现步骤
 
-### 服务端（已完成）
+### v1.0（已完成）
 
+**服务端**
 - [x] 1. 初始化项目结构：client（CRA+rewired）、server（Koa+socket.io）、根 package.json
 - [x] 2. roomManager.js — 房间 CRUD、角色分配、在线状态管理（含 24 个单元测试）
 - [x] 3. gameManager.js — 猜拳判定、三局两胜赛制、平局重赛、断线结束比赛（含 19 个单元测试）
 - [x] 4. handler.js — 注册所有 socket 事件（含集成测试 21 个断言验证）
 - [x] 5. admin.js — GET /api/admin/status 管理接口（含对局历史记录）
 
-### 前端（进行中）
-
-**第一阶段：脚手架 + TDD 基础设施**
-- [x] 6a. 安装 antd + 测试依赖，建空壳页面 Home/Room/Admin，确认路由切换正常
-- [x] 6b. 为三页面写 TDD 测试（空状态渲染），配置 useSocket mock
-
-**第二阶段：功能分步实现**
-- [x] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → GameApp 收到 room:state 切换为 Room
+**前端**
+- [x] 6a. 安装 antd + 测试依赖，建空壳页面 Home/Room/Admin
+- [x] 6b. 三页面 TDD 测试（空状态渲染），配置 useSocket mock
+- [x] 7a. **A — 进入游戏**：Home 输入昵称 → emit room:join → GameApp 切换为 Room
 - [x] 7b. **B — 角色选择**：Room + RoleCard 展示三角色，选/弃角色，实时同步
+- [x] 7o1. **Home 首页优化**：渐变背景、玻璃态卡片、加载态按钮、自动聚焦
+- [x] 7o2. **RoleCard 角色卡片优化**：Emoji 图标、角色专属配色
+- [x] 7o3. **Room 房间页优化**：玩家在线列表、进出房间 Toast 通知
+- [x] 7c. **C — 发起挑战+开局**：点击对手 → game:challenge → 进入对战
+- [x] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗
+- [x] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史
+- [x] 7f. **F — 重赛+认输+断线**：流程闭环，边界状态处理
+- [x] 7g. **G — 机器人对战**：常驻机器人角色，纯随机出牌
+- [x] 8a. **UI 交互音效**：角色选中/取消、挑战冲锋号、出拳 punch、翻骰节拍
+- [x] 8b. **出拳翻骰动画**：滚筒快速轮换，点击定格
+- [x] 8c. **Ready Go 动画**：3 秒倒计时动效
+- [x] 8d. **背景音乐系统**：大厅/对战/结算三阶段 BGM 自动切换
 
-**第三阶段：UI 全面优化**
-- [x] 7o1. **Home 首页优化**：渐变背景、玻璃态卡片、加载态按钮、自动聚焦、错误处理
-- [x] 7o2. **RoleCard 角色卡片优化**：Emoji 图标、角色专属配色、视觉提升
-- [x] 7o3. **Room 房间页优化**：玩家在线列表、进出房间 Toast 通知、响应式布局
+### v2.0 升级计划
 
-**第四阶段：游戏核心功能**
-- [x] 7c. **C — 发起挑战+开局**：点击对手角色 → game:challenge → 双方进入对战界面
-- [x] 7d. **D — 出拳+判定+赛果**：GameBoard 出拳 + MatchResult 弹窗，完整走完三局两胜
-- [x] 7e. **E — 后台监控**：Admin 展示房间列表 + 对局历史（轮询 /api/admin/status）
-- [x] 7f. **F — 重赛+认输+断线**：流程闭环，各边界状态处理
-- [x] 7g. **G — 机器人对战**：新增常驻机器人角色，纯随机出牌，支持挑战/结算/重赛
+采用三阶段策略，每阶段可独立验证。
 
-**第五阶段：音效与动画**
-- [x] 8a. **UI 交互音效**：角色选中/取消、挑战冲锋号、出拳 punch、翻骰节拍（Web Audio API 合成）
-- [x] 8b. **出拳翻骰动画**：choosing 阶段独立滚筒区域快速轮换 ✊✋✌️，点击定格 + punch 音效
-- [x] 8c. **Ready Go 动画**：比赛首局 3 秒倒计时动效，READY→GO! 弹缩入场 + 遮罩渐隐
-- [x] 8d. **背景音乐系统**：大厅/对战/结算三阶段 BGM 自动切换，`roomState.game.status` 驱动
+#### Phase 1: 服务端改造
+
+| 步骤 | 内容 | 涉及文件 |
+|------|------|----------|
+| 1a | roomManager 增加 `gameMode` 字段，`getRoomState` 透传 | `roomManager.js` |
+| 1b | gameManager 新增算术引擎：`createArithmeticGame` / `generateQuestion` / `submitAnswer` | `gameManager.js` |
+| 1c | handler：`game:setMode`、`game:challenge` 按 `mode` 分流、`game:answer`、`game:question` 推送 + 20s 机器人定时器 | `handler.js` |
+| 1d | 测试：算术题目生成验证、多人抢答、机器人 20s、5 分结算、集成测试 | `__tests__/*.test.js`, `tests/integration.js` |
+
+#### Phase 2: 客户端兼容（不改 UI）
+
+| 步骤 | 内容 | 涉及文件 |
+|------|------|----------|
+| 2a | Room.js `onGameStart` 检查 `gameType`，算术模式显示占位信息而非 GameBoard | `Room.js` |
+| 2b | GameBoard.js 算术事件保护性 return | `GameBoard.js` |
+| 2c | MatchResult.js 拆子组件架构，RPS/算术历史格式容错 | `MatchResult.js` |
+| 2d | App.js BGM 切换兼容 `game.type === 'arithmetic'` | `App.js` |
+| 2e | 验证：全部旧测试通过，RPS 流程正常 | — |
+
+#### Phase 3: 客户端升级
+
+| 步骤 | 内容 | 涉及文件 |
+|------|------|----------|
+| 3a | Room.js 模式切换 Segmented + 算术启动按钮 | `Room.js` |
+| 3b | ArithmeticBoard.js（题目 + 输入框 + 排行榜 + 20s 倒计时 + 反馈） | `ArithmeticBoard.js` |
+| 3c | MatchResult.js ArithmeticMatchResult 子组件（终榜排名 + 每题回放） | `MatchResult.js` |
+| 3d | 音效：出题/答对/答错/机器人抢答音效 | `ArithmeticBoard.js` |
+| 3e | 验证：算术全流程测试 | — |
