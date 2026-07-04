@@ -29,11 +29,14 @@ gh auth status
 git tag -a v<版本号> -m "v<版本号>"
 git push origin v<版本号>
 
-# 创建 Release
-gh release create v<版本号> --title "v<版本号>" --notes-file RELEASE_NOTES.md
+# 方式 A：简短 notes 直接传字符串
+gh release create v<版本号> --title "v<版本号>" --notes "bug fix release"
+
+# 方式 B：长 notes 用临时文件（推荐），用完即删
+gh release create v<版本号> --title "v<版本号>" --notes-file /tmp/RELEASE_NOTES.md
 ```
 
-> **注意**：Release Notes 建议提前写到 `RELEASE_NOTES.md` 文件中，按功能分类整理更清晰。可以从 `git log --oneline` 历史 commit 中归纳。
+> **注意**：如果用 `--notes-file`，建议用 `/tmp/RELEASE_NOTES.md` 等临时路径，**不要**提交到仓库。
 
 ## 方法二：使用 GitHub API（备选）
 
