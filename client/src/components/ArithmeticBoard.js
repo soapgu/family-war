@@ -26,6 +26,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
   const [question, setQuestion] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [answered, setAnswered] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [timeLeft, setTimeLeft] = useState(ROUND_TIME)
   const [matchResult, setMatchResult] = useState(null)
@@ -85,6 +86,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       setQuestion(data)
       setFeedback(null)
       setSubmitting(false)
+      setAnswered(false)
       setInputValue('')
       startTimer()
       setTimeout(() => inputRef.current?.focus(), 100)
@@ -93,6 +95,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
     function onRoundResult(data) {
       clearTimer()
       setSubmitting(false)
+      setAnswered(false)
       setFeedback({
         correct: data.yourAnswer === data.correctAnswer,
         correctAnswer: data.correctAnswer,
@@ -115,11 +118,28 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       onFinishRef.current()
     }
 
+    function onAnswerAck(data) {
+      setSubmitting(false)
+      if (!data.correct) {
+        setAnswered(true)
+        setFeedback((prev) => {
+          if (prev) return prev
+          return {
+            correct: false,
+            correctAnswer: data.correctAnswer,
+            expression: data.expression,
+            yourAnswer: data.yourAnswer,
+          }
+        })
+      }
+    }
+
     socket.on('game:start', onGameStart)
     socket.on('game:question', onQuestion)
     socket.on('game:roundResult', onRoundResult)
     socket.on('game:matchResult', onMatchResult)
     socket.on('game:cancelled', onCancelled)
+    socket.on('game:answerAck', onAnswerAck)
 
     return () => {
       socket.off('game:start', onGameStart)
@@ -127,12 +147,13 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       socket.off('game:roundResult', onRoundResult)
       socket.off('game:matchResult', onMatchResult)
       socket.off('game:cancelled', onCancelled)
+      socket.off('game:answerAck', onAnswerAck)
       clearTimer()
     }
   }, [socket, startTimer, clearTimer])
 
   function handleSubmit() {
-    if (!question || submitting) return
+    if (!question || submitting || answered) return
     const answer = parseInt(inputValue, 10)
     if (isNaN(answer)) return
     setSubmitting(true)
@@ -202,7 +223,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={submitting || !!feedback}
+              disabled={submitting || !!feedback || answered}
               style={{ textAlign: 'center', fontSize: 18, fontWeight: 600 }}
             />
             <Button
@@ -210,7 +231,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
               size="large"
               onClick={handleSubmit}
               loading={submitting}
-              disabled={!inputValue || !!feedback}
+              disabled={!inputValue || !!feedback || submitting || answered}
             >
               提交
             </Button>

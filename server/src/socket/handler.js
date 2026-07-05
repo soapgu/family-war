@@ -423,7 +423,18 @@ function registerHandlers(io) {
         return
       }
 
-      if (result.action === 'waiting') return
+      if (result.action === 'waiting') {
+        console.log(`[${ts()}] [answer] ${getNickname()} 答错 — ${result.expression} = ${result.correctAnswer}，提交: ${result.yourAnswer}`)
+
+        socket.emit('game:answerAck', {
+          questionId,
+          correct: false,
+          correctAnswer: result.correctAnswer,
+          expression: result.expression,
+          yourAnswer: result.yourAnswer,
+        })
+        return
+      }
 
       // 正确回答或比赛结束 → 清除机器人定时器
       clearRobotTimer(rid)

@@ -261,7 +261,12 @@ class GameManager {
     game.answeredThisRound[socketId] = answer
 
     if (answer !== game.currentQuestion.correctAnswer) {
-      return { action: 'waiting' }
+      return {
+        action: 'waiting',
+        correctAnswer: game.currentQuestion.correctAnswer,
+        expression: game.currentQuestion.expression,
+        yourAnswer: answer,
+      }
     }
 
     // 答对了
