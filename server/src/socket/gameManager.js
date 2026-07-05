@@ -280,6 +280,7 @@ class GameManager {
     })
 
     game.currentQuestion = null
+    game.round++
 
     // 检查是否有人先得 5 分
     if (game.scores[socketId] >= 5) {

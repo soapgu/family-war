@@ -2,6 +2,7 @@ jest.mock('../src/socket/roomManager', () => ({
   setGame: jest.fn(),
   clearGame: jest.fn(),
   getRoom: jest.fn(),
+  ROBOT_ID: '__robot__',
 }))
 
 const roomManager = require('../src/socket/roomManager')
@@ -10,12 +11,35 @@ const gameManager = require('../src/socket/gameManager')
 const ROOM_ID = 'default'
 const P1 = 's1'
 const P2 = 's2'
+const P3 = 's3'
+const ROBOT = '__robot__'
 
 /**
  * 创建一个可用的 mock room（包含 game）
  */
 function mockRoom(game) {
-  return { id: ROOM_ID, players: {}, roles: {}, game: game || null }
+  return {
+    id: ROOM_ID,
+    players: {},
+    roles: {},
+    game: game || null,
+  }
+}
+
+/**
+ * 为算术测试创建 room，包含 players 中的昵称信息
+ */
+function mockRoomWithPlayers(game, playerIds) {
+  const players = {}
+  playerIds.forEach((id) => {
+    players[id] = {
+      id,
+      nickname: id === ROBOT ? '机器人' : `玩家${id}`,
+      role: null,
+      online: true,
+    }
+  })
+  return { id: ROOM_ID, players, roles: {}, game: game || null }
 }
 
 beforeEach(() => {
@@ -276,5 +300,310 @@ describe('getMatchHistory', () => {
 
   it('没有比赛时返回空数组', () => {
     expect(gameManager.getMatchHistory()).toEqual([])
+  })
+})
+
+// ==================== 算术引擎 ====================
+
+describe('算术 createGame', () => {
+  it('创建算术游戏并调用 roomManager.setGame', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2, P3], 'arithmetic')
+
+    expect(game.type).toBe('arithmetic')
+    expect(game.players).toEqual([P1, P2, P3])
+    expect(game.round).toBe(1)
+    expect(game.scores).toEqual({ [P1]: 0, [P2]: 0, [P3]: 0 })
+    expect(game.currentQuestion).toBeNull()
+    expect(game.answeredThisRound).toEqual({})
+    expect(game.history).toEqual([])
+    expect(game.status).toBe('playing')
+
+    expect(roomManager.setGame).toHaveBeenCalledWith(ROOM_ID, game)
+  })
+})
+
+describe('generateQuestion', () => {
+  function startArithmeticGame() {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    return game
+  }
+
+  it('生成题目并附加到 game 对象', () => {
+    const game = startArithmeticGame()
+    const question = gameManager.generateQuestion(game)
+
+    expect(question).toHaveProperty('questionId')
+    expect(question).toHaveProperty('expression')
+    expect(question).toHaveProperty('correctAnswer')
+    expect(question).toHaveProperty('round')
+    expect(question.round).toBe(1)
+    expect(typeof question.correctAnswer).toBe('number')
+    expect(game.currentQuestion).toBe(question)
+    expect(game.answeredThisRound).toEqual({})
+  })
+
+  it('题目表达式格式正确', () => {
+    const game = startArithmeticGame()
+    const question = gameManager.generateQuestion(game)
+
+    expect(question.expression).toMatch(/^\d+ [+\-] \d+$/)
+  })
+
+  it('题目的正确结果在 0-100 范围内', () => {
+    const game = startArithmeticGame()
+    for (let i = 0; i < 50; i++) {
+      game.currentQuestion = null
+      const question = gameManager.generateQuestion(game)
+      expect(question.correctAnswer).toBeGreaterThanOrEqual(0)
+      expect(question.correctAnswer).toBeLessThanOrEqual(100)
+    }
+  })
+})
+
+describe('submitArithmeticAnswer', () => {
+  function startArithmeticGame() {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+    return game
+  }
+
+  function startWithQuestion() {
+    const game = startArithmeticGame()
+    const question = gameManager.generateQuestion(game)
+    return { game, question }
+  }
+
+  it('正确答案返回 round_result', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, question.correctAnswer)
+
+    expect(result.action).toBe('round_result')
+    expect(result.winner).toBe(P1)
+    expect(result.round).toBe(1)
+    expect(result.questionId).toBe(question.questionId)
+    expect(result.expression).toBe(question.expression)
+    expect(result.correctAnswer).toBe(question.correctAnswer)
+    expect(result.scores[P1]).toBe(1)
+    expect(result.scores[P2]).toBe(0)
+  })
+
+  it('错误答案返回 waiting', () => {
+    const { question } = startWithQuestion()
+    const wrongAnswer = question.correctAnswer + 1
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, wrongAnswer)
+
+    expect(result.action).toBe('waiting')
+  })
+
+  it('非本局玩家返回 error', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, 's99', question.questionId, 42)
+
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('你不是本局玩家')
+  })
+
+  it('重复回答返回 error', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, question.correctAnswer + 1)
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, question.correctAnswer)
+
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('你已经回答过本题')
+  })
+
+  it('过期的 questionId 返回 error', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, question.correctAnswer)
+
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, P2, question.questionId, question.correctAnswer)
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('题目已过期')
+  })
+
+  it('比赛结束后返回 error', () => {
+    const { question } = startWithQuestion()
+    const game = gameManager.getGame(ROOM_ID)
+    game.status = 'match_end'
+
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, question.correctAnswer)
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('比赛已结束')
+  })
+
+  it('不存在的算术游戏返回 error', () => {
+    roomManager.getRoom.mockReturnValue(null)
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, P1, 'q1', 42)
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('算术游戏不存在')
+  })
+
+  it('正确答案后清除 currentQuestion', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, question.correctAnswer)
+
+    const game = gameManager.getGame(ROOM_ID)
+    expect(game.currentQuestion).toBeNull()
+  })
+
+  it('首位答对者得分，其余不得分', () => {
+    const { game, question } = startWithQuestion()
+    const wrongAnswer = question.correctAnswer + 1
+
+    // P1 先答错
+    gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, wrongAnswer)
+    // P2 答对
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, P2, question.questionId, question.correctAnswer)
+
+    expect(result.winner).toBe(P2)
+    expect(result.scores[P2]).toBe(1)
+    expect(result.scores[P1]).toBe(0)
+    expect(game.history).toHaveLength(1)
+    expect(game.history[0].winner).toBe(P2)
+  })
+
+  it('answeredBy 记录所有已答玩家', () => {
+    const { question } = startWithQuestion()
+    const wrongAnswer = question.correctAnswer + 1
+
+    // P1 答错 → P2 答对
+    gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, wrongAnswer)
+    const result = gameManager.submitArithmeticAnswer(ROOM_ID, P2, question.questionId, question.correctAnswer)
+
+    expect(result.answeredBy).toMatchObject({
+      [P1]: wrongAnswer,
+      [P2]: question.correctAnswer,
+    })
+  })
+})
+
+describe('算术 5 分赛制', () => {
+  /** 模拟 P1 连续正确 n 次，每题生成新题目 */
+  function simulateCorrectAnswers(count) {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+
+    for (let i = 0; i < count; i++) {
+      game.currentQuestion = null
+      const question = gameManager.generateQuestion(game)
+      const result = gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, question.correctAnswer)
+      if (result.action === 'match_result') return result
+    }
+    return null
+  }
+
+  it('4 分时返回 round_result（未到赛点）', () => {
+    const result = simulateCorrectAnswers(4)
+    expect(result).toBeNull()
+    const game = gameManager.getGame(ROOM_ID)
+    expect(game.status).toBe('playing')
+  })
+
+  it('先得 5 分者获胜，返回 match_result', () => {
+    const result = simulateCorrectAnswers(5)
+
+    expect(result.action).toBe('match_result')
+    expect(result.matchWinner).toBe(P1)
+    expect(result.scores[P1]).toBe(5)
+    expect(result.scores[P2]).toBe(0)
+  })
+
+  it('match_result 包含排行榜', () => {
+    const result = simulateCorrectAnswers(5)
+
+    expect(result.ranking).toBeDefined()
+    expect(result.ranking[0].rank).toBe(1)
+    expect(result.ranking[0].playerId).toBe(P1)
+    expect(result.ranking[0].score).toBe(5)
+    expect(result.ranking).toHaveLength(2)
+  })
+
+  it('match_result 包含完整历史', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+
+    for (let i = 0; i < 5; i++) {
+      game.currentQuestion = null
+      const q = gameManager.generateQuestion(game)
+      const result = gameManager.submitArithmeticAnswer(ROOM_ID, P1, q.questionId, q.correctAnswer)
+      if (i === 4) {
+        expect(result.history).toHaveLength(5)
+        result.history.forEach((h, idx) => {
+          expect(h.round).toBe(idx + 1)
+          expect(h.winner).toBe(P1)
+        })
+      }
+    }
+  })
+
+  it('比赛结束后 game.status 为 match_end', () => {
+    simulateCorrectAnswers(5)
+    const game = gameManager.getGame(ROOM_ID)
+    expect(game.status).toBe('match_end')
+  })
+
+  it('历史记录存入 matchHistory', () => {
+    simulateCorrectAnswers(5)
+
+    const history = gameManager.getMatchHistory()
+    expect(history).toHaveLength(1)
+    expect(history[0].type).toBe('arithmetic')
+    expect(history[0].matchWinner).toBe(P1)
+    expect(history[0].scores[P1]).toBe(5)
+    expect(typeof history[0].endedAt).toBe('number')
+  })
+})
+
+describe('handleRobotArithmeticAnswer', () => {
+  function startWithQuestion() {
+    const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, ROBOT]))
+    const question = gameManager.generateQuestion(game)
+    return { game, question }
+  }
+
+  it('机器人提交正确答案返回 round_result', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.handleRobotArithmeticAnswer(ROOM_ID, question.questionId)
+
+    expect(result).not.toBeNull()
+    expect(result.action).toBe('round_result')
+    expect(result.winner).toBe(ROBOT)
+    expect(result.scores[ROBOT]).toBe(1)
+  })
+
+  it('过期题目返回 null', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitArithmeticAnswer(ROOM_ID, P1, question.questionId, question.correctAnswer)
+
+    const result = gameManager.handleRobotArithmeticAnswer(ROOM_ID, question.questionId)
+    expect(result).toBeNull()
+  })
+
+  it('RPS 游戏返回 null', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+
+    const result = gameManager.handleRobotArithmeticAnswer(ROOM_ID, 'q1')
+    expect(result).toBeNull()
+  })
+
+  it('机器人先到 5 分触发 match_result', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, ROBOT]))
+
+    for (let i = 0; i < 5; i++) {
+      game.currentQuestion = null
+      const q = gameManager.generateQuestion(game)
+      const result = gameManager.handleRobotArithmeticAnswer(ROOM_ID, q.questionId)
+      if (result.action === 'match_result') {
+        expect(result.matchWinner).toBe(ROBOT)
+        expect(result.scores[ROBOT]).toBe(5)
+        return
+      }
+    }
+    // Should not reach here
+    expect(true).toBe(false)
   })
 })

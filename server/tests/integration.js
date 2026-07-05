@@ -163,6 +163,54 @@ async function run() {
 
   console.log('')
 
+  // ========== 6. 算术模式集成测试 ==========
+
+  // 重新选角色，切换算术模式
+  s1.emit('role:select', { role: '爸爸' })
+  await waitForRoomState(s1, (s) => s.roles['爸爸']?.nickname === '小明')
+  s2.emit('role:select', { role: '妈妈' })
+  await waitForRoomState(s2, (s) => s.roles['妈妈']?.nickname === '小红')
+
+  s1.emit('game:setMode', { mode: 'arithmetic' })
+  const modeState = await waitForRoomState(s1, (s) => s.gameMode === 'arithmetic')
+  assert(modeState.gameMode === 'arithmetic', '切换算术模式')
+
+  s1.emit('game:challenge', { mode: 'arithmetic' })
+  const [as1, as2] = await Promise.all([
+    waitFor(s1, 'game:start'),
+    waitFor(s2, 'game:start'),
+  ])
+  assert(as1.gameType === 'arithmetic', '算术 game:start 含 gameType')
+  assert(as1.players.length === 3, '3 名玩家参赛（含机器人）')
+  assert(as2.players.length === 3, '小红也看到 3 名玩家')
+
+  // 回答第 1 题
+  const q1 = await waitFor(s1, 'game:question')
+  assert(typeof q1.expression === 'string', '收到算术题目')
+  assert(typeof q1.correctAnswer === 'undefined', 'correctAnswer 不提前暴露')
+
+  // 小明答对第 1 题
+  s1.emit('game:answer', { questionId: q1.questionId, answer: eval(q1.expression) })
+  const rr = await waitFor(s1, 'game:roundResult')
+  assert(rr.gameType === 'arithmetic', '算术 roundResult 含 gameType')
+  assert(rr.winner === s1.id, '小明答对第 1 题')
+  assert(rr.scores[s1.id] === 1, '小明 1 分')
+
+  // 回答第 2 题 → 小红答对
+  const q2 = await waitFor(s1, 'game:question')
+  s2.emit('game:answer', { questionId: q2.questionId, answer: eval(q2.expression) })
+  const rr2 = await waitFor(s2, 'game:roundResult')
+  assert(rr2.winner === s2.id, '小红答对第 2 题')
+  assert(rr2.scores[s2.id] === 1, '小红 1 分')
+
+  // 机器人答第 3 题（等 20 秒太慢 → 让机器人通过 handleRobotArithmeticAnswer 自动答）
+  // 模拟：让两名玩家都答错 → 20 秒后机器人自动答对
+  // 但因测试时间限制，只验证题目流转正常即可
+  const q3 = await waitFor(s1, 'game:question')
+  assert(q3.round === 3, '第 3 题 round 为 3')
+
+  console.log('')
+
   // ========== 结果 ==========
 
   s1.close()
