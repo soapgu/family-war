@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Typography, Button, Tag, message, Space } from 'antd'
+import { Typography, Button, Tag, message, Space, Segmented } from 'antd'
 import useSocket from '../hooks/useSocket'
 import RoleCard from '../components/RoleCard'
 import GameBoard from '../components/GameBoard'
@@ -213,6 +213,18 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
           )
         ) : (
           <>
+            {/* Mode Selector */}
+            <div style={{ marginBottom: 20, textAlign: 'center' }}>
+              <Segmented
+                value={roomState?.gameMode || 'rps'}
+                options={[
+                  { label: '✊ 猜拳', value: 'rps' },
+                  { label: '🧮 算术', value: 'arithmetic' },
+                ]}
+                onChange={(value) => socket.emit('game:setMode', { mode: value })}
+              />
+            </div>
+
             {/* Player List */}
             <div
               style={{
@@ -272,40 +284,64 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
             )}
 
             {/* Challenge Section */}
-            {myRole && challengableRoles.length > 0 && (
-              <div style={{ marginTop: 32, textAlign: 'center', animation: 'fadeInUp 0.4s ease' }}>
-                <Typography.Text strong style={{ fontSize: 15, display: 'block', marginBottom: 16 }}>
-                  发起挑战 ⚔️
-                </Typography.Text>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {challengableRoles.map((role) => {
-                    const target = roomState.roles[role]
-                    return (
-                      <Button
-                        key={role}
-                        danger
-                        size="large"
-                        icon={<span style={{ fontSize: 18 }}>⚔️</span>}
-                        onClick={() => {
-                          playBattleSfx(audioCtxRef)
-                          socket.emit('game:challenge', { targetId: target.id })
-                        }}
-                        style={{
-                          borderRadius: 8,
-                          height: 46,
-                          paddingInline: 28,
-                          fontSize: 16,
-                          fontWeight: 600,
-                          boxShadow: '0 0 0 0 rgba(255,77,79,0.4)',
-                          animation: 'challengePulse 2s ease-in-out infinite',
-                        }}
-                      >
-                        挑战 {ROLE_EMOJI[role]} {target.nickname}
-                      </Button>
-                    )
-                  })}
+            {myRole && (
+              roomState?.gameMode === 'arithmetic' ? (
+                <div style={{ marginTop: 32, textAlign: 'center', animation: 'fadeInUp 0.4s ease' }}>
+                  <Typography.Text strong style={{ fontSize: 15, display: 'block', marginBottom: 16 }}>
+                    算术比赛 🧮
+                  </Typography.Text>
+                  <Button
+                    type="primary"
+                    size="large"
+                    onClick={() => {
+                      socket.emit('game:challenge', { mode: 'arithmetic' })
+                    }}
+                    style={{
+                      borderRadius: 8,
+                      height: 46,
+                      paddingInline: 32,
+                      fontSize: 16,
+                      fontWeight: 600,
+                    }}
+                  >
+                    开始比赛
+                  </Button>
                 </div>
-              </div>
+              ) : challengableRoles.length > 0 ? (
+                <div style={{ marginTop: 32, textAlign: 'center', animation: 'fadeInUp 0.4s ease' }}>
+                  <Typography.Text strong style={{ fontSize: 15, display: 'block', marginBottom: 16 }}>
+                    发起挑战 ⚔️
+                  </Typography.Text>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    {challengableRoles.map((role) => {
+                      const target = roomState.roles[role]
+                      return (
+                        <Button
+                          key={role}
+                          danger
+                          size="large"
+                          icon={<span style={{ fontSize: 18 }}>⚔️</span>}
+                          onClick={() => {
+                            playBattleSfx(audioCtxRef)
+                            socket.emit('game:challenge', { targetId: target.id })
+                          }}
+                          style={{
+                            borderRadius: 8,
+                            height: 46,
+                            paddingInline: 28,
+                            fontSize: 16,
+                            fontWeight: 600,
+                            boxShadow: '0 0 0 0 rgba(255,77,79,0.4)',
+                            animation: 'challengePulse 2s ease-in-out infinite',
+                          }}
+                        >
+                          挑战 {ROLE_EMOJI[role]} {target.nickname}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : null
             )}
           </>
         )}
