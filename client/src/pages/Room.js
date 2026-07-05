@@ -3,6 +3,7 @@ import { Typography, Button, Tag, message, Space } from 'antd'
 import useSocket from '../hooks/useSocket'
 import RoleCard from '../components/RoleCard'
 import GameBoard from '../components/GameBoard'
+import ArithmeticBoard from '../components/ArithmeticBoard'
 
 function getAudioContext(audioCtxRef) {
   if (!audioCtxRef.current) {
@@ -199,13 +200,17 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
         </div>
 
         {gameInfo ? (
-          <GameBoard key={gameKey}
-            nickname={nickname}
-            myRole={myRole}
-            opponent={gameInfo.opponent}
-            onFinish={() => setGameInfo(null)}
-            onReturnToRoom={onReturnToRoom}
-          />
+          gameInfo.gameType === 'arithmetic' ? (
+            <ArithmeticBoard onFinish={() => setGameInfo(null)} />
+          ) : (
+            <GameBoard key={gameKey}
+              nickname={nickname}
+              myRole={myRole}
+              opponent={gameInfo.opponent}
+              onFinish={() => setGameInfo(null)}
+              onReturnToRoom={onReturnToRoom}
+            />
+          )
         ) : (
           <>
             {/* Player List */}

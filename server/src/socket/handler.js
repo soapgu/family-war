@@ -176,6 +176,7 @@ function registerHandlers(io) {
       console.log(`[${ts()}] [match] 历史: ${result.history.length}局`)
 
       const data = {
+        gameType: 'rps',
         matchWinner: result.matchWinner,
         scores: result.scores,
         history: result.history,
@@ -231,10 +232,12 @@ function registerHandlers(io) {
       console.log(`[${ts()}] [challenge] ${getNickname()} → ${target.nickname}`)
 
       io.to(socket.id).emit('game:start', {
+        gameType: 'rps',
         opponent: { id: targetId, nickname: target.nickname, role: target.role },
         round: game.round,
       })
       io.to(targetId).emit('game:start', {
+        gameType: 'rps',
         opponent: { id: socket.id, nickname: challenger.nickname, role: challenger.role },
         round: game.round,
       })
@@ -466,10 +469,12 @@ function registerHandlers(io) {
       console.log(`[${ts()}] [rematch] ${getNickname()}`)
 
       io.to(p1).emit('game:start', {
+        gameType: 'rps',
         opponent: { id: p2, nickname: room.players[p2]?.nickname, role: room.players[p2]?.role },
         round: game.round,
       })
       io.to(p2).emit('game:start', {
+        gameType: 'rps',
         opponent: { id: p1, nickname: room.players[p1]?.nickname, role: room.players[p1]?.role },
         round: game.round,
       })

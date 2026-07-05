@@ -321,6 +321,9 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
 
   const matchEnded = phase === 'matchResult' || phase === 'forfeited'
 
+  // 非 RPS 保护：缺少 opponent 时不渲染（防御性，Room 已按 gameType 分流）
+  if (!opponent) return null
+
   return (
     <div style={{ textAlign: 'center', padding: '24px 0', animation: 'fadeInUp 0.4s ease' }}>
       {/* Ready Go overlay */}
