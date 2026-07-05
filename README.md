@@ -387,14 +387,15 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 | `room:state` | `{ ..., gameMode: 'rps' }` | `{ ..., gameMode: 'arithmetic' }` |
 | `player:joined` | `{ nickname }` | 相同 |
 | `player:left` | `{ socketId }` | 相同 |
-| `game:start` | `{ opponent, round }` | `{ gameType: 'arithmetic', players: [...], round }` |
+| `game:start` | `{ gameType: 'rps', opponent, round }` | `{ gameType: 'arithmetic', players: [...], round }` |
 | `game:question` | — | `{ questionId, expression, round }` |
 | `game:waiting` | 等待对手出拳 | 等待其他人 / 机器人倒计时 |
 | `game:roundResult` | `{ round, winner, yourMove, oppMove, scores }` | `{ gameType: 'arithmetic', round, questionId, expression, correctAnswer, yourAnswer, winner, scores }` |
-| `game:matchResult` | `{ matchWinner, scores, history }` | `{ gameType: 'arithmetic', matchWinner, scores, ranking, history }` |
+| `game:matchResult` | `{ gameType: 'rps', matchWinner, scores, history }` | `{ gameType: 'arithmetic', matchWinner, scores, ranking, history }` |
 | `game:cancelled` | `{ message }` | 相同（算术模式下断线不影响其他玩家） |
 | `game:forfeited` | `{ message }` | 相同 |
 | `game:error` | `{ message }` | 相同 |
+| `game:answerAck` | — | `{ questionId, correct, correctAnswer, expression, yourAnswer }` |
 
 ### room:state 新增字段
 
@@ -449,7 +450,7 @@ npm test
 # 服务端单元测试（watch 模式）
 npm test:watch --prefix server
 
-# 服务端集成测试
+# 服务端集成测试（3 个预存缺陷已知失败）
 npm run test:integration
 
 # 前端单元测试（需 cd client）
@@ -465,19 +466,28 @@ npm test --prefix client
 | handleDisconnect | roomManager | 单元 | 3 |
 | getRoomState | roomManager | 单元 | 2 |
 | broadcastRoomState | roomManager | 单元 | 2 |
-| getAdminStatus | roomManager | 单元 | 2 |
+| getAdminStatus | roomManager | 单元 | 3 |
 | setGame / clearGame | roomManager | 单元 | 3 |
+| setGameMode | roomManager | 单元 | 6 |
 | createGame | gameManager | 单元 | 1 |
 | submitMove | gameManager | 单元 | 11 |
 | handleDisconnect | gameManager | 单元 | 4 |
 | getGame | gameManager | 单元 | 3 |
 | getMatchHistory | gameManager | 单元 | 3 |
+| 算术 createGame | gameManager | 单元 | 1 |
+| generateQuestion | gameManager | 单元 | 3 |
+| submitArithmeticAnswer | gameManager | 单元 | 10 |
+| 算术 5 分赛制 | gameManager | 单元 | 6 |
+| handleRobotArithmeticAnswer | gameManager | 单元 | 4 |
 | 完整游戏流程 | handler | 集成 | 21 |
 | Home 渲染 + 回调 | client Home | 前端单元 | 5 |
 | Room 渲染 + 交互 | client Room | 前端单元 | 10 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
 | Admin 渲染 + 数据 | client Admin | 前端单元 | 3 |
-| **总计** | | | **92** |
+| **服务端单元** | | | **77** |
+| **集成（含 3 个预存缺陷）** | | | **21** |
+| **前端单元** | | | **25** |
+| **总计** | | | **123** |
 
 ## 端口
 
@@ -551,6 +561,6 @@ npm test --prefix client
 |------|------|----------|
 | 3a | Room.js 模式切换 Segmented + 算术启动按钮 | `Room.js` |
 | 3b | ArithmeticBoard.js（题目 + 输入框 + 排行榜 + 20s 倒计时 + 反馈） | `ArithmeticBoard.js` |
-| 3c | MatchResult.js ArithmeticMatchResult 子组件（终榜排名 + 每题回放） | `MatchResult.js` |
+| 3c | ArithmeticMatchResult.js 完整结算（终榜排名 + 每题回放） | `ArithmeticMatchResult.js` |
 | 3d | 音效：出题/答对/答错/机器人抢答音效 | `ArithmeticBoard.js` |
 | 3e | 验证：算术全流程测试 | — |
