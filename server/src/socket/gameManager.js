@@ -316,6 +316,7 @@ class GameManager {
         scores: { ...game.scores },
         ranking,
         history: [...game.history],
+        answeredBy: { ...game.answeredThisRound },
       }
     }
 
@@ -327,6 +328,7 @@ class GameManager {
       correctAnswer,
       winner: socketId,
       scores: { ...game.scores },
+      answeredBy: { ...game.answeredThisRound },
     }
   }
 
@@ -402,4 +404,5 @@ module.exports = gameManager
  * @property {string} [matchWinner]
  * @property {Array<{rank: number, playerId: string, nickname: string, score: number}>} [ranking]
  * @property {Array} [history]
+ * @property {Object<string, number>} [answeredBy]
  */

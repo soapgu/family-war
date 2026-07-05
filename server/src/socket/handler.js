@@ -4,6 +4,8 @@ const ROBOT_ID = roomManager.ROBOT_ID
 
 const CHOICES = ['rock', 'paper', 'scissors']
 
+const ARITHMETIC_TIMEOUT = 20000
+
 function randomChoice() {
   return CHOICES[Math.floor(Math.random() * CHOICES.length)]
 }
@@ -13,6 +15,9 @@ function randomChoice() {
  * @param {import('socket.io').Server} io
  */
 function registerHandlers(io) {
+  /** @type {Map<string, ReturnType<typeof setTimeout>>} */
+  const robotTimers = new Map()
+
   io.on('connection', (socket) => {
     console.log(`[${ts()}] [connect] ${socket.id}`)
 
@@ -110,6 +115,26 @@ function registerHandlers(io) {
       roomManager.broadcastRoomState(rid, io)
     })
 
+    // ==================== 游戏模式切换 ====================
+
+    /** 切换房间游戏模式 → 广播房间状态 */
+    socket.on('game:setMode', ({ mode } = {}) => {
+      const rid = currentRoom
+      if (!rid) {
+        socket.emit('game:error', { message: '请先加入房间' })
+        return
+      }
+
+      const result = roomManager.setGameMode(rid, mode)
+      if (result.error) {
+        socket.emit('game:error', { message: result.error })
+        return
+      }
+
+      console.log(`[${ts()}] [setMode] ${getNickname()} → ${mode}`)
+      roomManager.broadcastRoomState(rid, io)
+    })
+
     // ==================== 游戏 ====================
 
     /**
@@ -159,8 +184,8 @@ function registerHandlers(io) {
       roomManager.broadcastRoomState(roomId, io)
     }
 
-    /** 发起挑战 → 校验双方角色 → 创建游戏 → 通知双方并广播状态 */
-    socket.on('game:challenge', ({ targetId, roomId } = {}) => {
+    /** 发起挑战 → 按 mode 分流 RPS / 算术 */
+    socket.on('game:challenge', ({ mode = 'rps', targetId, roomId } = {}) => {
       const rid = roomId || currentRoom
       if (!rid) {
         socket.emit('game:error', { message: '请先加入房间' })
@@ -179,6 +204,11 @@ function registerHandlers(io) {
       }
       if (room.game) roomManager.clearGame(rid)
 
+      if (mode === 'arithmetic') {
+        return handleArithmeticChallenge(rid, room, socket)
+      }
+
+      // ========== RPS 挑战 ==========
       const challenger = room.players[socket.id]
       const target = room.players[targetId]
       if (!challenger || !target) {
@@ -211,6 +241,120 @@ function registerHandlers(io) {
 
       roomManager.broadcastRoomState(rid, io)
     })
+
+    /** 算术挑战：全员参战 → 发题 → 启动 20s 机器人定时器 */
+    function handleArithmeticChallenge(rid, room, socket) {
+      const playerIds = Object.values(room.roles).filter((id) => id !== null)
+
+      if (playerIds.length < 1) {
+        socket.emit('game:error', { message: '至少需要 1 名玩家选择角色' })
+        return
+      }
+
+      const game = gameManager.createGame(rid, playerIds, 'arithmetic')
+
+      const playerList = playerIds.map((id) => ({
+        id,
+        nickname: room.players[id]?.nickname || id,
+        role: room.players[id]?.role || null,
+      }))
+
+      console.log(`[${ts()}] [challenge] 算术模式 — ${playerList.map((p) => p.nickname).join(', ')}`)
+
+      playerIds.forEach((id) => {
+        io.to(id).emit('game:start', {
+          gameType: 'arithmetic',
+          players: playerList,
+          round: game.round,
+        })
+      })
+
+      emitNextArithmeticQuestion(rid, game)
+      roomManager.broadcastRoomState(rid, io)
+    }
+
+    /** 生成下一道算术题并广播，设置机器人定时器 */
+    function emitNextArithmeticQuestion(rid, game) {
+      const question = gameManager.generateQuestion(game)
+
+      game.players.forEach((id) => {
+        io.to(id).emit('game:question', {
+          questionId: question.questionId,
+          expression: question.expression,
+          round: question.round,
+        })
+      })
+
+      clearRobotTimer(rid)
+      const timer = setTimeout(() => {
+        const result = gameManager.handleRobotArithmeticAnswer(rid, question.questionId)
+        if (result) handleArithmeticAnswerResult(rid, result)
+        robotTimers.delete(rid)
+      }, ARITHMETIC_TIMEOUT)
+      robotTimers.set(rid, timer)
+    }
+
+    /** 算术轮结果广播（含 yourAnswer 每人视角） */
+    function emitArithmeticRoundResult(rid, result) {
+      const room = roomManager.getRoom(rid)
+      const winnerNick = room?.players[result.winner]?.nickname || result.winner
+
+      console.log(`[${ts()}] [round] 算术第${result.round}题 — ${winnerNick} 答对`)
+
+      gameManager.getGame(rid)?.players.forEach((id) => {
+        io.to(id).emit('game:roundResult', {
+          gameType: 'arithmetic',
+          round: result.round,
+          questionId: result.questionId,
+          expression: result.expression,
+          correctAnswer: result.correctAnswer,
+          yourAnswer: result.answeredBy?.[id],
+          winner: result.winner,
+          scores: result.scores,
+        })
+      })
+    }
+
+    /** 算术赛果广播 */
+    function emitArithmeticMatchResult(rid, result) {
+      const room = roomManager.getRoom(rid)
+      const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
+
+      console.log(`[${ts()}] [match] 算术比赛结束 — 胜者: ${winnerNick}`)
+
+      gameManager.getGame(rid)?.players.forEach((id) => {
+        io.to(id).emit('game:matchResult', {
+          gameType: 'arithmetic',
+          matchWinner: result.matchWinner,
+          scores: result.scores,
+          ranking: result.ranking,
+          history: result.history,
+        })
+      })
+
+      roomManager.broadcastRoomState(rid, io)
+    }
+
+    /** 清除房间的机器人定时器 */
+    function clearRobotTimer(rid) {
+      if (robotTimers.has(rid)) {
+        clearTimeout(robotTimers.get(rid))
+        robotTimers.delete(rid)
+      }
+    }
+
+    /** 统一处理算术答题结果（轮结果 / 赛果） */
+    function handleArithmeticAnswerResult(rid, result) {
+      if (result.action === 'round_result') {
+        emitArithmeticRoundResult(rid, result)
+        const game = gameManager.getGame(rid)
+        if (game && game.status === 'playing') {
+          emitNextArithmeticQuestion(rid, game)
+        }
+      } else if (result.action === 'match_result') {
+        emitArithmeticMatchResult(rid, result)
+      }
+    }
 
     /** 出拳 → 等待/本局结果/赛果分别广播给双方 */
     socket.on('game:move', ({ choice, roomId } = {}) => {
@@ -259,6 +403,28 @@ function registerHandlers(io) {
         console.log(`[${ts()}] [result] 比赛结束 → 胜者: ${room?.players[result.matchWinner]?.nickname || result.matchWinner}`)
         emitMatchResult(game, result, rid)
       }
+    })
+
+    /** 提交算术题答案 → 路由到算术引擎 */
+    socket.on('game:answer', ({ questionId, answer } = {}) => {
+      const rid = currentRoom
+      if (!rid) {
+        socket.emit('game:error', { message: '请先加入房间' })
+        return
+      }
+
+      const result = gameManager.submitArithmeticAnswer(rid, socket.id, questionId, answer)
+
+      if (result.action === 'error') {
+        socket.emit('game:error', { message: result.message })
+        return
+      }
+
+      if (result.action === 'waiting') return
+
+      // 正确回答或比赛结束 → 清除机器人定时器
+      clearRobotTimer(rid)
+      handleArithmeticAnswerResult(rid, result)
     })
 
     /** 请求重赛 → 用同一对玩家重新开局 */
@@ -356,7 +522,8 @@ function registerHandlers(io) {
     })
 
     /**
-     * 如果玩家有进行中的比赛，取消并通知对手
+     * 处理玩家断线时的比赛取消
+     * RPS：取消并通知对手；算术：不影响比赛继续
      * @param {string} roomId
      * @param {string} socketId
      */
@@ -364,6 +531,9 @@ function registerHandlers(io) {
       const game = gameManager.getGame(roomId)
       if (!game || game.status !== 'playing') return
       if (!game.players.includes(socketId)) return
+
+      // 算术比赛不受断线影响
+      if (game.type === 'arithmetic') return
 
       const room = roomManager.getRoom(roomId)
 
