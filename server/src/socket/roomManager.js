@@ -22,6 +22,8 @@ class RoomManager {
     if (!this.rooms[roomId]) {
       this.rooms[roomId] = {
         id: roomId,
+        // 当前游戏模式，由 game:setMode 切换
+        gameMode: 'rps',
         // 角色 → socketId 映射，null 表示空闲
         roles: { '爸爸': null, '妈妈': null, '儿子': null, [ROBOT_ROLE]: ROBOT_ID },
         // socketId → 玩家信息
@@ -166,6 +168,31 @@ class RoomManager {
     return { roomState: this.getRoomState(roomId) }
   }
 
+  // ==================== 游戏模式 ====================
+
+  /**
+   * 设置房间游戏模式
+   * 仅允许在无进行中比赛时切换
+   * @param {string} roomId
+   * @param {'rps'|'arithmetic'} mode
+   * @returns {{ error?: string, roomState?: RoomState }}
+   */
+  setGameMode(roomId, mode) {
+    const room = this.getRoom(roomId)
+    if (!room) return { error: '房间不存在' }
+
+    if (mode !== 'rps' && mode !== 'arithmetic') {
+      return { error: '无效的游戏模式' }
+    }
+
+    if (room.game && room.game.status === 'playing') {
+      return { error: '当前有进行中的比赛，无法切换模式' }
+    }
+
+    room.gameMode = mode
+    return { roomState: this.getRoomState(roomId) }
+  }
+
   // ==================== 状态获取与广播 ====================
 
   /**
@@ -180,6 +207,7 @@ class RoomManager {
 
     return {
       id: room.id,
+      gameMode: room.gameMode,
       roles: Object.fromEntries(
         Object.entries(room.roles).map(([role, socketId]) => [
           role,
@@ -250,6 +278,7 @@ class RoomManager {
   getAdminStatus() {
     return Object.values(this.rooms).map((room) => ({
       id: room.id,
+      gameMode: room.gameMode,
       players: Object.values(room.players).map((p) => ({
         nickname: p.nickname,
         role: p.role,
@@ -294,6 +323,7 @@ module.exports.ROBOT_ID = ROBOT_ID
 /**
  * @typedef {Object} Room
  * @property {string} id
+ * @property {'rps'|'arithmetic'} gameMode
  * @property {Object<string, string|null>} roles - 角色名 → socketId
  * @property {Object<string, Player>} players - socketId → 玩家信息
  * @property {object|null} game - 进行中的游戏
@@ -306,12 +336,14 @@ module.exports.ROBOT_ID = ROBOT_ID
  *
  * @typedef {Object} RoomState
  * @property {string} id
+ * @property {'rps'|'arithmetic'} gameMode
  * @property {Object<string, {id: string, nickname: string}|null>} roles
  * @property {Array<{id: string, nickname: string, role: string|null, online: boolean}>} players
  * @property {object|null} game
  *
  * @typedef {Object} AdminRoomInfo
  * @property {string} id
+ * @property {'rps'|'arithmetic'} gameMode
  * @property {Array<{nickname: string, role: string|null, online: boolean}>} players
  * @property {object|null} game
  */

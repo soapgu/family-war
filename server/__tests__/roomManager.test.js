@@ -205,6 +205,7 @@ describe('getRoomState', () => {
 
     expect(state).toEqual({
       id: 'default',
+      gameMode: 'rps',
       roles: {
         '爸爸': { id: 's1', nickname: '小明' },
         '妈妈': null,
@@ -267,6 +268,66 @@ describe('getAdminStatus', () => {
 
   it('没有房间时返回空数组', () => {
     expect(roomManager.getAdminStatus()).toEqual([])
+  })
+
+  it('管理接口返回游戏模式', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+    roomManager.setGameMode('default', 'arithmetic')
+
+    const status = roomManager.getAdminStatus()
+    expect(status[0].gameMode).toBe('arithmetic')
+  })
+})
+
+// ==================== 游戏模式 ====================
+
+describe('setGameMode', () => {
+  it('默认模式为 rps', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    const state = roomManager.getRoomState('default')
+    expect(state.gameMode).toBe('rps')
+  })
+
+  it('切换到 arithmetic 模式', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    const { roomState } = roomManager.setGameMode('default', 'arithmetic')
+    expect(roomState.gameMode).toBe('arithmetic')
+  })
+
+  it('无效模式返回错误', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    const result = roomManager.setGameMode('default', 'invalid')
+    expect(result.error).toBe('无效的游戏模式')
+  })
+
+  it('不存在的房间返回错误', () => {
+    const result = roomManager.setGameMode('nonexistent', 'arithmetic')
+    expect(result.error).toBe('房间不存在')
+  })
+
+  it('有进行中比赛时禁止切换模式', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    roomManager.setGame('default', { id: 'g1', status: 'playing', players: ['s1', '__robot__'] })
+    const result = roomManager.setGameMode('default', 'arithmetic')
+    expect(result.error).toBe('当前有进行中的比赛，无法切换模式')
+  })
+
+  it('已结束比赛不影响切换模式', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    roomManager.setGame('default', { id: 'g1', status: 'match_end', players: ['s1', '__robot__'] })
+    const { roomState } = roomManager.setGameMode('default', 'arithmetic')
+    expect(roomState.gameMode).toBe('arithmetic')
   })
 })
 
