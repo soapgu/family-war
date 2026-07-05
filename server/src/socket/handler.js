@@ -196,7 +196,7 @@ function registerHandlers(io) {
         return
       }
 
-      const game = gameManager.createGame(rid, socket.id, targetId)
+      const game = gameManager.createGame(rid, [socket.id, targetId], 'rps')
 
       console.log(`[${ts()}] [challenge] ${getNickname()} → ${target.nickname}`)
 
@@ -295,7 +295,7 @@ function registerHandlers(io) {
       const p2 = existingGame.players[1]
 
       roomManager.clearGame(rid)
-      const game = gameManager.createGame(rid, p1, p2)
+      const game = gameManager.createGame(rid, [p1, p2], 'rps')
 
       console.log(`[${ts()}] [rematch] ${getNickname()}`)
 

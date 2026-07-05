@@ -27,7 +27,7 @@ beforeEach(() => {
 
 describe('createGame', () => {
   it('创建游戏并调用 roomManager.setGame', () => {
-    const game = gameManager.createGame(ROOM_ID, P1, P2)
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
 
     expect(game.id).toContain(ROOM_ID)
     expect(game.players).toEqual([P1, P2])
@@ -46,7 +46,7 @@ describe('createGame', () => {
 describe('submitMove', () => {
   /** 创建一个新 game 并注入到 mock room 中 */
   function startGame() {
-    const game = gameManager.createGame(ROOM_ID, P1, P2)
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
     roomManager.getRoom.mockReturnValue(mockRoom(game))
     return game
   }
@@ -175,7 +175,7 @@ describe('submitMove', () => {
 
 describe('handleDisconnect', () => {
   function startGame() {
-    const game = gameManager.createGame(ROOM_ID, P1, P2)
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
     roomManager.getRoom.mockReturnValue(mockRoom(game))
     return game
   }
@@ -215,7 +215,7 @@ describe('handleDisconnect', () => {
 
 describe('getGame', () => {
   it('存在游戏时返回 game 对象', () => {
-    const game = gameManager.createGame(ROOM_ID, P1, P2)
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
     roomManager.getRoom.mockReturnValue(mockRoom(game))
 
     const result = gameManager.getGame(ROOM_ID)
@@ -237,7 +237,7 @@ describe('getGame', () => {
 
 describe('getMatchHistory', () => {
   it('比赛结束后记录历史', () => {
-    const game = gameManager.createGame(ROOM_ID, P1, P2)
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
     roomManager.getRoom.mockReturnValue(mockRoom(game))
 
     gameManager.submitMove(ROOM_ID, P1, 'rock')
@@ -256,7 +256,7 @@ describe('getMatchHistory', () => {
 
   it('多场比赛累积记录', () => {
     // 第 1 场
-    const g1 = gameManager.createGame(ROOM_ID, P1, P2)
+    const g1 = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
     roomManager.getRoom.mockReturnValue(mockRoom(g1))
     gameManager.submitMove(ROOM_ID, P1, 'rock')
     gameManager.submitMove(ROOM_ID, P2, 'scissors')
@@ -264,7 +264,7 @@ describe('getMatchHistory', () => {
     gameManager.submitMove(ROOM_ID, P2, 'rock')
 
     // 第 2 场
-    const g2 = gameManager.createGame(ROOM_ID, P1, P2)
+    const g2 = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
     roomManager.getRoom.mockReturnValue(mockRoom(g2))
     gameManager.submitMove(ROOM_ID, P1, 'rock')
     gameManager.submitMove(ROOM_ID, P2, 'scissors')
