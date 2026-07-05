@@ -201,7 +201,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
 
         {gameInfo ? (
           gameInfo.gameType === 'arithmetic' ? (
-            <ArithmeticBoard onFinish={() => setGameInfo(null)} />
+            <ArithmeticBoard gameInfo={gameInfo} onFinish={() => setGameInfo(null)} />
           ) : (
             <GameBoard key={gameKey}
               nickname={nickname}
