@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Typography, Button, Input, Tag, Space } from 'antd'
 import useSocket from '../hooks/useSocket'
-import ArithmeticMatchResult from './ArithmeticMatchResult'
+import MatchResult from './MatchResult'
 
 const ROUND_TIME = 20
 
@@ -253,7 +253,9 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
 
   if (matchResult) {
     return (
-      <ArithmeticMatchResult
+      <MatchResult
+        visible={true}
+        gameType="arithmetic"
         matchWinner={matchResult.matchWinner}
         scores={matchResult.scores}
         ranking={matchResult.ranking}

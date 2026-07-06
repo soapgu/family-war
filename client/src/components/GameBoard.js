@@ -568,6 +568,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
       {phase === 'matchResult' && matchResult && (
         <MatchResult
           visible={true}
+          gameType={matchResult.gameType}
           matchWinner={matchResult.matchWinner}
           scores={matchResult.scores}
           history={matchResult.history}
