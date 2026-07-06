@@ -400,7 +400,6 @@ function registerHandlers(io) {
 
       if (result.action === 'round_result') emitRoundResult(game, result)
       if (result.action === 'match_result') {
-        const winnerNick = game.players.find((id) => id === result.matchWinner)
         const room = roomManager.getRoom(rid)
         console.log(`[${ts()}] [result] 比赛结束 → 胜者: ${room?.players[result.matchWinner]?.nickname || result.matchWinner}`)
         emitMatchResult(game, result, rid)
