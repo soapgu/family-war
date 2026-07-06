@@ -450,7 +450,7 @@ npm test
 # 服务端单元测试（watch 模式）
 npm test:watch --prefix server
 
-# 服务端集成测试（3 个预存缺陷已知失败）
+# 服务端集成测试
 npm run test:integration
 
 # 前端单元测试（需 cd client）
@@ -479,15 +479,15 @@ npm test --prefix client
 | submitArithmeticAnswer | gameManager | 单元 | 10 |
 | 算术 5 分赛制 | gameManager | 单元 | 6 |
 | handleRobotArithmeticAnswer | gameManager | 单元 | 4 |
-| 完整游戏流程 | handler | 集成 | 21 |
+| 完整游戏流程（RPS + 算术） | handler | 集成 | 36 |
 | Home 渲染 + 回调 | client Home | 前端单元 | 5 |
 | Room 渲染 + 交互 | client Room | 前端单元 | 10 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
 | Admin 渲染 + 数据 | client Admin | 前端单元 | 3 |
 | **服务端单元** | | | **77** |
-| **集成（含 3 个预存缺陷）** | | | **21** |
+| **集成** | | | **36** |
 | **前端单元** | | | **25** |
-| **总计** | | | **123** |
+| **总计** | | | **138** |
 
 ## 端口
 
@@ -538,29 +538,29 @@ npm test --prefix client
 
 #### Phase 1: 服务端改造
 
-| 步骤 | 内容 | 涉及文件 |
-|------|------|----------|
-| 1a | roomManager 增加 `gameMode` 字段，`getRoomState` 透传 | `roomManager.js` |
-| 1b | gameManager 新增算术引擎：`createArithmeticGame` / `generateQuestion` / `submitAnswer` | `gameManager.js` |
-| 1c | handler：`game:setMode`、`game:challenge` 按 `mode` 分流、`game:answer`、`game:question` 推送 + 20s 机器人定时器 | `handler.js` |
-| 1d | 测试：算术题目生成验证、多人抢答、机器人 20s、5 分结算、集成测试 | `__tests__/*.test.js`, `tests/integration.js` |
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1a | roomManager 增加 `gameMode` 字段，`getRoomState` 透传 | `roomManager.js` | ✅ |
+| 1b | gameManager 新增算术引擎：`createArithmeticGame` / `generateQuestion` / `submitAnswer` | `gameManager.js` | ✅ |
+| 1c | handler：`game:setMode`、`game:challenge` 按 `mode` 分流、`game:answer`、`game:question` 推送 + 20s 机器人定时器 | `handler.js` | ✅ |
+| 1d | 测试：算术题目生成验证、多人抢答、机器人 20s、5 分结算、集成测试 | `__tests__/*.test.js`, `tests/integration.js` | ✅ |
 
 #### Phase 2: 客户端兼容（不改 UI）
 
-| 步骤 | 内容 | 涉及文件 |
-|------|------|----------|
-| 2a | Room.js `onGameStart` 检查 `gameType`，算术模式显示占位信息而非 GameBoard | `Room.js` |
-| 2b | GameBoard.js 算术事件保护性 return | `GameBoard.js` |
-| 2c | MatchResult.js 拆子组件架构，RPS/算术历史格式容错 | `MatchResult.js` |
-| 2d | App.js BGM 切换兼容 `game.type === 'arithmetic'` | `App.js` |
-| 2e | 验证：全部旧测试通过，RPS 流程正常 | — |
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 2a | Room.js `onGameStart` 检查 `gameType`，算术模式显示占位信息而非 GameBoard | `Room.js` | ✅ |
+| 2b | GameBoard.js 算术事件保护性 return | `GameBoard.js` | ✅ |
+| 2c | MatchResult.js 拆子组件架构，RPS/算术历史格式容错 | `MatchResult.js` | ✅ |
+| 2d | App.js BGM 切换兼容 `game.type === 'arithmetic'` | `App.js` | ✅ |
+| 2e | 验证：全部旧测试通过，RPS 流程正常 | — | ✅ |
 
 #### Phase 3: 客户端升级
 
-| 步骤 | 内容 | 涉及文件 |
-|------|------|----------|
-| 3a | Room.js 模式切换 Segmented + 算术启动按钮 | `Room.js` |
-| 3b | ArithmeticBoard.js（题目 + 输入框 + 排行榜 + 20s 倒计时 + 反馈） | `ArithmeticBoard.js` |
-| 3c | ArithmeticMatchResult.js 完整结算（终榜排名 + 每题回放） | `ArithmeticMatchResult.js` |
-| 3d | 音效：出题/答对/答错/机器人抢答音效 | `ArithmeticBoard.js` |
-| 3e | 验证：算术全流程测试 | — |
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 3a | Room.js 模式切换 Segmented + 算术启动按钮 | `Room.js` | ✅ |
+| 3b | ArithmeticBoard.js（题目 + 输入框 + 排行榜 + 20s 倒计时 + 反馈） | `ArithmeticBoard.js` | ✅ |
+| 3c | ArithmeticMatchResult.js 完整结算（终榜排名 + 每题回放） | `ArithmeticMatchResult.js` | ✅ |
+| 3d | 音效：出题/答对/答错/机器人抢答音效 | `ArithmeticBoard.js` | ✅ |
+| 3e | 验证：算术全流程测试 | — | ✅ |

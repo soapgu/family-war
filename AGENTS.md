@@ -32,14 +32,14 @@ root package.json  (concurrently orchestrates both)
 
 ## v2.0 arithmetic mode
 
-The README documents **planned** features. Arithmetic mode (`ArithmeticBoard.js`, `ArithmeticMatchResult.js`, server-side arithmetic engine) does **not exist** in source yet. Only RPS (rock-paper-scissors) is implemented.
+Arithmetic mode is fully implemented. See README for details — mode switch (`Segmented` in `Room.js`), question/answer/timer UI (`ArithmeticBoard.js`), and match result (`ArithmeticMatchResult.js`).
 
 ## testing quirks
 
 - Server integration test (`server/tests/integration.js`) is a plain Node script with real Socket.IO connections — not Jest. Requires server not already running on :4000.
 - Client `setupTests.js` mocks `matchMedia`, `AudioContext`, and suppresses React Router Future Flag warnings.
 - Client tests import `useSocket` — the mock file lives in `__mocks__/useSocket.js` adjacent to the real hook.
-- Test coverage: 92 assertions total (server unit: 46, server integration: 21, client unit: 25).
+- Test coverage: 138 assertions total (server unit: 77, server integration: 36, client unit: 25).
 
 ## UI / conventions
 

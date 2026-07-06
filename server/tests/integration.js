@@ -89,12 +89,12 @@ async function run() {
   s1.emit('room:join', { nickname: '小明' })
   const state1 = await waitFor(s1, 'room:state')
   assert(state1.id === 'default', '房间 ID default')
-  assert(state1.players.length === 1, '1 个玩家')
-  assert(state1.players[0].nickname === '小明', '昵称 小明')
+  assert(state1.players.length === 2, '1 个玩家 + 机器人')
+  assert(state1.players.find((p) => p.nickname === '小明'), '昵称 小明')
 
   s2.emit('room:join', { nickname: '小红' })
   const state2 = await waitFor(s2, 'room:state')
-  assert(state2.players.length === 2, '2 个玩家')
+  assert(state2.players.length === 3, '2 个玩家 + 机器人')
 
   console.log('')
 
@@ -175,6 +175,9 @@ async function run() {
   const modeState = await waitForRoomState(s1, (s) => s.gameMode === 'arithmetic')
   assert(modeState.gameMode === 'arithmetic', '切换算术模式')
 
+  // 预注册 question listener 再发挑战（避免竞态）
+  const q1Promise = waitFor(s1, 'game:question')
+
   s1.emit('game:challenge', { mode: 'arithmetic' })
   const [as1, as2] = await Promise.all([
     waitFor(s1, 'game:start'),
@@ -184,29 +187,38 @@ async function run() {
   assert(as1.players.length === 3, '3 名玩家参赛（含机器人）')
   assert(as2.players.length === 3, '小红也看到 3 名玩家')
 
-  // 回答第 1 题
-  const q1 = await waitFor(s1, 'game:question')
+  const q1 = await q1Promise
   assert(typeof q1.expression === 'string', '收到算术题目')
   assert(typeof q1.correctAnswer === 'undefined', 'correctAnswer 不提前暴露')
 
-  // 小明答对第 1 题
+  // 小明答对第 1 题（预注册下一题 + roundResult）
+  const q2Promise = waitFor(s1, 'game:question')
+  const rr1Promise = waitFor(s1, 'game:roundResult')
   s1.emit('game:answer', { questionId: q1.questionId, answer: eval(q1.expression) })
-  const rr = await waitFor(s1, 'game:roundResult')
-  assert(rr.gameType === 'arithmetic', '算术 roundResult 含 gameType')
-  assert(rr.winner === s1.id, '小明答对第 1 题')
-  assert(rr.scores[s1.id] === 1, '小明 1 分')
+  const rr1 = await rr1Promise
+  assert(rr1.gameType === 'arithmetic', '算术 roundResult 含 gameType')
+  assert(rr1.winner === s1.id, '小明答对第 1 题')
+  assert(rr1.scores[s1.id] === 1, '小明 1 分')
 
-  // 回答第 2 题 → 小红答对
-  const q2 = await waitFor(s1, 'game:question')
-  s2.emit('game:answer', { questionId: q2.questionId, answer: eval(q2.expression) })
-  const rr2 = await waitFor(s2, 'game:roundResult')
-  assert(rr2.winner === s2.id, '小红答对第 2 题')
-  assert(rr2.scores[s2.id] === 1, '小红 1 分')
+  // 小红答错第 2 题 → 验证 answerAck
+  const q2 = await q2Promise
+  const ackPromise = waitFor(s2, 'game:answerAck')
+  s2.emit('game:answer', { questionId: q2.questionId, answer: 99999 })
+  const ack = await ackPromise
+  assert(!ack.correct, 'answerAck 标记为错误')
+  assert(typeof ack.correctAnswer === 'number', 'answerAck 含 correctAnswer')
+  assert(ack.expression === q2.expression, 'answerAck 含 expression')
 
-  // 机器人答第 3 题（等 20 秒太慢 → 让机器人通过 handleRobotArithmeticAnswer 自动答）
-  // 模拟：让两名玩家都答错 → 20 秒后机器人自动答对
-  // 但因测试时间限制，只验证题目流转正常即可
-  const q3 = await waitFor(s1, 'game:question')
+  // 小明答对第 2 题
+  const q3Promise = waitFor(s1, 'game:question')
+  const rr2Promise = waitFor(s1, 'game:roundResult')
+  s1.emit('game:answer', { questionId: q2.questionId, answer: eval(q2.expression) })
+  const rr2 = await rr2Promise
+  assert(rr2.winner === s1.id, '小明答对第 2 题')
+  assert(rr2.scores[s1.id] === 2, '小明 2 分')
+
+  // 验证第 3 题正常流转
+  const q3 = await q3Promise
   assert(q3.round === 3, '第 3 题 round 为 3')
 
   console.log('')
