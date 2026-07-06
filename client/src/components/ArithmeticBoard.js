@@ -19,6 +19,78 @@ const ROLE_COLORS = {
   '机器人': '#722ed1',
 }
 
+function getAudioCtx(audioCtxRef) {
+  if (!audioCtxRef.current) {
+    audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+  }
+  if (audioCtxRef.current.state === 'suspended') {
+    audioCtxRef.current.resume()
+  }
+  return audioCtxRef.current
+}
+
+function playQuestionSfx(audioCtxRef) {
+  const ctx = getAudioCtx(audioCtxRef)
+  const now = ctx.currentTime
+  for (const [freq, t] of [[587, 0], [784, 0.1]]) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(freq, now + t)
+    gain.gain.setValueAtTime(0, now + t)
+    gain.gain.linearRampToValueAtTime(0.15, now + t + 0.02)
+    gain.gain.linearRampToValueAtTime(0, now + t + 0.08)
+    osc.start(now + t); osc.stop(now + t + 0.08)
+  }
+}
+
+function playCorrectSfx(audioCtxRef) {
+  const ctx = getAudioCtx(audioCtxRef)
+  const now = ctx.currentTime
+  for (const [freq, t] of [[523, 0], [659, 0.12], [784, 0.24]]) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(freq, now + t)
+    gain.gain.setValueAtTime(0, now + t)
+    gain.gain.linearRampToValueAtTime(0.18, now + t + 0.02)
+    gain.gain.linearRampToValueAtTime(0, now + t + 0.12)
+    osc.start(now + t); osc.stop(now + t + 0.12)
+  }
+}
+
+function playWrongSfx(audioCtxRef) {
+  const ctx = getAudioCtx(audioCtxRef)
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.connect(gain); gain.connect(ctx.destination)
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(200, ctx.currentTime)
+  osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.3)
+  gain.gain.setValueAtTime(0, ctx.currentTime)
+  gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.02)
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3)
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3)
+}
+
+function playRobotSfx(audioCtxRef) {
+  const ctx = getAudioCtx(audioCtxRef)
+  const now = ctx.currentTime
+  for (const [freq, t] of [[880, 0], [660, 0.08]]) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.type = 'square'
+    osc.frequency.setValueAtTime(freq, now + t)
+    gain.gain.setValueAtTime(0, now + t)
+    gain.gain.linearRampToValueAtTime(0.1, now + t + 0.01)
+    gain.gain.linearRampToValueAtTime(0, now + t + 0.06)
+    osc.start(now + t); osc.stop(now + t + 0.06)
+  }
+}
+
 function ArithmeticBoard({ gameInfo, onFinish }) {
   const socket = useSocket()
   const [players, setPlayers] = useState(gameInfo?.players || [])
@@ -34,6 +106,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
   const timerRef = useRef(null)
   const prevQuestionId = useRef(null)
   const onFinishRef = useRef(onFinish)
+  const audioCtxRef = useRef(null)
 
   useEffect(() => {
     onFinishRef.current = onFinish
@@ -83,6 +156,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
     function onQuestion(data) {
       if (data.questionId === prevQuestionId.current) return
       prevQuestionId.current = data.questionId
+      playQuestionSfx(audioCtxRef)
       setQuestion(data)
       setFeedback(null)
       setSubmitting(false)
@@ -103,6 +177,12 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
         yourAnswer: data.yourAnswer,
       })
       setScoreMap((prev) => ({ ...prev, ...data.scores }))
+
+      if (data.yourAnswer === data.correctAnswer) {
+        playCorrectSfx(audioCtxRef)
+      } else if (data.winner === '__robot__') {
+        playRobotSfx(audioCtxRef)
+      }
     }
 
     function onMatchResult(data) {
@@ -121,6 +201,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
     function onAnswerAck(data) {
       setSubmitting(false)
       if (!data.correct) {
+        playWrongSfx(audioCtxRef)
         setAnswered(true)
         setFeedback((prev) => {
           if (prev) return prev
