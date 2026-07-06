@@ -57,9 +57,9 @@ body {
 }
 
 @keyframes victoryPop {
-  0% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(1.35); }
-  100% { transform: translate(-50%, -50%) scale(1.15); }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1.15); }
 }
 
 @keyframes clashShake {
