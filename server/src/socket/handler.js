@@ -292,7 +292,6 @@ function registerHandlers(io) {
       const timer = setTimeout(() => {
         const result = gameManager.handleRobotArithmeticAnswer(rid, question.questionId)
         if (result) handleArithmeticAnswerResult(rid, result)
-        robotTimers.delete(rid)
       }, ARITHMETIC_TIMEOUT)
       robotTimers.set(rid, timer)
     }
