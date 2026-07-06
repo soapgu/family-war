@@ -484,10 +484,12 @@ npm test --prefix client
 | Room 渲染 + 交互 | client Room | 前端单元 | 10 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
 | Admin 渲染 + 数据 | client Admin | 前端单元 | 3 |
+| ArithmeticBoard 渲染 + 交互 | client ArithmeticBoard | 前端单元 | 13 |
+| ArithmeticMatchResult 渲染 + 交互 | client ArithmeticMatchResult | 前端单元 | 9 |
 | **服务端单元** | | | **77** |
 | **集成** | | | **36** |
-| **前端单元** | | | **25** |
-| **总计** | | | **138** |
+| **前端单元** | | | **47** |
+| **总计** | | | **160** |
 
 ## 端口
 

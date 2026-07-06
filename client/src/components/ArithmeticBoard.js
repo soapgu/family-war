@@ -94,7 +94,14 @@ function playRobotSfx(audioCtxRef) {
 function ArithmeticBoard({ gameInfo, onFinish }) {
   const socket = useSocket()
   const [players, setPlayers] = useState(gameInfo?.players || [])
-  const [scoreMap, setScoreMap] = useState({})
+  const [scoreMap, setScoreMap] = useState(() => {
+    if (gameInfo?.players) {
+      const initial = {}
+      gameInfo.players.forEach((p) => { initial[p.id] = 0 })
+      return initial
+    }
+    return {}
+  })
   const [question, setQuestion] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [submitting, setSubmitting] = useState(false)
