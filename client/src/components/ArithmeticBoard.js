@@ -334,27 +334,26 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
                 <span style={{ width: 44, fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {p.nickname}
                 </span>
-                <div style={{ position: 'relative', width: 5 * cellSize + 4 * cellGap, height: cellSize, flexShrink: 0 }}>
-                  {[0, 1, 2, 3, 4].map((ci) => (
+                <div style={{ position: 'relative', width: 6 * cellSize + 5 * cellGap, height: cellSize, flexShrink: 0 }}>
+                  {[0, 1, 2, 3, 4, 5].map((ci) => (
                     <div key={ci} style={{
                       position: 'absolute', left: ci * (cellSize + cellGap),
                       width: cellSize, height: cellSize, borderRadius: 4,
-                      background: ci < p.score ? '#1677ff' : '#f0f0f0',
+                      background: ci <= p.score ? '#1677ff' : '#f0f0f0',
+                      animation: ci === p.score ? 'cellBreath 1.5s ease-in-out infinite' : 'none',
                       transition: 'background 0.3s',
                     }} />
                   ))}
-                  {p.score > 0 && (
-                    <span style={{
-                      position: 'absolute', left: 0, top: 0,
-                      width: cellSize, height: cellSize,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 16,
-                      transform: `translateX(${(p.score - 1) * (cellSize + cellGap)}px)`,
-                      transition: 'transform 0.3s ease',
-                    }}>
-                      {ROLE_EMOJI[p.role]}
-                    </span>
-                  )}
+                  <span style={{
+                    position: 'absolute', left: 0, top: 0,
+                    width: cellSize, height: cellSize,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16,
+                    transform: `translateX(${p.score * (cellSize + cellGap)}px)`,
+                    transition: 'transform 0.3s ease',
+                  }}>
+                    {ROLE_EMOJI[p.role]}
+                  </span>
                 </div>
                 <span style={{
                   width: 26, textAlign: 'center', fontSize: 22,

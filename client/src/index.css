@@ -71,6 +71,11 @@ body {
   100% { transform: translate(-50%, -50%); }
 }
 
+@keyframes cellBreath {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(22,119,255,0.3); }
+  50% { transform: scale(1.1); box-shadow: 0 0 8px rgba(22,119,255,0.5); }
+}
+
 @keyframes choiceShake {
   0%, 100% { transform: translateY(0); }
   33% { transform: translateY(-6px); }
