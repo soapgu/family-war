@@ -37,7 +37,8 @@ it('shows players and scores from gameInfo', () => {
 
 it('shows leaderboard with scores from gameInfo', () => {
   renderBoard()
-  expect(screen.getByText('📊 排行榜')).toBeInTheDocument()
+  const scores = screen.getAllByText(/\d+分/)
+  expect(scores.length).toBeGreaterThanOrEqual(2)
 })
 
 it('shows 等待题目 initially', () => {

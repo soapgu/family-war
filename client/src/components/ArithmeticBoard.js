@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Typography, Button, Input, Tag, Space } from 'antd'
+import { Typography, Button, Input, Space } from 'antd'
 import useSocket from '../hooks/useSocket'
 import MatchResult from './MatchResult'
 
@@ -109,6 +109,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
   const [inputValue, setInputValue] = useState('')
   const [timeLeft, setTimeLeft] = useState(ROUND_TIME)
   const [matchResult, setMatchResult] = useState(null)
+  const [wrongThisRound, setWrongThisRound] = useState(false)
   const inputRef = useRef(null)
   const timerRef = useRef(null)
   const prevQuestionId = useRef(null)
@@ -157,6 +158,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       data.players.forEach((p) => { initial[p.id] = 0 })
       setPlayers(data.players)
       setScoreMap(initial)
+      setWrongThisRound(false)
       if (data.firstQuestion) {
         prevQuestionId.current = data.firstQuestion.questionId
         setQuestion(data.firstQuestion)
@@ -173,6 +175,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       if (data.questionId === prevQuestionId.current) return
       prevQuestionId.current = data.questionId
       playQuestionSfx(audioCtxRef)
+      setWrongThisRound(false)
       setQuestion(data)
       setFeedback(null)
       setSubmitting(false)
@@ -218,6 +221,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       setSubmitting(false)
       if (!data.correct) {
         playWrongSfx(audioCtxRef)
+        setWrongThisRound(true)
         setAnswered(true)
         setFeedback((prev) => {
           if (prev) return prev
@@ -267,6 +271,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       const p = players.find((pl) => pl.id === id)
       return { id, nickname: p?.nickname || id, role: p?.role, score }
     })
+  const maxScore = ranking.length > 0 ? ranking[0].score : 0
 
   if (matchResult) {
     return (
@@ -290,12 +295,78 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
         🧮 算术达人模式
       </Typography.Title>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
-        {players.map((p) => (
-          <Tag key={p.id} color={p.role ? ROLE_COLORS[p.role] : 'default'}>
-            {p.role ? `${ROLE_EMOJI[p.role] || ''} ${p.nickname}` : p.nickname}: {scoreMap[p.id] || 0}分
-          </Tag>
-        ))}
+      {/* Leaderboard Grid */}
+      <div style={{ maxWidth: 420, margin: '0 auto 24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {ranking.map((p) => {
+            const isRobot = p.id === '__robot__'
+            const isMe = p.id === socket.id
+            const isLeading = p.score === maxScore && maxScore > 0
+            const isActive = !!question && !feedback
+            const rank = ranking.findIndex((r) => r.id === p.id)
+            const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : ''
+            const cellSize = 28, cellGap = 3
+
+            let emotion
+            if (isRobot && isActive) {
+              emotion = timeLeft <= 5 ? '💡' : '🤔'
+            } else if (isMe && wrongThisRound) {
+              emotion = '😭'
+            } else if (isLeading) {
+              emotion = '😊'
+            } else {
+              emotion = '😰'
+            }
+
+            return (
+              <div key={p.id} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 8px', borderRadius: 8,
+                background: isLeading ? '#f6ffed' : 'transparent',
+              }}>
+                <span style={{ width: 28, textAlign: 'center', fontSize: 22 }}>{medal}</span>
+                <span style={{ width: 22, textAlign: 'center', fontSize: 22 }}>
+                  {ROLE_EMOJI[p.role]}
+                </span>
+                <span style={{ width: 44, fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {p.nickname}
+                </span>
+                <div style={{ position: 'relative', width: 5 * cellSize + 4 * cellGap, height: cellSize, flexShrink: 0 }}>
+                  {[0, 1, 2, 3, 4].map((ci) => (
+                    <div key={ci} style={{
+                      position: 'absolute', left: ci * (cellSize + cellGap),
+                      width: cellSize, height: cellSize, borderRadius: 4,
+                      background: ci < p.score ? '#1677ff' : '#f0f0f0',
+                      transition: 'background 0.3s',
+                    }} />
+                  ))}
+                  {p.score > 0 && (
+                    <span style={{
+                      position: 'absolute', left: 0, top: 0,
+                      width: cellSize, height: cellSize,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16,
+                      transform: `translateX(${(p.score - 1) * (cellSize + cellGap)}px)`,
+                      transition: 'transform 0.3s ease',
+                    }}>
+                      {ROLE_EMOJI[p.role]}
+                    </span>
+                  )}
+                </div>
+                <span style={{
+                  width: 26, textAlign: 'center', fontSize: 22,
+                  animation: emotion === '💡' ? 'bulbUrgent 0.4s ease-in-out infinite' : emotion === '🤔' ? 'thinkingPulse 1.5s ease-in-out infinite' : 'none',
+                  flexShrink: 0,
+                }}>
+                  {emotion}
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#666', width: 30, textAlign: 'right' }}>
+                  {p.score}分
+                </span>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {question ? (
@@ -379,38 +450,6 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
           <Typography.Text type="secondary" style={{ fontSize: 16 }}>
             等待题目…
           </Typography.Text>
-        </div>
-      )}
-
-      {ranking.length > 0 && (
-        <div style={{
-          background: '#fafafa',
-          borderRadius: 12,
-          border: '1px solid #f0f0f0',
-          padding: 16,
-          maxWidth: 400,
-          margin: '0 auto',
-        }}>
-          <Typography.Text strong style={{ fontSize: 15, display: 'block', marginBottom: 12 }}>
-            📊 排行榜
-          </Typography.Text>
-          {ranking.map((entry, idx) => (
-            <div key={entry.id} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '6px 0',
-              borderBottom: idx < ranking.length - 1 ? '1px solid #f0f0f0' : 'none',
-            }}>
-              <span>
-                <span style={{ marginRight: 8 }}>
-                  {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`}
-                </span>
-                {entry.role ? `${ROLE_EMOJI[entry.role] || ''} ${entry.nickname}` : entry.nickname}
-              </span>
-              <Tag color="blue" style={{ margin: 0 }}>{entry.score}分</Tag>
-            </div>
-          ))}
         </div>
       )}
     </div>
