@@ -162,6 +162,9 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       if (data.firstQuestion) {
         prevQuestionId.current = data.firstQuestion.questionId
         setQuestion(data.firstQuestion)
+        setInputValue('')
+        setSubmitting(false)
+        setAnswered(false)
         startTimer()
         setTimeout(() => inputRef.current?.focus(), 100)
       } else {
