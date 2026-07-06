@@ -102,7 +102,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
     }
     return {}
   })
-  const [question, setQuestion] = useState(null)
+  const [question, setQuestion] = useState(gameInfo?.firstQuestion || null)
   const [feedback, setFeedback] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [answered, setAnswered] = useState(false)
@@ -142,12 +142,29 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
   }, [clearTimer])
 
   useEffect(() => {
+    if (gameInfo?.firstQuestion) {
+      const fq = gameInfo.firstQuestion
+      prevQuestionId.current = fq.questionId
+      playQuestionSfx(audioCtxRef)
+      startTimer()
+      setTimeout(() => inputRef.current?.focus(), 100)
+    }
+  }, [])
+
+  useEffect(() => {
     function onGameStart(data) {
       const initial = {}
       data.players.forEach((p) => { initial[p.id] = 0 })
       setPlayers(data.players)
       setScoreMap(initial)
-      setQuestion(null)
+      if (data.firstQuestion) {
+        prevQuestionId.current = data.firstQuestion.questionId
+        setQuestion(data.firstQuestion)
+        startTimer()
+        setTimeout(() => inputRef.current?.focus(), 100)
+      } else {
+        setQuestion(null)
+      }
       setFeedback(null)
       setMatchResult(null)
     }

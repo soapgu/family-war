@@ -255,6 +255,7 @@ function registerHandlers(io) {
       }
 
       const game = gameManager.createGame(rid, playerIds, 'arithmetic')
+      const firstQuestion = gameManager.generateQuestion(game)
 
       const playerList = playerIds.map((id) => ({
         id,
@@ -269,10 +270,16 @@ function registerHandlers(io) {
           gameType: 'arithmetic',
           players: playerList,
           round: game.round,
+          firstQuestion: {
+            questionId: firstQuestion.questionId,
+            expression: firstQuestion.expression,
+            round: firstQuestion.round,
+          },
         })
       })
 
-      emitNextArithmeticQuestion(rid, game)
+      scheduleRobotAnswer(rid, firstQuestion.questionId)
+
       roomManager.broadcastRoomState(rid, io)
     }
 
@@ -288,12 +295,7 @@ function registerHandlers(io) {
         })
       })
 
-      clearRobotTimer(rid)
-      const timer = setTimeout(() => {
-        const result = gameManager.handleRobotArithmeticAnswer(rid, question.questionId)
-        if (result) handleArithmeticAnswerResult(rid, result)
-      }, ARITHMETIC_TIMEOUT)
-      robotTimers.set(rid, timer)
+      scheduleRobotAnswer(rid, question.questionId)
     }
 
     /** 算术轮结果广播（含 yourAnswer 每人视角） */
@@ -343,6 +345,16 @@ function registerHandlers(io) {
         clearTimeout(robotTimers.get(rid))
         robotTimers.delete(rid)
       }
+    }
+
+    /** 设置机器人定时器（20s 后自动作答） */
+    function scheduleRobotAnswer(rid, questionId) {
+      clearRobotTimer(rid)
+      const timer = setTimeout(() => {
+        const result = gameManager.handleRobotArithmeticAnswer(rid, questionId)
+        if (result) handleArithmeticAnswerResult(rid, result)
+      }, ARITHMETIC_TIMEOUT)
+      robotTimers.set(rid, timer)
     }
 
     /** 统一处理算术答题结果（轮结果 / 赛果） */

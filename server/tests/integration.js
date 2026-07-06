@@ -175,9 +175,6 @@ async function run() {
   const modeState = await waitForRoomState(s1, (s) => s.gameMode === 'arithmetic')
   assert(modeState.gameMode === 'arithmetic', '切换算术模式')
 
-  // 预注册 question listener 再发挑战（避免竞态）
-  const q1Promise = waitFor(s1, 'game:question')
-
   s1.emit('game:challenge', { mode: 'arithmetic' })
   const [as1, as2] = await Promise.all([
     waitFor(s1, 'game:start'),
@@ -186,10 +183,10 @@ async function run() {
   assert(as1.gameType === 'arithmetic', '算术 game:start 含 gameType')
   assert(as1.players.length === 3, '3 名玩家参赛（含机器人）')
   assert(as2.players.length === 3, '小红也看到 3 名玩家')
+  assert(as1.firstQuestion, 'game:start 含 firstQuestion')
+  assert(typeof as1.firstQuestion.expression === 'string', 'firstQuestion 含表达式')
 
-  const q1 = await q1Promise
-  assert(typeof q1.expression === 'string', '收到算术题目')
-  assert(typeof q1.correctAnswer === 'undefined', 'correctAnswer 不提前暴露')
+  const q1 = as1.firstQuestion
 
   // 小明答对第 1 题（预注册下一题 + roundResult）
   const q2Promise = waitFor(s1, 'game:question')
