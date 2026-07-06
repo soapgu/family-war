@@ -29,53 +29,53 @@ function RoleCard({ role, occupant, isMine, onClick }) {
       size="small"
       style={{
         position: 'relative',
-        width: 180,
+        width: 90,
         textAlign: 'center',
         overflow: 'visible',
-        borderTop: `4px solid ${colors.border}`,
+        borderTop: `3px solid ${colors.border}`,
         background: isMine ? colors.bg : '#fff',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        transform: isMine ? 'translateY(-8px)' : 'translateY(0)',
+        transform: isMine ? 'translateY(-4px)' : 'translateY(0)',
         transition: 'all 0.25s ease',
         opacity: disabled ? 0.5 : 1,
-        boxShadow: isMine ? `0 6px 20px ${colors.shadow}` : '0 1px 4px rgba(0,0,0,0.06)',
+        boxShadow: isMine ? `0 4px 12px ${colors.shadow}` : '0 1px 3px rgba(0,0,0,0.06)',
       }}
       onMouseEnter={(e) => {
         if (!disabled && !isMine) {
-          e.currentTarget.style.transform = 'translateY(-4px)'
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
+          e.currentTarget.style.transform = 'translateY(-2px)'
+          e.currentTarget.style.boxShadow = '0 3px 8px rgba(0,0,0,0.1)'
         }
       }}
       onMouseLeave={(e) => {
         if (!isMine) {
           e.currentTarget.style.transform = 'translateY(0)'
-          e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'
         }
       }}
     >
       <div onClick={handleClick} style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}>
         {/* Raised hand badge when selected */}
-        {isMine && (
-          <div
-            style={{
-              position: 'absolute',
-              top: -14,
-              right: -8,
-              fontSize: 26,
-              lineHeight: 1,
-              animation: 'wave 1.2s ease-in-out infinite',
-              transformOrigin: 'bottom center',
-            }}
-          >
-            🙋
-          </div>
-        )}
+          {isMine && (
+            <div
+              style={{
+                position: 'absolute',
+                top: -10,
+                right: -6,
+                fontSize: 18,
+                lineHeight: 1,
+                animation: 'wave 1.2s ease-in-out infinite',
+                transformOrigin: 'bottom center',
+              }}
+            >
+              🙋
+            </div>
+          )}
 
-        <div style={{ fontSize: 48, lineHeight: 1.2, marginTop: isMine ? 4 : 0 }}>
-          {ROLE_EMOJI[role]}
-        </div>
-        <div style={{ fontSize: 17, fontWeight: 600, margin: '6px 0 10px' }}>{role}</div>
-        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 32, lineHeight: 1.2, marginTop: isMine ? 2 : 0 }}>
+            {ROLE_EMOJI[role]}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, margin: '4px 0 6px' }}>{role}</div>
+          <div style={{ marginBottom: 2 }}>
           {isFree ? (
             <Tag>空闲</Tag>
           ) : (
