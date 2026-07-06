@@ -217,7 +217,7 @@ App (BrowserRouter)
 |------|------|------|
 | 切换模式 | 在房间内点击 "算术达人" 模式切换 | `socket.emit('game:setMode', { mode: 'arithmetic' })` |
 | 开始游戏 | 点击 🧮 开始算术挑战按钮（需至少 1 人已选角色） | `socket.emit('game:challenge', { mode: 'arithmetic' })` |
-| 出题 | 所有参战玩家收到算术题（+/-，结果 0-100） | 客户端收到 `game:question` |
+| 出题 | 第一题随 `game:start` 下发（防竞争条件），后续题走 `game:question` 单独推送 | 客户端收到 `game:start.firstQuestion`（首题）或 `game:question`（后续） |
 | 抢答 | 在输入框中填写答案并提交 | `socket.emit('game:answer', { questionId, answer })` |
 | 判定 | 首位答对者得 1 分；机器人固定 20 秒后自动答对 | 客户端收到 `game:roundResult` |
 | 赛果 | 先得 5 分者胜，切换到结算 BGM | 客户端收到 `game:matchResult` |
@@ -387,7 +387,7 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 | `room:state` | `{ ..., gameMode: 'rps' }` | `{ ..., gameMode: 'arithmetic' }` |
 | `player:joined` | `{ nickname }` | 相同 |
 | `player:left` | `{ socketId }` | 相同 |
-| `game:start` | `{ gameType: 'rps', opponent, round }` | `{ gameType: 'arithmetic', players: [...], round }` |
+| `game:start` | `{ gameType: 'rps', opponent, round }` | `{ gameType: 'arithmetic', players: [...], round, firstQuestion: { questionId, expression, round } }` |
 | `game:question` | — | `{ questionId, expression, round }` |
 | `game:waiting` | 等待对手出拳 | 等待其他人 / 机器人倒计时 |
 | `game:roundResult` | `{ round, winner, yourMove, oppMove, scores }` | `{ gameType: 'arithmetic', round, questionId, expression, correctAnswer, yourAnswer, winner, scores }` |
