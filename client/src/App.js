@@ -62,7 +62,7 @@ function GameApp() {
     } else {
       startBgm(BGM_LOBBY)
     }
-  }, [roomState])
+  }, [roomState, socket.id])
 
   function handleEnter(name) {
     setNickname(name)

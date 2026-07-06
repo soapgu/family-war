@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Typography, Button, Space } from 'antd'
+import { Typography, Button } from 'antd'
 import useSocket from '../hooks/useSocket'
 import MatchResult from './MatchResult'
 
@@ -85,7 +85,7 @@ function RoundResultBanner({ winType, myMove, oppMove, myScore, oppScore, myName
       else setMyX(-320)
     }, 900)
     return () => { cancelAnimationFrame(t1); clearTimeout(t2); clearTimeout(t3) }
-  }, [])
+  }, [isWin, isDraw])
 
   function getTransition() {
     if (animStage === 'idle') return 'none'
@@ -144,7 +144,6 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
   const [oppMove, setOppMove] = useState(null)
   const [round, setRound] = useState(1)
   const [phase, setPhase] = useState('readyGo') // readyGo | choosing | waiting | roundResult | matchResult | forfeited
-  const [resultMsg, setResultMsg] = useState('')
   const [winner, setWinner] = useState(null)
   const [scores, setScores] = useState({})
   const [matchResult, setMatchResult] = useState(null) // { matchWinner, scores, history }
@@ -183,16 +182,12 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
       setScores(data.scores)
       setRound(data.round + 1)
 
-      const iWon = data.winner === socket.id
-      const isDraw = data.winner === 'draw'
-      setResultMsg(isDraw ? '平局！' : iWon ? '你赢了这一局！' : '你输了这一局')
       setPhase('roundResult')
 
       roundTimer.current = setTimeout(() => {
         setMyMove(null)
         setOppMove(null)
         setWinner(null)
-        setResultMsg('')
         setPhase('choosing')
       }, 2200)
     }

@@ -112,14 +112,6 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
     onFinishRef.current = onFinish
   })
 
-  useEffect(() => {
-    if (gameInfo?.players) {
-      const initial = {}
-      gameInfo.players.forEach((p) => { initial[p.id] = 0 })
-      setScoreMap(initial)
-    }
-  }, [])
-
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
