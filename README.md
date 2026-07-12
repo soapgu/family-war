@@ -703,3 +703,20 @@ location /family-war/socket.io/ {
 | API 入口 | `http://localhost:3000/api/*`（CRA 代理） | `http://localhost:8080/family-war/api/*`（nginx 反代） |
 | Socket.IO | 直连 `http://{host}:4000` | nginx 反代 `/family-war/socket.io` → `:4010` |
 | 配置文件 | `setupProxy.js` | `nginx conf.d/family-war.conf` |
+
+### PM2 管理命令
+
+| 命令 | 作用 |
+|------|------|
+| `pm2 start server/ecosystem.config.js` | 启动预发布服务（:4010） |
+| `pm2 stop family-war-server` | 停止 |
+| `pm2 restart family-war-server` | 重启（同步最新代码后执行） |
+| `pm2 logs family-war-server` | 查看实时日志 |
+| `pm2 status` 或 `pm2 list` | 查看进程状态 |
+
+**开机自启**（仅首次需要）：
+
+```bash
+pm2 startup    # 生成自启脚本（需要 sudo，按提示执行）
+pm2 save       # 保存当前进程列表
+```
