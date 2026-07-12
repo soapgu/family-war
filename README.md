@@ -566,3 +566,140 @@ npm test --prefix client
 | 3c | ArithmeticMatchResult.js 完整结算（终榜排名 + 每题回放） | `ArithmeticMatchResult.js` | ✅ |
 | 3d | 音效：出题/答对/答错/机器人抢答音效 | `ArithmeticBoard.js` | ✅ |
 | 3e | 验证：算术全流程测试 | — | ✅ |
+
+---
+
+## v2.1 部署规划
+
+### 概览
+
+将 `family-war` 部署到 `http://localhost:8080/family-war`，分三步实施。
+
+| 步骤 | 内容 | 前置依赖 |
+|------|------|----------|
+| **Step 1** | 前端 homepage + 路由改造 + 本地开发测试 | 无 |
+| **Step 2** | 服务端 PM2 部署（端口 4010） | 无，可并行 |
+| **Step 3** | Nginx 配置 | 依赖 Step 1 的构建产物和 Step 2 的服务端进程 |
+
+---
+
+### Step 1 — homepage + 路由改造 + 本地开发环境测试
+
+**目标**：让前端构建产物感知 `/family-war` 前缀，同时开发模式不受影响。
+
+| # | 文件 | 改动 | 说明 |
+|---|------|------|------|
+| 1.1 | `client/package.json` | 添加 `"homepage": "/family-war"` | CRA 构建时将静态资源路径改为 `/family-war/static/js/...` |
+| 1.2 | `client/src/App.js` | ① `<BrowserRouter basename="/family-war">` ② BGM 路径改用 `process.env.PUBLIC_URL + '/bgm.mp3'` | React Router 路由相对 `/family-war` 工作；PUB_URL 在 dev 下为空 → `/bgm.mp3`，prod 下为 `/family-war` → `/family-war/bgm.mp3` |
+| 1.3 | `client/src/hooks/useSocket.js` | 生产环境增加 `path: '/family-war/socket.io'` | 客户端通过 `/family-war/socket.io` 连接 nginx 再转发到后端；dev 仍走默认 `/socket.io` 直连 :4000 |
+| 1.4 | `client/src/components/GameBoard.js` | `new Audio(process.env.PUBLIC_URL + '/readygo.mp3')` | 与 BGM 改法一致 |
+
+**验收条件**
+
+- `npm start`（dev 模式）正常，首页/选角/RPS/算术/后台均正常
+- `npm run build --prefix client` 产物中资源路径为 `/family-war/static/js/...`
+- `client/build/index.html` 中资源引用均为 `/family-war/...`
+
+---
+
+### Step 2 — 服务端 PM2 部署（端口 4010）
+
+**目标**：服务端脱离 nodemon，用 PM2 管理预发布实例。
+
+**端口说明**：
+
+| 实例 | 端口 | 用途 |
+|------|------|------|
+| 开发 | 4000 | 开发环境，nodemon 热重载 |
+| 集成测试 | 4001 | `npm run test:integration` |
+| **预发布** | **4010** | PM2 管理，生产配置 |
+
+**实施内容**
+
+| # | 事项 | 说明 |
+|---|------|------|
+| 2.1 | 安装 PM2 | `npm i -g pm2`（如未安装） |
+| 2.2 | 创建 `server/ecosystem.config.js` | 端口 4010，`NODE_ENV=production`，不开启 watch |
+| 2.3 | 启动预发布实例 | `pm2 start server/ecosystem.config.js` |
+| 2.4 | 验证 | `curl http://localhost:4010/api/health` → `{"status":"ok"}` |
+| 2.5 | 日常同步 | 开发验证后 → `pm2 restart family-war-server` 更新预发布 |
+
+**PM2 配置**（`server/ecosystem.config.js`）：
+
+```js
+module.exports = {
+  apps: [{
+    name: 'family-war-server',
+    script: 'src/index.js',
+    cwd: __dirname,
+    env: { PORT: 4010, NODE_ENV: 'production' },
+    instances: 1,
+    exec_mode: 'fork',
+    max_restarts: 5,
+    error_file: '../logs/server-err.log',
+    out_file: '../logs/server-out.log',
+  }]
+}
+```
+
+**重要**：PM2 不添加 `watch` 模式，开发时文件变更不会意外重启预发布服务。需要同步最新代码时手动执行 `pm2 restart family-war-server`。
+
+---
+
+### Step 3 — Nginx 配置
+
+**目标**：添加 `/family-war` 路由，代理静态文件和 API/WebSocket 到预发布后端。
+
+**实施内容**
+
+| # | 事项 | 说明 |
+|---|------|------|
+| 3.1 | 创建 `/opt/homebrew/etc/nginx/servers/conf.d/family-war.conf` | 见下方配置 |
+| 3.2 | 验证语法 | `nginx -t` |
+| 3.3 | 重载 nginx | `nginx -s reload` |
+| 3.4 | 全链路验证 | 访问 `http://localhost:8080/family-war/`，确认页面/API/WebSocket 均正常 |
+
+**Nginx 配置**：
+
+```nginx
+# 301 redirect /family-war -> /family-war/
+location = /family-war {
+    return 302 /family-war/;
+}
+
+# 静态文件服务 + SPA fallback（BrowserRouter）
+location /family-war/ {
+    alias /Users/guhui/Githubs/family-war/client/build/;
+    index index.html;
+    try_files $uri $uri/ /family-war/index.html;
+}
+
+# API 反向代理（自动剥离 /family-war 前缀）
+location /family-war/api/ {
+    proxy_pass http://localhost:4010/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+
+# Socket.IO WebSocket 代理
+location /family-war/socket.io/ {
+    proxy_pass http://localhost:4010/socket.io/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+}
+```
+
+---
+
+### 环境对照总表
+
+| 层级 | 开发环境 | 预发布环境 |
+|------|----------|------------|
+| 前端服务 | CRA dev server `:3000`（热重载） | Nginx `:8080/family-war/`（静态文件） |
+| 后端进程 | nodemon `:4000`（自动重启） | PM2 `:4010`（手动重启） |
+| API 入口 | `http://localhost:3000/api/*`（CRA 代理） | `http://localhost:8080/family-war/api/*`（nginx 反代） |
+| Socket.IO | 直连 `http://{host}:4000` | nginx 反代 `/family-war/socket.io` → `:4010` |
+| 配置文件 | `setupProxy.js` | `nginx conf.d/family-war.conf` |
