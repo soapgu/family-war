@@ -5,9 +5,10 @@ import Home from './pages/Home'
 import Room from './pages/Room'
 import Admin from './pages/Admin'
 
-const BGM_LOBBY = '/bgm.mp3'
-const BGM_BATTLE = '/bgm_battle.mp3'
-const BGM_RESULT = '/bgm_result.mp3'
+const BASE_URL = process.env.PUBLIC_URL || ''
+const BGM_LOBBY = BASE_URL + '/bgm.mp3'
+const BGM_BATTLE = BASE_URL + '/bgm_battle.mp3'
+const BGM_RESULT = BASE_URL + '/bgm_result.mp3'
 const BGM_VOLUME = 0.3
 
 function GameApp() {
@@ -87,7 +88,7 @@ function GameApp() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/family-war">
       <Routes>
         <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<GameApp />} />

@@ -252,7 +252,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
 
     setReadyGoStage(null)
     setReadyGoFadeOut(false)
-    const audio = new Audio('/readygo.mp3')
+    const audio = new Audio((process.env.PUBLIC_URL || '') + '/readygo.mp3')
     audio.volume = 0.7
     audio.play().catch(() => {})
     readyGoAudioRef.current = audio
