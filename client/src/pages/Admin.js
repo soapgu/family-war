@@ -14,7 +14,8 @@ function Admin() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/status')
+      const BASE = process.env.PUBLIC_URL || ''
+      const res = await fetch(BASE + '/api/admin/status')
       if (res.ok) {
         setData(await res.json())
       }
