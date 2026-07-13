@@ -197,6 +197,42 @@ location /family-war/socket.io/ {
 | Socket.IO | 直连 `http://{host}:4000` | nginx 反代 `/family-war/socket.io` → `:4010` |
 | 配置文件 | `setupProxy.js` | `nginx conf.d/family-war.conf` |
 
+---
+
+## v3.0 升级计划
+
+### 概览
+
+英文默写新玩法，全员抢答 + TTS 朗读 + Unsplash 图片 + 三档难度，共用 5 分赛制和 20s 机器人超时机制。
+
+### Phase 1: 服务端改造
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1a | 词库：纯单词数组 | `server/src/data/words.json` | ⬜ |
+| 1b | 新增 `unsplash-js` 依赖（服务端拉取图片 URL） | `server/package.json` | ⬜ |
+| 1c | gameManager 新增 `createSpellingGame` / `generateSpellingQuestion` / `submitSpellingAnswer` / `handleRobotSpellingAnswer` | `gameManager.js` | ⬜ |
+| 1d | handler：`game:challenge` 增加 `mode==='spelling'` 分支 + robot 定时器 | `handler.js` | ⬜ |
+| 1e | roomManager `setGameMode` 允许 `'spelling'`，存储 `spellingDifficulty` | `roomManager.js` | ⬜ |
+| 1f | 测试：spelling 单元测试 + 集成测试 | `__tests__/*.test.js`, `tests/integration.js` | ⬜ |
+
+### Phase 2: 客户端兼容（不改 UI）
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 2a | Room.js Segmented 增加 ✍️ 默写 + 难度选择控件 | `Room.js` | ⬜ |
+| 2b | MatchResult.js 增加 `gameType === 'spelling'` case | `MatchResult.js` | ⬜ |
+| 2c | App.js BGM 切换兼容 `game.type === 'spelling'` | `App.js` | ⬜ |
+| 2d | 验证：全部旧测试通过 | — | ⬜ |
+
+### Phase 3: 客户端升级
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 3a | SpellingBoard.js（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效） | `SpellingBoard.js` | ⬜ |
+| 3b | SpellingMatchResult.js（终榜排名 + 每题单词回顾） | `SpellingMatchResult.js` | ⬜ |
+| 3c | 验证：默写全流程测试 | — | ⬜ |
+
 ### PM2 管理命令
 
 | 命令 | 作用 |
