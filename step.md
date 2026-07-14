@@ -215,11 +215,11 @@ location /family-war/socket.io/ {
 | 1d | handler：`game:challenge` 增加 `mode==='spelling'` 分支 + robot 定时器 + answer 分流 + spelling 广播函数 | `handler.js` | ✅ |
 | 1e | roomManager `setGameMode` 允许 `'spelling'`，存储 `spellingDifficulty` | `roomManager.js` | ✅ |
 | 1f | 测试：spelling 集成测试（56 断言） | `tests/integration.js` | ✅ |
-| 1g-1 | **新建** `unsplashClient.js`：Singleton，加载/持久化 `images.json`，`syncAll()` 逐词搜索 Unsplash → 下载图片到 `server/public/images/` → 事务性写入 JSON（下载成功才写），暴露 `getImageUrl(word)` / `getSyncStatus()` | `server/src/unsplashClient.js` | ⬜ |
-| 1g-2 | admin 路由新增 `GET /api/admin/word-images/status` + `POST /api/admin/word-images/sync` | `server/src/routes/admin.js` | ⬜ |
-| 1g-3 | `GET /api/images/:name` 路由，`fs.createReadStream` 提供本地图片 | `server/src/index.js` | ⬜ |
-| 1g-4 | `generateSpellingQuestion` 调用 `getImageUrl(word)` 填充 `unsplashImageUrl`（值为 `/api/images/cat.jpg` 或 `''`） | `server/src/socket/gameManager.js` | ⬜ |
-| 1g-5 | **新建** unsplashClient 单元测试：mock unsplash-js，测同步/读取/持久化/下载失败降级 | `server/__tests__/unsplashClient.test.js` | ⬜ |
+| 1g-1 | **新建** `config.js` 自定义配置 + `config.local.js` 本地覆盖（不上传 git）+ `unsplashClient.js`：Singleton，加载/持久化 `images.json`，`syncAll()` 逐词搜索 Unsplash → 下载图片到 `server/public/images/` → 事务性写入 JSON（下载成功才写），暴露 `getImageUrl(word)` / `getSyncStatus()` | `server/config.js`, `server/config.local.js`, `server/src/unsplashClient.js` | ⬜ |
+| 1g-2 | **新建** `unsplashClient.test.js`：mock unsplash-js，测 syncAll/search/download/持久化/失败降级 | `server/__tests__/unsplashClient.test.js` | ⬜ |
+| 1g-3 | admin 路由新增 `GET /api/admin/word-images/status` + `POST /api/admin/word-images/sync` | `server/src/routes/admin.js` | ⬜ |
+| 1g-4 | `GET /api/images/:name` 路由，`fs.createReadStream` 提供本地图片 | `server/src/index.js` | ⬜ |
+| 1g-5 | `generateSpellingQuestion` 调用 `getImageUrl(word)` 填充 `unsplashImageUrl`（值为 `/api/images/cat.jpg` 或 `''`） | `server/src/socket/gameManager.js` | ⬜ |
 | 1g-6 | gameManager.test.js mock unsplashClient，验证 question 含 URL | `server/__tests__/gameManager.test.js` | ⬜ |
 | 1g-7 | 集成测试调整 unsplashImageUrl 断言 | `tests/integration.js` | ⬜ |
 
