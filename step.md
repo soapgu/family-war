@@ -215,6 +215,13 @@ location /family-war/socket.io/ {
 | 1d | handler：`game:challenge` 增加 `mode==='spelling'` 分支 + robot 定时器 + answer 分流 + spelling 广播函数 | `handler.js` | ✅ |
 | 1e | roomManager `setGameMode` 允许 `'spelling'`，存储 `spellingDifficulty` | `roomManager.js` | ✅ |
 | 1f | 测试：spelling 集成测试（56 断言） | `tests/integration.js` | ✅ |
+| 1g-1 | **新建** `unsplashClient.js`：Singleton，加载/持久化 `images.json`，`syncAll()` 逐词搜索 Unsplash → 下载图片到 `server/public/images/` → 事务性写入 JSON（下载成功才写），暴露 `getImageUrl(word)` / `getSyncStatus()` | `server/src/unsplashClient.js` | ⬜ |
+| 1g-2 | admin 路由新增 `GET /api/admin/word-images/status` + `POST /api/admin/word-images/sync` | `server/src/routes/admin.js` | ⬜ |
+| 1g-3 | `GET /api/images/:name` 路由，`fs.createReadStream` 提供本地图片 | `server/src/index.js` | ⬜ |
+| 1g-4 | `generateSpellingQuestion` 调用 `getImageUrl(word)` 填充 `unsplashImageUrl`（值为 `/api/images/cat.jpg` 或 `''`） | `server/src/socket/gameManager.js` | ⬜ |
+| 1g-5 | **新建** unsplashClient 单元测试：mock unsplash-js，测同步/读取/持久化/下载失败降级 | `server/__tests__/unsplashClient.test.js` | ⬜ |
+| 1g-6 | gameManager.test.js mock unsplashClient，验证 question 含 URL | `server/__tests__/gameManager.test.js` | ⬜ |
+| 1g-7 | 集成测试调整 unsplashImageUrl 断言 | `tests/integration.js` | ⬜ |
 
 ### Phase 2: 客户端兼容（不改 UI）
 
@@ -229,9 +236,11 @@ location /family-war/socket.io/ {
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | SpellingBoard.js（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效） | `SpellingBoard.js` | ⬜ |
-| 3b | SpellingMatchResult.js（终榜排名 + 每题单词回顾） | `SpellingMatchResult.js` | ⬜ |
-| 3c | 验证：默写全流程测试 | — | ⬜ |
+| 3a | `Admin.jsx` 增加「词库图库」入口按钮；**新建** `WordImages.jsx`：卡片列表（单词名 + 缩略图预览 + ✅/⏳/❌ 状态）+ 「同步所有」按钮 + 上次同步时间 | `client/src/pages/Admin.jsx`, `client/src/pages/WordImages.jsx` | ⬜ |
+| 3b | `App.jsx` 增加 `/admin/word-images` 路由 | `client/src/App.jsx` | ⬜ |
+| 3c | SpellingBoard.js（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效） | `SpellingBoard.js` | ⬜ |
+| 3d | SpellingMatchResult.js（终榜排名 + 每题单词回顾） | `SpellingMatchResult.js` | ⬜ |
+| 3e | 验证：默写全流程测试 | — | ⬜ |
 
 ### PM2 管理命令
 
