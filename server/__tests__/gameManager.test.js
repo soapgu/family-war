@@ -607,3 +607,347 @@ describe('handleRobotArithmeticAnswer', () => {
     expect(true).toBe(false)
   })
 })
+
+// ==================== 默写引擎 ====================
+
+describe('默写 createGame', () => {
+  it('创建默写游戏并调用 roomManager.setGame', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', 'easy')
+
+    expect(game.type).toBe('spelling')
+    expect(game.difficulty).toBe('easy')
+    expect(game.players).toEqual([P1, P2])
+    expect(game.round).toBe(1)
+    expect(game.scores).toEqual({ [P1]: 0, [P2]: 0 })
+    expect(game.currentQuestion).toBeNull()
+    expect(game.answeredThisRound).toEqual({})
+    expect(game.history).toEqual([])
+    expect(game.status).toBe('playing')
+
+    expect(roomManager.setGame).toHaveBeenCalledWith(ROOM_ID, game)
+  })
+
+  it('默认 difficulty 为 easy', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling')
+    expect(game.difficulty).toBe('easy')
+  })
+})
+
+describe('generateBlanks', () => {
+  it('hard 难度全部隐藏', () => {
+    const blanks = gameManager.generateBlanks('apple', 'hard')
+    expect(blanks).toBe('_ _ _ _ _')
+  })
+
+  it('easy 难度暴露约 50% 字母', () => {
+    const blanks = gameManager.generateBlanks('elephant', 'easy')
+    const shown = blanks.split(' ').filter((ch) => ch !== '_')
+    expect(shown.length).toBeGreaterThanOrEqual(2)
+    expect(shown.length).toBeLessThanOrEqual(5)
+  })
+
+  it('normal 难度暴露 1-2 个字母', () => {
+    for (let i = 0; i < 20; i++) {
+      const blanks = gameManager.generateBlanks('garden', 'normal')
+      const shown = blanks.split(' ').filter((ch) => ch !== '_')
+      expect(shown.length).toBeGreaterThanOrEqual(1)
+      expect(shown.length).toBeLessThanOrEqual(2)
+    }
+  })
+
+  it('空格格式正确（字母和 _ 之间空格分隔）', () => {
+    const blanks = gameManager.generateBlanks('cat', 'easy')
+    expect(blanks).toMatch(/^[_a-z]( [_a-z]){2}$/)
+  })
+
+  it('暴露的字母与原始单词对应位置一致', () => {
+    const blanks = gameManager.generateBlanks('fish', 'easy')
+    const parts = blanks.split(' ')
+    parts.forEach((ch, i) => {
+      if (ch !== '_') {
+        expect(ch).toBe('fish'[i])
+      }
+    })
+  })
+})
+
+describe('generateSpellingQuestion', () => {
+  function startSpellingGame(difficulty) {
+    return gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', difficulty)
+  }
+
+  it('生成题目包含必要字段', () => {
+    const game = startSpellingGame('easy')
+    const question = gameManager.generateSpellingQuestion(game)
+
+    expect(question).toHaveProperty('questionId')
+    expect(question).toHaveProperty('word')
+    expect(question).toHaveProperty('wordLength')
+    expect(question).toHaveProperty('blanks')
+    expect(question).toHaveProperty('unsplashImageUrl')
+    expect(question).toHaveProperty('round')
+    expect(question.round).toBe(1)
+    expect(question.wordLength).toBe(question.word.length)
+    expect(game.currentQuestion).toBe(question)
+    expect(game.answeredThisRound).toEqual({})
+  })
+
+  it('题目在 words.json 词库中', () => {
+    const game = startSpellingGame('easy')
+    const words = require('../src/data/words.json')
+    const question = gameManager.generateSpellingQuestion(game)
+    expect(words).toContain(question.word)
+  })
+
+  it('blanks 长度与单词一致', () => {
+    const game = startSpellingGame('easy')
+    const question = gameManager.generateSpellingQuestion(game)
+    const parts = question.blanks.split(' ')
+    expect(parts).toHaveLength(question.wordLength)
+  })
+})
+
+describe('submitSpellingAnswer', () => {
+  function startSpellingGame(difficulty) {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', difficulty)
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+    return game
+  }
+
+  function startWithQuestion(difficulty = 'easy') {
+    const game = startSpellingGame(difficulty)
+    const question = gameManager.generateSpellingQuestion(game)
+    return { game, question }
+  }
+
+  it('正确答案返回 round_result', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word)
+
+    expect(result.action).toBe('round_result')
+    expect(result.winner).toBe(P1)
+    expect(result.round).toBe(1)
+    expect(result.questionId).toBe(question.questionId)
+    expect(result.word).toBe(question.word)
+    expect(result.correctAnswer).toBe(question.word)
+    expect(result.scores[P1]).toBe(1)
+    expect(result.scores[P2]).toBe(0)
+  })
+
+  it('大小写不敏感', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word.toUpperCase())
+    expect(result.action).toBe('round_result')
+    expect(result.winner).toBe(P1)
+  })
+
+  it('错误答案返回 waiting', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, 'wrongword')
+
+    expect(result.action).toBe('waiting')
+    expect(result.correctAnswer).toBe(question.word)
+    expect(result.yourAnswer).toBe('wrongword')
+  })
+
+  it('非本局玩家返回 error', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, 's99', question.questionId, 'test')
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('你不是本局玩家')
+  })
+
+  it('重复回答返回 error', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, 'wrong')
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word)
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('你已经回答过本题')
+  })
+
+  it('过期的 questionId 返回 error', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word)
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P2, question.questionId, question.word)
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('题目已过期')
+  })
+
+  it('比赛结束后返回 error', () => {
+    const { question } = startWithQuestion()
+    const game = gameManager.getGame(ROOM_ID)
+    game.status = 'match_end'
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word)
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('比赛已结束')
+  })
+
+  it('不存在的默写游戏返回 error', () => {
+    roomManager.getRoom.mockReturnValue(null)
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, 'q1', 'test')
+    expect(result.action).toBe('error')
+    expect(result.message).toBe('默写游戏不存在')
+  })
+
+  it('正确答案后清除 currentQuestion', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word)
+    const game = gameManager.getGame(ROOM_ID)
+    expect(game.currentQuestion).toBeNull()
+  })
+
+  it('首位答对者得分，其余不得分', () => {
+    const { game, question } = startWithQuestion()
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, 'wrong')
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P2, question.questionId, question.word)
+
+    expect(result.winner).toBe(P2)
+    expect(result.scores[P2]).toBe(1)
+    expect(result.scores[P1]).toBe(0)
+    expect(game.history).toHaveLength(1)
+    expect(game.history[0].winner).toBe(P2)
+  })
+
+  it('answeredBy 记录所有已答玩家', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, 'wrong')
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P2, question.questionId, question.word)
+
+    expect(result.answeredBy).toMatchObject({
+      [P1]: 'wrong',
+      [P2]: question.word,
+    })
+  })
+
+  it('历史记录包含 word 和 blanks', () => {
+    const { game, question } = startWithQuestion()
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word)
+
+    expect(game.history[0].word).toBe(question.word)
+    expect(game.history[0].blanks).toBe(question.blanks)
+    expect(game.history[0].correctAnswer).toBe(question.word)
+  })
+})
+
+describe('默写 5 分赛制', () => {
+  function simulateCorrectAnswers(count) {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+
+    for (let i = 0; i < count; i++) {
+      game.currentQuestion = null
+      const question = gameManager.generateSpellingQuestion(game)
+      const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word)
+      if (result.action === 'match_result') return result
+    }
+    return null
+  }
+
+  it('4 分时返回 round_result（未到赛点）', () => {
+    const result = simulateCorrectAnswers(4)
+    expect(result).toBeNull()
+    const game = gameManager.getGame(ROOM_ID)
+    expect(game.status).toBe('playing')
+  })
+
+  it('先得 5 分者获胜，返回 match_result', () => {
+    const result = simulateCorrectAnswers(5)
+    expect(result.action).toBe('match_result')
+    expect(result.matchWinner).toBe(P1)
+    expect(result.scores[P1]).toBe(5)
+    expect(result.scores[P2]).toBe(0)
+  })
+
+  it('match_result 包含排行榜', () => {
+    const result = simulateCorrectAnswers(5)
+    expect(result.ranking).toBeDefined()
+    expect(result.ranking[0].rank).toBe(1)
+    expect(result.ranking[0].playerId).toBe(P1)
+    expect(result.ranking[0].score).toBe(5)
+    expect(result.ranking).toHaveLength(2)
+  })
+
+  it('match_result 包含完整历史', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+
+    for (let i = 0; i < 5; i++) {
+      game.currentQuestion = null
+      const q = gameManager.generateSpellingQuestion(game)
+      const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, q.questionId, q.word)
+      if (i === 4) {
+        expect(result.history).toHaveLength(5)
+        result.history.forEach((h, idx) => {
+          expect(h.round).toBe(idx + 1)
+          expect(h.winner).toBe(P1)
+        })
+      }
+    }
+  })
+
+  it('比赛结束后 game.status 为 match_end', () => {
+    simulateCorrectAnswers(5)
+    const game = gameManager.getGame(ROOM_ID)
+    expect(game.status).toBe('match_end')
+  })
+
+  it('历史记录存入 matchHistory', () => {
+    simulateCorrectAnswers(5)
+    const history = gameManager.getMatchHistory()
+    expect(history).toHaveLength(1)
+    expect(history[0].type).toBe('spelling')
+    expect(history[0].matchWinner).toBe(P1)
+    expect(history[0].scores[P1]).toBe(5)
+    expect(typeof history[0].endedAt).toBe('number')
+  })
+})
+
+describe('handleRobotSpellingAnswer', () => {
+  function startWithQuestion() {
+    const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, ROBOT]))
+    const question = gameManager.generateSpellingQuestion(game)
+    return { game, question }
+  }
+
+  it('机器人提交正确答案返回 round_result', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.handleRobotSpellingAnswer(ROOM_ID, question.questionId)
+
+    expect(result).not.toBeNull()
+    expect(result.action).toBe('round_result')
+    expect(result.winner).toBe(ROBOT)
+    expect(result.scores[ROBOT]).toBe(1)
+  })
+
+  it('过期题目返回 null', () => {
+    const { question } = startWithQuestion()
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word)
+    const result = gameManager.handleRobotSpellingAnswer(ROOM_ID, question.questionId)
+    expect(result).toBeNull()
+  })
+
+  it('算术游戏返回 null', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    const result = gameManager.handleRobotSpellingAnswer(ROOM_ID, 'q1')
+    expect(result).toBeNull()
+  })
+
+  it('机器人先到 5 分触发 match_result', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, ROBOT]))
+
+    for (let i = 0; i < 5; i++) {
+      game.currentQuestion = null
+      const q = gameManager.generateSpellingQuestion(game)
+      const result = gameManager.handleRobotSpellingAnswer(ROOM_ID, q.questionId)
+      if (result.action === 'match_result') {
+        expect(result.matchWinner).toBe(ROBOT)
+        expect(result.scores[ROBOT]).toBe(5)
+        return
+      }
+    }
+    expect(true).toBe(false)
+  })
+})

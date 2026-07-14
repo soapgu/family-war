@@ -1,4 +1,5 @@
 const roomManager = require('./roomManager')
+const words = require('../data/words.json')
 
 const CHOICES = ['rock', 'paper', 'scissors']
 
@@ -41,11 +42,12 @@ class GameManager {
    * 创建新游戏（统一入口）
    * @param {string} roomId
    * @param {string[]} playerIds
-   * @param {'rps'|'arithmetic'} [type='rps']
-   * @returns {Game|ArithmeticGame}
+   * @param {'rps'|'arithmetic'|'spelling'} [type='rps']
+   * @param {string} [difficulty]
+   * @returns {Game|ArithmeticGame|SpellingGame}
    */
-  createGame(roomId, playerIds, type = 'rps') {
-    /** @type {Game|ArithmeticGame} */
+  createGame(roomId, playerIds, type = 'rps', difficulty) {
+    /** @type {Game|ArithmeticGame|SpellingGame} */
     const game = {
       id: `game_${Date.now()}_${roomId}`,
       roomId,
@@ -57,9 +59,13 @@ class GameManager {
       status: 'playing',
     }
 
-    if (type === 'arithmetic') {
+    if (type === 'arithmetic' || type === 'spelling') {
       game.currentQuestion = null
       game.answeredThisRound = {}
+      if (type === 'spelling') {
+        game.difficulty = difficulty || 'easy'
+        game.usedWords = []
+      }
     } else {
       game.moves = {}
     }
@@ -350,6 +356,190 @@ class GameManager {
     if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) return null
     return this.submitArithmeticAnswer(roomId, roomManager.ROBOT_ID, questionId, game.currentQuestion.correctAnswer)
   }
+
+  // ==================== 默写引擎 ====================
+
+  /**
+   * 根据单词和难度生成填空字符串
+   * easy: 暴露 ceil(50%) 个字母
+   * normal: 暴露 1-2 个字母
+   * hard: 全部隐藏
+   * @param {string} word
+   * @param {'easy'|'normal'|'hard'} difficulty
+   * @returns {string} 空格分隔的填空串，如 "a _ _ l _"
+   */
+  generateBlanks(word, difficulty) {
+    const len = word.length
+    let showCount
+    if (difficulty === 'easy') {
+      showCount = Math.ceil(len * 0.5)
+    } else if (difficulty === 'normal') {
+      showCount = Math.min(len, 1 + Math.floor(Math.random() * 2))
+    } else {
+      showCount = 0
+    }
+
+    const positions = Array.from({ length: len }, (_, i) => i)
+    for (let i = 0; i < showCount; i++) {
+      const j = i + Math.floor(Math.random() * (len - i))
+      ;[positions[i], positions[j]] = [positions[j], positions[i]]
+    }
+    const posSet = new Set(positions.slice(0, showCount))
+
+    return word.split('').map((ch, i) => (posSet.has(i) ? ch : '_')).join(' ')
+  }
+
+  /**
+   * 为指定默写游戏生成一道新题
+   * @param {SpellingGame} game
+   * @returns {SpellingQuestion}
+   */
+  generateSpellingQuestion(game) {
+    let available = words.filter((w) => !game.usedWords.includes(w))
+    if (available.length === 0) {
+      game.usedWords = []
+      available = words
+    }
+    const word = available[Math.floor(Math.random() * available.length)]
+    game.usedWords.push(word)
+    const blanks = this.generateBlanks(word, game.difficulty)
+    const question = {
+      questionId: `q_${Date.now()}`,
+      word,
+      wordLength: word.length,
+      blanks,
+      unsplashImageUrl: '',
+      round: game.round,
+    }
+    game.currentQuestion = question
+    game.answeredThisRound = {}
+    return question
+  }
+
+  /**
+   * 提交默写答案
+   * @param {string} roomId
+   * @param {string} socketId
+   * @param {string} questionId
+   * @param {string} answer
+   * @returns {SpellingAnswerResult}
+   */
+  submitSpellingAnswer(roomId, socketId, questionId, answer) {
+    const room = roomManager.getRoom(roomId)
+    if (!room || !room.game || room.game.type !== 'spelling') {
+      return { action: 'error', message: '默写游戏不存在' }
+    }
+
+    const game = room.game
+
+    if (game.status !== 'playing') {
+      return { action: 'error', message: '比赛已结束' }
+    }
+
+    if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) {
+      return { action: 'error', message: '题目已过期' }
+    }
+
+    if (!game.players.includes(socketId)) {
+      return { action: 'error', message: '你不是本局玩家' }
+    }
+
+    if (game.answeredThisRound[socketId] !== undefined) {
+      return { action: 'error', message: '你已经回答过本题' }
+    }
+
+    game.answeredThisRound[socketId] = answer
+
+    if (answer.toLowerCase() !== game.currentQuestion.word.toLowerCase()) {
+      return {
+        action: 'waiting',
+        correctAnswer: game.currentQuestion.word,
+        word: game.currentQuestion.word,
+        yourAnswer: answer,
+      }
+    }
+
+    game.scores[socketId]++
+    const round = game.currentQuestion.round
+    const word = game.currentQuestion.word
+    const blanks = game.currentQuestion.blanks
+
+    game.history.push({
+      round,
+      questionId,
+      word,
+      blanks,
+      correctAnswer: word,
+      winner: socketId,
+      answeredBy: { ...game.answeredThisRound },
+    })
+
+    game.currentQuestion = null
+    game.round++
+
+    if (game.scores[socketId] >= 5) {
+      game.status = 'match_end'
+
+      const ranking = [...game.players]
+        .map((id) => ({
+          playerId: id,
+          nickname: room.players[id]?.nickname || id,
+          score: game.scores[id] || 0,
+        }))
+        .sort((a, b) => b.score - a.score || a.playerId.localeCompare(b.playerId))
+        .map((entry, idx) => ({ rank: idx + 1, ...entry }))
+
+      this.matchHistory.push({
+        id: game.id,
+        roomId,
+        type: 'spelling',
+        players: [...game.players],
+        playerNames: Object.fromEntries(
+          game.players.map((id) => [id, room?.players[id]?.nickname || id])
+        ),
+        scores: { ...game.scores },
+        matchWinner: socketId,
+        matchWinnerName: room?.players[socketId]?.nickname || socketId,
+        ranking,
+        history: [...game.history],
+        endedAt: Date.now(),
+      })
+
+      return {
+        action: 'match_result',
+        matchWinner: socketId,
+        scores: { ...game.scores },
+        ranking,
+        history: [...game.history],
+        answeredBy: { ...game.answeredThisRound },
+      }
+    }
+
+    return {
+      action: 'round_result',
+      round,
+      questionId,
+      word,
+      blanks,
+      correctAnswer: word,
+      winner: socketId,
+      scores: { ...game.scores },
+      answeredBy: { ...game.answeredThisRound },
+    }
+  }
+
+  /**
+   * 机器人自动提交正确单词（20 秒后由 handler 调用）
+   * @param {string} roomId
+   * @param {string} questionId
+   * @returns {SpellingAnswerResult|null}
+   */
+  handleRobotSpellingAnswer(roomId, questionId) {
+    const game = this.getGame(roomId)
+    if (!game || game.type !== 'spelling') return null
+    if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) return null
+    return this.submitSpellingAnswer(roomId, roomManager.ROBOT_ID, questionId, game.currentQuestion.word)
+  }
 }
 
 const gameManager = new GameManager()
@@ -387,6 +577,42 @@ module.exports = gameManager
  * @property {Object<string, number>} answeredThisRound - { socketId: answer }
  * @property {Array<{round: number, questionId: string, expression: string, correctAnswer: number, winner: string, answeredBy: Object<string, number>}>} history
  * @property {'playing'|'match_end'} status
+ *
+ * @typedef {Object} SpellingGame
+ * @property {string} id
+ * @property {string} roomId
+ * @property {'spelling'} type
+ * @property {string[]} players
+ * @property {number} round
+ * @property {Object<string, number>} scores
+ * @property {'easy'|'normal'|'hard'} difficulty
+ * @property {{ questionId: string, word: string, wordLength: number, blanks: string, unsplashImageUrl: string, round: number }|null} currentQuestion
+ * @property {Object<string, string>} answeredThisRound - { socketId: answer }
+ * @property {Array} history
+ * @property {'playing'|'match_end'} status
+ *
+ * @typedef {Object} SpellingQuestion
+ * @property {string} questionId
+ * @property {string} word
+ * @property {number} wordLength
+ * @property {string} blanks
+ * @property {string} unsplashImageUrl
+ * @property {number} round
+ *
+ * @typedef {Object} SpellingAnswerResult
+ * @property {'waiting'|'round_result'|'match_result'|'error'} action
+ * @property {string} [message]
+ * @property {number} [round]
+ * @property {string} [questionId]
+ * @property {string} [word]
+ * @property {string} [blanks]
+ * @property {string} [correctAnswer]
+ * @property {string} [winner]
+ * @property {Object<string, number>} [scores]
+ * @property {string} [matchWinner]
+ * @property {Array<{rank: number, playerId: string, nickname: string, score: number}>} [ranking]
+ * @property {Array} [history]
+ * @property {Object<string, string>} [answeredBy]
  *
  * @typedef {Object} SubmitMoveResult
  * @property {'waiting'|'round_result'|'match_result'|'error'} action

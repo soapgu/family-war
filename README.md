@@ -443,15 +443,15 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 | `room:state` | `{ ..., gameMode: 'rps' }` | `{ ..., gameMode: 'arithmetic' }` | `{ ..., gameMode: 'spelling', spellingDifficulty: 'easy' \| 'normal' \| 'hard' }` |
 | `player:joined` | `{ nickname }` | 相同 | 相同 |
 | `player:left` | `{ socketId }` | 相同 | 相同 |
-| `game:start` | `{ gameType: 'rps', opponent, round }` | `{ gameType: 'arithmetic', players: [...], round, firstQuestion: { questionId, expression, round } }` | `{ gameType: 'spelling', players: [...], round, difficulty, firstQuestion: { questionId, wordLength, blanks, shownPositions, unsplashImageUrl, round } }` |
-| `game:question` | — | `{ questionId, expression, round }` | `{ questionId, wordLength, blanks, shownPositions, unsplashImageUrl, round }` |
+| `game:start` | `{ gameType: 'rps', opponent, round }` | `{ gameType: 'arithmetic', players: [...], round, firstQuestion: { questionId, expression, round } }` | `{ gameType: 'spelling', players: [...], round, difficulty, firstQuestion: { questionId, wordLength, blanks, unsplashImageUrl, round } }` |
+| `game:question` | — | `{ questionId, expression, round }` | `{ questionId, wordLength, blanks, unsplashImageUrl, round }` |
 | `game:waiting` | 等待对手出拳 | 等待其他人 / 机器人倒计时 | 等待其他人 / 机器人倒计时 |
-| `game:roundResult` | `{ round, winner, yourMove, oppMove, scores }` | `{ gameType: 'arithmetic', round, questionId, expression, correctAnswer, yourAnswer, winner, scores }` | `{ gameType: 'spelling', round, questionId, word, correctAnswer, yourAnswer, winner, scores }` |
+| `game:roundResult` | `{ round, winner, yourMove, oppMove, scores }` | `{ gameType: 'arithmetic', round, questionId, expression, correctAnswer, yourAnswer, winner, scores }` | `{ gameType: 'spelling', round, questionId, word, blanks, correctAnswer, yourAnswer, winner, scores }` |
 | `game:matchResult` | `{ gameType: 'rps', matchWinner, scores, history }` | `{ gameType: 'arithmetic', matchWinner, scores, ranking, history }` | `{ gameType: 'spelling', matchWinner, scores, ranking, history }` |
 | `game:cancelled` | `{ message }` | 相同 | 相同 |
 | `game:forfeited` | `{ message }` | 相同 | 相同 |
 | `game:error` | `{ message }` | 相同 | 相同 |
-| `game:answerAck` | — | `{ questionId, correct, correctAnswer, expression, yourAnswer }` | `{ questionId, correct, correctAnswer, yourAnswer }` |
+| `game:answerAck` | — | `{ questionId, correct, correctAnswer, expression, yourAnswer }` | `{ questionId, correct, correctAnswer, word, yourAnswer }` |
 
 ### room:state 新增字段
 
