@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import useSocket from '../hooks/useSocket'
 import ArithmeticBoard from '../components/ArithmeticBoard'
 
-jest.mock('../hooks/useSocket')
+vi.mock('../hooks/useSocket')
 
 function emitSocketEvent(socket, event, data) {
   const cb = socket.on.mock.calls.find(([e]) => e === event)?.[1]
@@ -17,11 +17,11 @@ const PLAYERS = [
 const GAME_INFO = { players: PLAYERS }
 
 function renderBoard() {
-  return render(<ArithmeticBoard gameInfo={GAME_INFO} onFinish={jest.fn()} />)
+  return render(<ArithmeticBoard gameInfo={GAME_INFO} onFinish={vi.fn()} />)
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 it('renders title', () => {
@@ -126,7 +126,7 @@ it('shows answerAck feedback on wrong answer', async () => {
 
 it('calls onFinish on game:cancelled', async () => {
   const socket = useSocket()
-  const onFinish = jest.fn()
+  const onFinish = vi.fn()
   render(<ArithmeticBoard gameInfo={GAME_INFO} onFinish={onFinish} />)
   await waitFor(() => emitSocketEvent(socket, 'game:cancelled', { message: '比赛已取消' }))
   expect(onFinish).toHaveBeenCalled()

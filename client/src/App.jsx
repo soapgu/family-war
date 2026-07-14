@@ -5,7 +5,7 @@ import Home from './pages/Home'
 import Room from './pages/Room'
 import Admin from './pages/Admin'
 
-const BASE_URL = process.env.PUBLIC_URL || ''
+const BASE_URL = import.meta.env.BASE_URL || ''
 const BGM_LOBBY = BASE_URL + '/bgm.mp3'
 const BGM_BATTLE = BASE_URL + '/bgm_battle.mp3'
 const BGM_RESULT = BASE_URL + '/bgm_result.mp3'

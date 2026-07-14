@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import useSocket from '../hooks/useSocket'
 import Room from '../pages/Room'
 
-jest.mock('../hooks/useSocket')
+vi.mock('../hooks/useSocket')
 
 const MOCK_ROOM_STATE = {
   id: 'default',
@@ -23,13 +23,13 @@ const MOCK_ROOM_STATE = {
 
 function renderRoom(roomState = MOCK_ROOM_STATE) {
   return render(
-    <Room nickname="小明" roomState={roomState} onBack={jest.fn()} />
+    <Room nickname="小明" roomState={roomState} onBack={vi.fn()} />
   )
 }
 
 describe('Room', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('renders room title', () => {
@@ -105,7 +105,7 @@ describe('Room', () => {
   })
 
   it('calls onBack when back button is clicked', async () => {
-    const onBack = jest.fn()
+    const onBack = vi.fn()
     render(<Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} />)
 
     await userEvent.click(screen.getByText('返回首页'))
@@ -114,7 +114,7 @@ describe('Room', () => {
 
   it('emits room:leave when exit button is clicked', async () => {
     const socket = useSocket()
-    const onBack = jest.fn()
+    const onBack = vi.fn()
     render(<Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} />)
 
     await userEvent.click(screen.getByText('退出房间'))

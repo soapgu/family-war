@@ -2,10 +2,10 @@ const listeners = {}
 
 const mockSocket = {
   id: 'test-socket-id',
-  on: jest.fn((event, cb) => { listeners[event] = cb }),
-  off: jest.fn(),
-  emit: jest.fn(),
-  close: jest.fn(),
+  on: vi.fn((event, cb) => { listeners[event] = cb }),
+  off: vi.fn(),
+  emit: vi.fn(),
+  close: vi.fn(),
 }
 
 export function triggerSocketEvent(event, data) {

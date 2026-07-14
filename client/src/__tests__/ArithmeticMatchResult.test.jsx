@@ -29,15 +29,15 @@ function renderResult(props = {}) {
       ranking={RANKING}
       history={HISTORY}
       myId="s1"
-      onBack={jest.fn()}
-      onRematch={jest.fn()}
+      onBack={vi.fn()}
+      onRematch={vi.fn()}
       {...props}
     />
   )
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 it('shows victory', () => {
@@ -79,14 +79,14 @@ it('shows un-answered player as — in expanded collapse', () => {
 })
 
 it('calls onBack when back button clicked', () => {
-  const onBack = jest.fn()
+  const onBack = vi.fn()
   renderResult({ onBack })
   fireEvent.click(screen.getByText('返回房间'))
   expect(onBack).toHaveBeenCalled()
 })
 
 it('calls onRematch when rematch button clicked', () => {
-  const onRematch = jest.fn()
+  const onRematch = vi.fn()
   renderResult({ onRematch })
   fireEvent.click(screen.getByText('再来一局'))
   expect(onRematch).toHaveBeenCalled()

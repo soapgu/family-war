@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client'
 
 const host = window.location.hostname
-const isDev = process.env.NODE_ENV === 'development'
+const isDev = import.meta.env.DEV
 const serverUrl = isDev ? `http://${host}:4000` : '/'
 const socket = io(serverUrl, {
   transports: ['websocket', 'polling'],

@@ -1,16 +1,16 @@
-import '@testing-library/jest-dom'
+import '@testing-library/jest-dom/vitest'
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: jest.fn().mockImplementation((query) => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
   })),
 })
 
@@ -23,21 +23,21 @@ class MockAudioContext {
     return {
       type: 'sine',
       frequency: {
-        setValueAtTime: jest.fn(),
-        linearRampToValueAtTime: jest.fn(),
+        setValueAtTime: vi.fn(),
+        linearRampToValueAtTime: vi.fn(),
       },
-      connect: jest.fn(),
-      start: jest.fn(),
-      stop: jest.fn(),
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
     }
   }
   createGain() {
     return {
       gain: {
-        setValueAtTime: jest.fn(),
-        linearRampToValueAtTime: jest.fn(),
+        setValueAtTime: vi.fn(),
+        linearRampToValueAtTime: vi.fn(),
       },
-      connect: jest.fn(),
+      connect: vi.fn(),
     }
   }
   resume() { return Promise.resolve() }

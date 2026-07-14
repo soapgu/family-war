@@ -1,12 +1,12 @@
 {
   "name": "family-war",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "private": true,
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run start --prefix client\"",
     "server": "npm run dev --prefix server",
     "client": "npm run start --prefix client",
-    "test": "concurrently -n server,client -c blue,green \"npm test --prefix server -- --verbose --no-cache\" \"npm test --prefix client -- --watchAll=false --no-cache\"",
+    "test": "concurrently -n server,client -c blue,green \"npm test --prefix server -- --verbose --no-cache\" \"npm test --prefix client\"",
     "test:integration": "npm run test:integration --prefix server"
   },
   "devDependencies": {
