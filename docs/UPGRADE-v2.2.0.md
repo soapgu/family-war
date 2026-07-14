@@ -61,6 +61,7 @@ Vite 严格遵循文件扩展名的语义：
 | 构建输出在 `dist/` 但 nginx 等 `build/` | Vite 默认输出目录不同 | 配置 `build.outDir: 'build'` |
 | Vite 不自动打开浏览器 | Vite 无默认行为 | 配置 `server.open: { app: 'Google Chrome' }` |
 | `customize-cra` `config-overrides.js` 废弃 | 不再需要 webpack override | 直接删除 |
+| `package.json` 的 `homepage` 字段被删除 | CRA 用此处设子路径，Vite 不识别 | 改为 `vite.config.js` 的 `base: '/family-war/'` |
 
 ### 1.4 Jest → Vitest 迁移
 
@@ -71,6 +72,53 @@ Vite 严格遵循文件扩展名的语义：
 | `jest.clearAllMocks()` 未定义 | 同上 | 替换为 `vi.clearAllMocks()` |
 | `--watchAll=false` 未知选项 | Jest CLI 参数，Vitest 不识别 | 从根 `package.json` 的 test 脚本移除 |
 | `setupTests.js` 不生效 | CRA 自动加载，Vite 不会 | 改为 `setup-vitest.js`，在 `vite.config.js` 的 `test.setupFiles` 中指定 |
+
+### 1.5 迁移修改清单
+
+#### 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `client/vite.config.js` | Vite 配置（插件 / 代理 / 构建 / 测试） |
+| `client/index.html` | 从 `public/` 移出，`%PUBLIC_URL%` → `./`，添加 `<script type="module">` |
+| `client/src/setup-vitest.js` | Vitest 全局 setup（替代 `setupTests.js`） |
+| `docs/UPGRADE-v2.2.0.md` | 本升级记录 |
+
+#### 删除文件
+
+| 文件 | 说明 |
+|------|------|
+| `client/src/setupProxy.js` | CRA 代理，由 `vite.config.js` 的 `server.proxy` 替代 |
+| `client/src/setupTests.js` | CRA 测试 setup，由 `setup-vitest.js` 替代 |
+| `client/config-overrides.js` | `customize-cra` 配置，Vite 无需 override |
+| `client/public/index.html` | 移至根目录 |
+
+#### 重命名文件（`.js` → `.jsx`）
+
+| 文件 | 原因 |
+|------|------|
+| `src/App.js` → `App.jsx` | 含 JSX |
+| `src/index.js` → `index.jsx` | 含 JSX |
+| `src/pages/Admin.js` → `Admin.jsx` | 含 JSX |
+| `src/pages/Home.js` → `Home.jsx` | 含 JSX |
+| `src/pages/Room.js` → `Room.jsx` | 含 JSX |
+| `src/components/*.js` → `*.jsx`（10 个文件） | 含 JSX |
+| `src/__tests__/*.test.js` → `*.test.jsx`（6 个文件） | 含 JSX |
+
+#### 修改文件
+
+| 文件 | 变更内容 |
+|------|----------|
+| `client/package.json` | 移除 CRA 依赖，新增 Vite / Vitest 依赖 |
+| `server/package.json` | 版本号 1.0.0 → 2.2.0 |
+| `package.json`（根） | 版本号 + 移除 test 脚本中的 Jest 参数 |
+| `client/src/App.jsx` | `process.env.PUBLIC_URL` → `import.meta.env.BASE_URL` |
+| `client/src/pages/Admin.jsx` | 同上 |
+| `client/src/components/GameBoard.jsx` | 同上 |
+| `client/src/hooks/useSocket.js` | `process.env.NODE_ENV` → `import.meta.env.DEV` |
+| `client/src/hooks/__mocks__/useSocket.js` | `jest.fn` → `vi.fn` |
+| `client/.gitignore` | `/build` → `/build` + `/dist` |
+| `client/src/App.jsx`（含 `<BrowserRouter basename>`） | 保持 `/family-war` 不变 |
 
 ---
 
