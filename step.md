@@ -212,9 +212,9 @@ location /family-war/socket.io/ {
 | 1a | 词库：纯单词数组 | `server/src/data/words.json` | ✅ |
 | 1b | 新增 `unsplash-js` 依赖（服务端拉取图片 URL） | `server/package.json` | ✅ |
 | 1c | gameManager 新增 `generateBlanks` / `generateSpellingQuestion` / `submitSpellingAnswer` / `handleRobotSpellingAnswer` | `gameManager.js` | ✅ |
-| 1d | handler：`game:challenge` 增加 `mode==='spelling'` 分支 + robot 定时器 | `handler.js` | ⬜ |
-| 1e | roomManager `setGameMode` 允许 `'spelling'`，存储 `spellingDifficulty` | `roomManager.js` | ⬜ |
-| 1f | 测试：spelling 单元测试 + 集成测试 | `__tests__/*.test.js`, `tests/integration.js` | ⬜ |
+| 1d | handler：`game:challenge` 增加 `mode==='spelling'` 分支 + robot 定时器 + answer 分流 + spelling 广播函数 | `handler.js` | ✅ |
+| 1e | roomManager `setGameMode` 允许 `'spelling'`，存储 `spellingDifficulty` | `roomManager.js` | ✅ |
+| 1f | 测试：spelling 集成测试（56 断言） | `tests/integration.js` | ✅ |
 
 ### Phase 2: 客户端兼容（不改 UI）
 

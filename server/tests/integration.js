@@ -220,6 +220,66 @@ async function run() {
 
   console.log('')
 
+  // ========== 7. 默写模式集成测试 ==========
+
+  // 清掉算术残局（只答了 3 题，未结束）
+  s1.emit('game:forfeit')
+
+  // 重新选角色
+  s1.emit('role:select', { role: '爸爸' })
+  await waitForRoomState(s1, (s) => s.roles['爸爸']?.nickname === '小明')
+  s2.emit('role:select', { role: '妈妈' })
+  await waitForRoomState(s2, (s) => s.roles['妈妈']?.nickname === '小红')
+
+  // 切换默写模式 + 难度
+  s1.emit('game:setMode', { mode: 'spelling', difficulty: 'easy' })
+  const spellingModeState = await waitForRoomState(s1, (s) => s.gameMode === 'spelling')
+  assert(spellingModeState.gameMode === 'spelling', '切换默写模式')
+  assert(spellingModeState.spellingDifficulty === 'easy', '储存难度 easy')
+
+  // 发起默写挑战
+  s1.emit('game:challenge', { mode: 'spelling' })
+  const [ss1, ss2] = await Promise.all([
+    waitFor(s1, 'game:start'),
+    waitFor(s2, 'game:start'),
+  ])
+  assert(ss1.gameType === 'spelling', '默写 game:start 含 gameType')
+  assert(ss1.players.length === 3, '3 名玩家参赛（含机器人）')
+  assert(ss1.difficulty === 'easy', 'game:start 含难度')
+  assert(ss1.firstQuestion, 'game:start 含 firstQuestion')
+  assert(typeof ss1.firstQuestion.wordLength === 'number', 'firstQuestion 含 wordLength')
+  assert(typeof ss1.firstQuestion.blanks === 'string', 'firstQuestion 含 blanks')
+  assert(ss1.firstQuestion.blanks.includes('_'), 'blanks 包含下划线')
+  assert(ss1.firstQuestion.unsplashImageUrl !== undefined, 'firstQuestion 含 unsplashImageUrl')
+
+  const sq1 = ss1.firstQuestion
+
+  // s2 故意答错 → 捕获正确单词
+  const spellingAckPromise = waitFor(s2, 'game:answerAck')
+  s2.emit('game:answer', { questionId: sq1.questionId, answer: 'wrongguess' })
+  const spellingAck = await spellingAckPromise
+  assert(!spellingAck.correct, 'answerAck 标记为错误')
+  assert(typeof spellingAck.correctAnswer === 'string', 'answerAck 含正确单词')
+  assert(spellingAck.word === spellingAck.correctAnswer, 'answerAck 含 word 字段')
+
+  // s1 用正确单词回答
+  const sq2Promise = waitFor(s1, 'game:question')
+  const srr1Promise = waitFor(s1, 'game:roundResult')
+  s1.emit('game:answer', { questionId: sq1.questionId, answer: spellingAck.correctAnswer })
+  const srr1 = await srr1Promise
+  assert(srr1.gameType === 'spelling', 'roundResult 含 gameType')
+  assert(srr1.winner === s1.id, '小明答对')
+  assert(srr1.word === spellingAck.correctAnswer, 'roundResult 含 word')
+  assert(typeof srr1.blanks === 'string', 'roundResult 含 blanks')
+
+  // 验证下一题广播
+  const sq2 = await sq2Promise
+  assert(typeof sq2.wordLength === 'number', '下一题含 wordLength')
+  assert(typeof sq2.blanks === 'string', '下一题含 blanks')
+  assert(sq2.round === 2, '下一题 round 为 2')
+
+  console.log('')
+
   // ========== 结果 ==========
 
   s1.close()

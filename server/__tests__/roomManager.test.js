@@ -329,6 +329,32 @@ describe('setGameMode', () => {
     const { roomState } = roomManager.setGameMode('default', 'arithmetic')
     expect(roomState.gameMode).toBe('arithmetic')
   })
+
+  it('切换到 spelling 模式', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    const { roomState } = roomManager.setGameMode('default', 'spelling', 'easy')
+    expect(roomState.gameMode).toBe('spelling')
+  })
+
+  it('spelling 模式存储难度', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    roomManager.setGameMode('default', 'spelling', 'hard')
+    const state = roomManager.getRoomState('default')
+    expect(state.spellingDifficulty).toBe('hard')
+  })
+
+  it('spelling 默认不设置难度时 difficulty 为 undefined', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    roomManager.setGameMode('default', 'spelling')
+    const state = roomManager.getRoomState('default')
+    expect(state.spellingDifficulty).toBeUndefined()
+  })
 })
 
 // ==================== 游戏状态挂钩 ====================

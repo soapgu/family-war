@@ -174,14 +174,15 @@ class RoomManager {
    * 设置房间游戏模式
    * 仅允许在无进行中比赛时切换
    * @param {string} roomId
-   * @param {'rps'|'arithmetic'} mode
+   * @param {'rps'|'arithmetic'|'spelling'} mode
+   * @param {'easy'|'normal'|'hard'} [difficulty]
    * @returns {{ error?: string, roomState?: RoomState }}
    */
-  setGameMode(roomId, mode) {
+  setGameMode(roomId, mode, difficulty) {
     const room = this.getRoom(roomId)
     if (!room) return { error: '房间不存在' }
 
-    if (mode !== 'rps' && mode !== 'arithmetic') {
+    if (mode !== 'rps' && mode !== 'arithmetic' && mode !== 'spelling') {
       return { error: '无效的游戏模式' }
     }
 
@@ -190,6 +191,9 @@ class RoomManager {
     }
 
     room.gameMode = mode
+    if (mode === 'spelling' && difficulty) {
+      room.spellingDifficulty = difficulty
+    }
     return { roomState: this.getRoomState(roomId) }
   }
 
@@ -208,6 +212,7 @@ class RoomManager {
     return {
       id: room.id,
       gameMode: room.gameMode,
+      spellingDifficulty: room.spellingDifficulty || undefined,
       roles: Object.fromEntries(
         Object.entries(room.roles).map(([role, socketId]) => [
           role,
@@ -323,7 +328,7 @@ module.exports.ROBOT_ID = ROBOT_ID
 /**
  * @typedef {Object} Room
  * @property {string} id
- * @property {'rps'|'arithmetic'} gameMode
+ * @property {'rps'|'arithmetic'|'spelling'} gameMode
  * @property {Object<string, string|null>} roles - 角色名 → socketId
  * @property {Object<string, Player>} players - socketId → 玩家信息
  * @property {object|null} game - 进行中的游戏
@@ -336,7 +341,8 @@ module.exports.ROBOT_ID = ROBOT_ID
  *
  * @typedef {Object} RoomState
  * @property {string} id
- * @property {'rps'|'arithmetic'} gameMode
+ * @property {'rps'|'arithmetic'|'spelling'} gameMode
+ * @property {'easy'|'normal'|'hard'} [spellingDifficulty]
  * @property {Object<string, {id: string, nickname: string}|null>} roles
  * @property {Array<{id: string, nickname: string, role: string|null, online: boolean}>} players
  * @property {object|null} game
