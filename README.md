@@ -252,7 +252,7 @@ App (BrowserRouter)
 | 步骤 | 行为 | 通讯 |
 |------|------|------|
 | 切换模式 | 在房间内点击 "默写达人" 模式切换 + 选择难度（简单/普通/困难） | `socket.emit('game:setMode', { mode: 'spelling', difficulty })` |
-| 开始游戏 | 点击 ✍️ 开始默写挑战按钮（需至少 1 人已选角色） | `socket.emit('game:challenge', { mode: 'spelling' })` |
+| 开始游戏 | 🔤 开始默写挑战按钮（UI 已完成，功能开发中暂禁用） | `socket.emit('game:challenge', { mode: 'spelling' })` |
 | 出题 | 第一题随 `game:start` 下发；TTS 自动朗读单词 + Unsplash 图片示意 + 填空展示 | 客户端收到 `game:start.firstQuestion`（首题）或 `game:question`（后续） |
 | 抢答 | 在输入框中填写完整单词并提交 | `socket.emit('game:answer', { questionId, answer })` |
 | 判定 | 首位答对者得 1 分；机器人固定 20 秒后自动答对 | 客户端收到 `game:roundResult` |

@@ -237,14 +237,14 @@ location /family-war/socket.io/ {
 | 1h-6 | admin 路由新增 `GET/POST /api/admin/word-config` + `POST /api/admin/word-images/replace/:word` | `server/src/routes/admin.js` | ✅ |
 | 1h-7 | 测试：mock wordBank 适配新结构 | `server/__tests__/gameManager.test.js`, `server/__tests__/unsplashClient.test.js` | ✅ |
 
-### Phase 2: 客户端兼容（不改 UI）
+### Phase 2: 客户端兼容（不改 UI，spelling 按钮暂禁用）
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 2a | Room.js Segmented 增加 ✍️ 默写 + 难度选择控件 | `Room.js` | ⬜ |
-| 2b | MatchResult.js 增加 `gameType === 'spelling'` case | `MatchResult.js` | ⬜ |
-| 2c | App.js BGM 切换兼容 `game.type === 'spelling'` | `App.js` | ⬜ |
-| 2d | 验证：全部旧测试通过 | — | ⬜ |
+| 2a | Room.js Segmented 增加 🔤 默写项；spelling 模式显示"开始比赛"按钮但设为 `disabled`（开发中） | `Room.jsx` | ✅ |
+| 2b | MatchResult.js 增加 `gameType === 'spelling'` case，复用 ArithmeticMatchResult | `MatchResult.jsx` | ✅ |
+| 2c | App.js BGM 切换兼容（已通过 `roomState.game.status` 通用处理，无需改动） | `App.jsx` | N/A |
+| 2d | 验证：全部旧测试通过 + 客户端构建通过 | — | ✅ |
 
 ### Phase 3: 客户端升级
 

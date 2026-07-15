@@ -200,7 +200,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
         </div>
 
         {gameInfo ? (
-          gameInfo.gameType === 'arithmetic' ? (
+          gameInfo.gameType === 'arithmetic' || gameInfo.gameType === 'spelling' ? (
             <ArithmeticBoard gameInfo={gameInfo} onFinish={() => setGameInfo(null)} />
           ) : (
             <GameBoard key={gameKey}
@@ -220,6 +220,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                 options={[
                   { label: '✊ 猜拳', value: 'rps' },
                   { label: '🧮 算术', value: 'arithmetic' },
+                  { label: '🔤 默写', value: 'spelling' },
                 ]}
                 onChange={(value) => socket.emit('game:setMode', { mode: value })}
               />
@@ -285,16 +286,17 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
 
             {/* Challenge Section */}
             {myRole && (
-              roomState?.gameMode === 'arithmetic' ? (
+              roomState?.gameMode === 'arithmetic' || roomState?.gameMode === 'spelling' ? (
                 <div style={{ marginTop: 32, textAlign: 'center', animation: 'fadeInUp 0.4s ease' }}>
                   <Typography.Text strong style={{ fontSize: 15, display: 'block', marginBottom: 16 }}>
-                    算术比赛 🧮
+                    {roomState?.gameMode === 'spelling' ? '默写比赛 ✏️' : '算术比赛 🧮'}
                   </Typography.Text>
                   <Button
                     type="primary"
                     size="large"
+                    disabled={roomState?.gameMode === 'spelling'}
                     onClick={() => {
-                      socket.emit('game:challenge', { mode: 'arithmetic' })
+                      socket.emit('game:challenge', { mode: roomState?.gameMode })
                     }}
                     style={{
                       borderRadius: 8,
@@ -304,7 +306,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                       fontWeight: 600,
                     }}
                   >
-                    开始比赛
+                    {roomState?.gameMode === 'spelling' ? '开发中...' : '开始比赛'}
                   </Button>
                 </div>
               ) : challengableRoles.length > 0 ? (

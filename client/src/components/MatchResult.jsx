@@ -7,7 +7,7 @@ function MatchResult({ visible, gameType, matchWinner, scores, history, ranking,
 
   return (
     <Modal open={visible} closable={false} footer={null} centered width={380}>
-      {gameType === 'arithmetic' ? (
+      {gameType === 'arithmetic' || gameType === 'spelling' ? (
         <ArithmeticMatchResult {...contentProps} />
       ) : (
         <RpsMatchResult {...contentProps} />
