@@ -3,6 +3,7 @@ jest.mock('../src/data/wordBank', () => ({
   getActiveWords: jest.fn(() => ['cat', 'dog', 'elephant']),
   getChapters: jest.fn(() => [{ chapter: 'Test', words: ['cat', 'dog', 'elephant'] }]),
   getConfig: jest.fn(() => ({ enabledChapters: ['Test'], disabledWords: [] })),
+  getWordSearchContext: jest.fn(() => ''),
 }))
 
 jest.mock('unsplash-js', () => ({

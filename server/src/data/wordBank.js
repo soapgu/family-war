@@ -43,4 +43,11 @@ function setConfig(updates) {
   saveConfig()
 }
 
-module.exports = { getChapters, getAllWords, getActiveWords, getConfig, setConfig }
+function getWordSearchContext(word) {
+  const chapter = chapters.find((c) => c.words.includes(word))
+  if (!chapter) return ''
+  const match = chapter.chapter.match(/:\s*(.+)/)
+  return match ? match[1] : ''
+}
+
+module.exports = { getChapters, getAllWords, getActiveWords, getConfig, setConfig, getWordSearchContext }

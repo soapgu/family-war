@@ -107,14 +107,24 @@ class UnsplashClient {
   }
 
   async _searchImageUrl(word) {
-    const result = await this.api.search.photos(word, 1, 5, {
-      orientation: 'squarish',
-    })
-    const data = await result.json()
-    const photos = data.results
-    if (!photos?.length) return ''
-    const pick = photos[Math.floor(Math.random() * photos.length)]
-    return pick.urls.small || ''
+    const context = wordBank.getWordSearchContext(word)
+    const queries = [word]
+    if (context) queries.push(`${word} ${context}`)
+    const first = word.split(' ')[0]
+    if (first !== word) queries.push(first)
+
+    for (const q of queries) {
+      const result = await this.api.search.photos(q, 1, 5, {
+        orientation: 'squarish',
+      })
+      const data = await result.json()
+      const photos = data.results
+      if (photos?.length) {
+        const pick = photos[Math.floor(Math.random() * photos.length)]
+        return pick.urls.small || ''
+      }
+    }
+    return ''
   }
 
   async _downloadImage(imageUrl, word) {
