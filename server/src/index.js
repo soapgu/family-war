@@ -3,6 +3,8 @@ const Router = require('@koa/router')
 const cors = require('@koa/cors')
 const { Server } = require('socket.io')
 const http = require('http')
+const path = require('path')
+const fs = require('fs')
 const registerHandlers = require('./socket/handler')
 const registerAdminRoutes = require('./routes/admin')
 
@@ -28,6 +30,28 @@ registerHandlers(io)
 
 // 管理接口
 registerAdminRoutes(router)
+
+const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images')
+
+/** 提供本地图片文件 */
+router.get('/api/images/:name', (ctx) => {
+  const name = ctx.params.name
+  if (!/^[\w-]+$/.test(name)) {
+    ctx.status = 400
+    ctx.body = { error: '无效的文件名' }
+    return
+  }
+
+  const filePath = path.join(IMAGES_DIR, `${name}.jpg`)
+  if (!fs.existsSync(filePath)) {
+    ctx.status = 404
+    ctx.body = { error: '图片不存在' }
+    return
+  }
+
+  ctx.type = 'image/jpeg'
+  ctx.body = fs.createReadStream(filePath)
+})
 
 const PORT = process.env.PORT || 4000
 server.listen(PORT, () => {
