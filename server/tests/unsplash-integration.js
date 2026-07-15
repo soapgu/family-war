@@ -77,7 +77,7 @@ async function run() {
     } catch {
       assert(false, `${w.word}.jpg 文件存在`)
     }
-    assert(w.url === `/api/images/${w.word}.jpg`, `${w.word} URL 格式正确`)
+    assert(w.url === `/api/images/${w.word}`, `${w.word} URL 格式正确`)
   }
 
   // ========== 5. 状态与文件一致性验证 ==========

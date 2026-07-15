@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import { App } from 'antd'
 import userEvent from '@testing-library/user-event'
 import useSocket from '../hooks/useSocket'
 import Room from '../pages/Room'
@@ -106,7 +107,7 @@ describe('Room', () => {
 
   it('calls onBack when back button is clicked', async () => {
     const onBack = vi.fn()
-    render(<Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} />)
+    render(<App><Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} /></App>)
 
     await userEvent.click(screen.getByText('返回首页'))
     expect(onBack).toHaveBeenCalled()
@@ -115,7 +116,7 @@ describe('Room', () => {
   it('emits room:leave when exit button is clicked', async () => {
     const socket = useSocket()
     const onBack = vi.fn()
-    render(<Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} />)
+    render(<App><Room nickname="小明" roomState={MOCK_ROOM_STATE} onBack={onBack} /></App>)
 
     await userEvent.click(screen.getByText('退出房间'))
     expect(socket.emit).toHaveBeenCalledWith('room:leave')

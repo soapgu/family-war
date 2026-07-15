@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Typography, Input, Button, Space, message } from 'antd'
+import { Typography, Input, Button, Space, App } from 'antd'
 import useSocket from '../hooks/useSocket'
 
 const APP_VERSION = '0.1.0'
@@ -12,6 +12,7 @@ const QUOTES = [
 
 function Home({ onEnter }) {
   const socket = useSocket()
+  const { message } = App.useApp()
   const [nickname, setNickname] = useState('')
   const [loading, setLoading] = useState(false)
 

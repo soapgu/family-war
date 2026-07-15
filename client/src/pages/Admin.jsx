@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Typography, Button, Tag, Card, Space } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 
@@ -10,11 +11,12 @@ const ROLE_EMOJI = {
 }
 
 function Admin() {
+  const navigate = useNavigate()
   const [data, setData] = useState({ rooms: [], matchHistory: [] })
 
   const fetchStatus = useCallback(async () => {
     try {
-      const BASE = import.meta.env.BASE_URL || ''
+      const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
       const res = await fetch(BASE + '/api/admin/status')
       if (res.ok) {
         setData(await res.json())
@@ -36,7 +38,10 @@ function Admin() {
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Typography.Title level={3} style={{ margin: 0 }}>后台管理</Typography.Title>
-        <Button icon={<ReloadOutlined />} onClick={fetchStatus}>刷新</Button>
+        <Space>
+          <Button onClick={() => navigate('/admin/word-config')}>词库管理</Button>
+          <Button icon={<ReloadOutlined />} onClick={fetchStatus}>刷新</Button>
+        </Space>
       </div>
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>

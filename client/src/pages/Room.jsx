@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Typography, Button, Tag, message, Space, Segmented } from 'antd'
+import { Typography, Button, Tag, Space, Segmented, App } from 'antd'
 import useSocket from '../hooks/useSocket'
 import RoleCard from '../components/RoleCard'
 import GameBoard from '../components/GameBoard'
@@ -87,6 +87,7 @@ const ROLE_COLORS = {
 
 function Room({ nickname, roomState, onBack, onReturnToRoom }) {
   const socket = useSocket()
+  const { message } = App.useApp()
   const [gameInfo, setGameInfo] = useState(null)
   const [gameKey, setGameKey] = useState(0)
   const audioCtxRef = useRef(null)

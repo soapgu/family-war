@@ -7,6 +7,10 @@ const Unsplash = require('unsplash-js').default
 
 const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images')
 
+function ts() {
+  return new Date().toLocaleTimeString('zh-CN', { hour12: false })
+}
+
 class UnsplashClient {
   constructor() {
     this.api = null
@@ -27,7 +31,7 @@ class UnsplashClient {
   }
 
   getImageUrl(word) {
-    return fs.existsSync(this._filePath(word)) ? `/api/images/${word}.jpg` : ''
+    return fs.existsSync(this._filePath(word)) ? `/api/images/${encodeURIComponent(word)}` : ''
   }
 
   getSyncRunning() {
@@ -49,7 +53,7 @@ class UnsplashClient {
       const exists = syncedSet.has(w)
       return {
         word: w,
-        url: exists ? `/api/images/${w}.jpg` : null,
+        url: exists ? `/api/images/${encodeURIComponent(w)}` : null,
         status: exists ? 'synced' : 'pending',
       }
     })
@@ -120,10 +124,14 @@ class UnsplashClient {
       const data = await result.json()
       const photos = data.results
       if (photos?.length) {
-        const pick = photos[Math.floor(Math.random() * photos.length)]
+        const idx = Math.floor(Math.random() * photos.length)
+        const pick = photos[idx]
+        console.log(`[${ts()}] [unsplash] ${word} (查询: "${q}") — 搜到 ${photos.length} 张，随机选第 ${idx + 1} 张`)
         return pick.urls.small || ''
       }
+      console.log(`[${ts()}] [unsplash] ${word} (查询: "${q}") — 0 结果，继续下一个查询`)
     }
+    console.log(`[${ts()}] [unsplash] ${word} — 所有查询均无结果`)
     return ''
   }
 

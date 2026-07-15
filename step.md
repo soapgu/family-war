@@ -251,7 +251,7 @@ location /family-war/socket.io/ {
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
 | 3a | **新建** `WordConfig.jsx` 统一词库管理页（章节/单词启用开关 + 图片预览 + 同步 + 替换图片） | `client/src/pages/WordConfig.jsx` | ⬜ |
-| 3b | `App.jsx` 增加 `/admin/words` 路由；`Admin.jsx` 增加「词库管理」导航按钮 | `App.jsx`, `Admin.jsx` | ⬜ |
+| 3b | `App.jsx` 增加 `/admin/word-config` 路由；`Admin.jsx` 增加「词库管理」导航按钮 | `App.jsx`, `Admin.jsx` | ✅ |
 | 3c | SpellingBoard.js（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效） | `SpellingBoard.js` | ⬜ |
 | 3d | SpellingMatchResult.js（终榜排名 + 每题单词回顾） | `SpellingMatchResult.js` | ⬜ |
 | 3e | 验证：默写全流程测试 | — | ⬜ |

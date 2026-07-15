@@ -47,7 +47,7 @@ describe('无 API Key', () => {
     fs = require('fs')
     fs.existsSync.mockReturnValue(true)
     const client = require('../src/unsplashClient')
-    expect(client.getImageUrl('cat')).toBe('/api/images/cat.jpg')
+    expect(client.getImageUrl('cat')).toBe('/api/images/cat')
   })
 
   it('getSyncStatus 全部 pending', () => {
@@ -337,7 +337,7 @@ describe('有 API Key', () => {
       expect(status.synced).toBe(3)
       status.words.forEach((w) => {
         expect(w.status).toBe('synced')
-        expect(w.url).toBe(`/api/images/${w.word}.jpg`)
+        expect(w.url).toBe(`/api/images/${w.word}`)
       })
     })
   })

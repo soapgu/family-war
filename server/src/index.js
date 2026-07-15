@@ -38,13 +38,14 @@ const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images')
 /** 提供本地图片文件 */
 router.get('/api/images/:name', (ctx) => {
   const name = ctx.params.name
-  if (!/^[\w-]+$/.test(name)) {
+  if (!/^[\w\s.-]+$/.test(name)) {
     ctx.status = 400
     ctx.body = { error: '无效的文件名' }
     return
   }
 
-  const filePath = path.join(IMAGES_DIR, `${name}.jpg`)
+  const baseName = name.replace(/\.jpg$/, '')
+  const filePath = path.join(IMAGES_DIR, `${baseName}.jpg`)
   if (!fs.existsSync(filePath)) {
     ctx.status = 404
     ctx.body = { error: '图片不存在' }

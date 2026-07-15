@@ -4,6 +4,10 @@ const unsplashClient = require('../unsplashClient')
 const wordBank = require('../data/wordBank')
 const config = require('../../config')
 
+function ts() {
+  return new Date().toLocaleTimeString('zh-CN', { hour12: false })
+}
+
 /**
  * 管理接口路由
  * @param {import('@koa/router')} router
@@ -40,6 +44,33 @@ function registerAdminRoutes(router) {
 
     try {
       await unsplashClient.syncAll()
+      const status = unsplashClient.getSyncStatus()
+      ctx.body = {
+        configured: true,
+        syncing: false,
+        ...status,
+      }
+    } catch (e) {
+      ctx.status = 500
+      ctx.body = { error: e.message }
+    }
+  })
+
+  router.post('/api/admin/word-images/sync-missing', async (ctx) => {
+    if (!config.unsplashAccessKey) {
+      ctx.status = 400
+      ctx.body = { error: 'UNSPLASH_ACCESS_KEY 未配置' }
+      return
+    }
+
+    if (unsplashClient.getSyncRunning()) {
+      ctx.status = 409
+      ctx.body = { error: '同步正在进行中' }
+      return
+    }
+
+    try {
+      await unsplashClient.syncMissing()
       const status = unsplashClient.getSyncStatus()
       ctx.body = {
         configured: true,
@@ -93,8 +124,10 @@ function registerAdminRoutes(router) {
       return
     }
 
+    console.log(`[${ts()}] [replace] ${word} — 开始换图`)
     try {
       await unsplashClient.syncWord(word)
+      console.log(`[${ts()}] [replace] ${word} — 完成`)
       ctx.body = { word, imageUrl: unsplashClient.getImageUrl(word) || null }
     } catch (e) {
       ctx.status = 500
