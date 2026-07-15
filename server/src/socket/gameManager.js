@@ -1,6 +1,6 @@
 const roomManager = require('./roomManager')
 const unsplashClient = require('../unsplashClient')
-const words = require('../data/words.json')
+const wordBank = require('../data/wordBank')
 
 const CHOICES = ['rock', 'paper', 'scissors']
 
@@ -370,24 +370,29 @@ class GameManager {
    * @returns {string} 空格分隔的填空串，如 "a _ _ l _"
    */
   generateBlanks(word, difficulty) {
-    const len = word.length
+    const chars = word.split('')
+    const letterIndices = chars.map((ch, i) => (ch !== ' ' ? i : -1)).filter((i) => i >= 0)
+
     let showCount
     if (difficulty === 'easy') {
-      showCount = Math.ceil(len * 0.5)
+      showCount = Math.ceil(letterIndices.length * 0.5)
     } else if (difficulty === 'normal') {
-      showCount = Math.min(len, 1 + Math.floor(Math.random() * 2))
+      showCount = Math.min(letterIndices.length, 1 + Math.floor(Math.random() * 2))
     } else {
       showCount = 0
     }
 
-    const positions = Array.from({ length: len }, (_, i) => i)
+    const positions = [...letterIndices]
     for (let i = 0; i < showCount; i++) {
-      const j = i + Math.floor(Math.random() * (len - i))
+      const j = i + Math.floor(Math.random() * (positions.length - i))
       ;[positions[i], positions[j]] = [positions[j], positions[i]]
     }
-    const posSet = new Set(positions.slice(0, showCount))
+    const shownSet = new Set(positions.slice(0, showCount))
 
-    return word.split('').map((ch, i) => (posSet.has(i) ? ch : '_')).join(' ')
+    return chars.map((ch, i) => {
+      if (ch === ' ') return '·'
+      return shownSet.has(i) ? ch : '_'
+    }).join(' ')
   }
 
   /**
@@ -396,10 +401,11 @@ class GameManager {
    * @returns {SpellingQuestion}
    */
   generateSpellingQuestion(game) {
-    let available = words.filter((w) => !game.usedWords.includes(w))
+    const activeWords = wordBank.getActiveWords()
+    let available = activeWords.filter((w) => !game.usedWords.includes(w))
     if (available.length === 0) {
       game.usedWords = []
-      available = words
+      available = activeWords
     }
     const word = available[Math.floor(Math.random() * available.length)]
     game.usedWords.push(word)

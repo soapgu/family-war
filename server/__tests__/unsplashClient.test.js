@@ -1,8 +1,13 @@
+jest.mock('../src/data/wordBank', () => ({
+  getAllWords: jest.fn(() => ['cat', 'dog', 'elephant']),
+  getActiveWords: jest.fn(() => ['cat', 'dog', 'elephant']),
+  getChapters: jest.fn(() => [{ chapter: 'Test', words: ['cat', 'dog', 'elephant'] }]),
+  getConfig: jest.fn(() => ({ enabledChapters: ['Test'], disabledWords: [] })),
+}))
+
 jest.mock('unsplash-js', () => ({
   default: jest.fn(),
 }))
-
-jest.mock('../src/data/words.json', () => ['cat', 'dog', 'elephant'])
 
 const Unsplash = require('unsplash-js').default
 

@@ -3,3 +3,4 @@ node_modules/
 *.log
 *.local.js
 server/public/images/
+server/src/data/word-config.json

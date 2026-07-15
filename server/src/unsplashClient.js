@@ -1,7 +1,8 @@
 const fs = require('fs')
 const path = require('path')
 const config = require('../config')
-const words = require('./data/words.json')
+const wordBank = require('./data/wordBank')
+const words = wordBank.getAllWords()
 const Unsplash = require('unsplash-js').default
 
 const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images')

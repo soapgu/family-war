@@ -1,12 +1,17 @@
 [
-  "cat",
-  "dog",
-  "fish",
-  "bird",
-  "book",
-  "apple",
-  "water",
-  "tiger",
-  "garden",
-  "elephant"
+  {
+    "chapter": "Chapter 1: Our school",
+    "words": [
+      "classroom",
+      "art room",
+      "computer room",
+      "music room",
+      "library",
+      "playground",
+      "garden",
+      "corridor",
+      "lift",
+      "hall"
+    ]
+  }
 ]

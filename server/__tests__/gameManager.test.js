@@ -11,6 +11,11 @@ jest.mock('../src/unsplashClient', () => ({
   getSyncRunning: jest.fn(() => false),
 }))
 
+jest.mock('../src/data/wordBank', () => ({
+  getAllWords: jest.fn(() => ['classroom', 'art room', 'library']),
+  getActiveWords: jest.fn(() => ['classroom', 'art room', 'library']),
+}))
+
 const roomManager = require('../src/socket/roomManager')
 const gameManager = require('../src/socket/gameManager')
 const unsplashClient = require('../src/unsplashClient')
@@ -699,11 +704,11 @@ describe('generateSpellingQuestion', () => {
     expect(game.answeredThisRound).toEqual({})
   })
 
-  it('题目在 words.json 词库中', () => {
+  it('题目在词库中', () => {
     const game = startSpellingGame('easy')
-    const words = require('../src/data/words.json')
+    const wordBank = require('../src/data/wordBank')
     const question = gameManager.generateSpellingQuestion(game)
-    expect(words).toContain(question.word)
+    expect(wordBank.getActiveWords()).toContain(question.word)
   })
 
   it('blanks 长度与单词一致', () => {
