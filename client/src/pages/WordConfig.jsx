@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App } from 'antd'
+import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App, Modal } from 'antd'
 import { ReloadOutlined, SyncOutlined, SoundOutlined } from '@ant-design/icons'
 
 const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
@@ -26,6 +26,12 @@ function WordConfig() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [saving, setSaving] = useState(false)
   const [savedNotify, setSavedNotify] = useState(false)
+  const [selectingWord, setSelectingWord] = useState(null)
+  const [candidates, setCandidates] = useState([])
+  const [selectedPhotoId, setSelectedPhotoId] = useState(null)
+  const [candidatesLoading, setCandidatesLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [totalCandidates, setTotalCandidates] = useState(0)
 
   const fetchConfig = useCallback(async () => {
     setLoading(true)
@@ -127,21 +133,56 @@ function WordConfig() {
     }
   }
 
-  const handleReplace = async (word) => {
+  const fetchCandidatesPage = async (word, pageNum) => {
+    setSelectedPhotoId(null)
+    setSelectingWord(word)
+    setCandidatesLoading(true)
     try {
-      const res = await fetch(BASE + `/api/admin/word-images/replace/${encodeURIComponent(word)}`, {
+      const res = await fetch(BASE + `/api/admin/word-images/candidates/${encodeURIComponent(word)}?page=${pageNum}&perPage=15`)
+      if (res.ok) {
+        const data = await res.json()
+        setCandidates(data.candidates)
+        setTotalCandidates(data.total)
+        setPage(data.page)
+      } else {
+        message.error('获取候选图片失败')
+      }
+    } catch {
+      message.error('获取候选图片请求失败')
+    } finally {
+      setCandidatesLoading(false)
+    }
+  }
+
+  const openSelector = (word) => fetchCandidatesPage(word, 1)
+
+  const handlePrevPage = () => fetchCandidatesPage(selectingWord, page - 1)
+
+  const handleNextPage = () => fetchCandidatesPage(selectingWord, page + 1)
+
+  const handleConfirmSelect = async () => {
+    if (!selectingWord || !selectedPhotoId) return
+    const photo = candidates.find(c => c.id === selectedPhotoId)
+    if (!photo) return
+    try {
+      const res = await fetch(BASE + `/api/admin/word-images/confirm/${encodeURIComponent(selectingWord)}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: photo.url }),
       })
       if (res.ok) {
-        message.success(`${word} 图片已更换`)
+        message.success(`${selectingWord} 图片已更换`)
+        setSelectingWord(null)
+        setCandidates([])
+        setSelectedPhotoId(null)
         setRefreshKey(k => k + 1)
         fetchConfig()
       } else {
         const err = await res.json()
-        message.error(err.error || '更换失败')
+        message.error(err.error || '确认换图失败')
       }
     } catch {
-      message.error('更换请求失败')
+      message.error('确认换图请求失败')
     }
   }
 
@@ -172,9 +213,6 @@ function WordConfig() {
       {data && (
         <Card style={{ marginBottom: 20 }}>
           <Space wrap>
-            <Button type="primary" icon={<SyncOutlined />} onClick={handleSyncAll} loading={syncing}>
-              同步所有图片
-            </Button>
             <Button icon={<SyncOutlined />} onClick={handleSyncMissing} loading={syncing}>
               仅同步缺失
             </Button>
@@ -271,7 +309,7 @@ function WordConfig() {
                   )}
                   <Button
                     size="small"
-                    onClick={() => handleReplace(w.word)}
+                    onClick={() => openSelector(w.word)}
                     disabled={syncing}
                   >
                     换图
@@ -290,6 +328,51 @@ function WordConfig() {
           </Button>
         </div>
       )}
+
+      <Modal
+        title={`选择 ${selectingWord || ''} 的新图片`}
+        open={!!selectingWord}
+        onCancel={() => { setSelectingWord(null); setCandidates([]); setSelectedPhotoId(null); setPage(1); setTotalCandidates(0) }}
+        width={660}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Space>
+              <Button size="small" disabled={page <= 1} onClick={handlePrevPage}>上一页</Button>
+              <Typography.Text type="secondary">
+                第 {page} / {Math.ceil(totalCandidates / 15) || 1} 页（共 {totalCandidates} 张）
+              </Typography.Text>
+              <Button size="small" disabled={page >= Math.ceil(totalCandidates / 15)} onClick={handleNextPage}>下一页</Button>
+            </Space>
+            <Button type="primary" disabled={!selectedPhotoId} onClick={handleConfirmSelect}>确认换图</Button>
+          </div>
+        }
+      >
+        <Spin spinning={candidatesLoading}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, minHeight: 330 }}>
+            {candidates.map(p => (
+              <div
+                key={p.id}
+                onClick={() => setSelectedPhotoId(p.id)}
+                style={{
+                  cursor: 'pointer',
+                  border: selectedPhotoId === p.id ? '3px solid #1677ff' : '3px solid transparent',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                }}
+              >
+                <img
+                  src={p.thumb}
+                  alt={p.alt || selectingWord || ''}
+                  style={{ width: '100%', display: 'block' }}
+                />
+                <div style={{ fontSize: 11, color: '#888', padding: '2px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {p.author}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Spin>
+      </Modal>
     </div>
   )
 }

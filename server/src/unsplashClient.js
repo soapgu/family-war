@@ -110,7 +110,7 @@ class UnsplashClient {
     }
   }
 
-  async _searchImageUrl(word) {
+  async _searchPhotos(word, perPage, page = 1) {
     const context = wordBank.getWordSearchContext(word)
     const queries = [word]
     if (context) queries.push(`${word} ${context}`)
@@ -118,21 +118,45 @@ class UnsplashClient {
     if (first !== word) queries.push(first)
 
     for (const q of queries) {
-      const result = await this.api.search.photos(q, 1, config.unsplashPerPage, {
+      const result = await this.api.search.photos(q, page, perPage, {
         orientation: 'squarish',
       })
       const data = await result.json()
-      const photos = data.results
-      if (photos?.length) {
-        const idx = Math.floor(Math.random() * photos.length)
-        const pick = photos[idx]
-        console.log(`[${ts()}] [unsplash] ${word} (查询: "${q}") — 搜到 ${photos.length} 张，随机选第 ${idx + 1} 张`)
-        return pick.urls.small || ''
+      if (data.results?.length) {
+        console.log(`[${ts()}] [unsplash] ${word} (查询: "${q}") — 搜到 ${data.results.length} 张`)
+        return { results: data.results, total: data.total }
       }
       console.log(`[${ts()}] [unsplash] ${word} (查询: "${q}") — 0 结果，继续下一个查询`)
     }
     console.log(`[${ts()}] [unsplash] ${word} — 所有查询均无结果`)
-    return ''
+    return { results: [], total: 0 }
+  }
+
+  async _searchImageUrl(word) {
+    const { results: photos } = await this._searchPhotos(word, config.unsplashPerPage)
+    if (!photos.length) return ''
+    const idx = Math.floor(Math.random() * photos.length)
+    console.log(`[${ts()}] [unsplash] ${word} — 随机选第 ${idx + 1}/${photos.length} 张`)
+    return photos[idx].urls.small || ''
+  }
+
+  async searchCandidates(word, page = 1, perPage = 15) {
+    if (!this.api) {
+      throw new Error('UNSPLASH_ACCESS_KEY 未配置')
+    }
+    const { results, total } = await this._searchPhotos(word, perPage, page)
+    return {
+      candidates: results.map(p => ({
+        id: p.id,
+        url: p.urls.small,
+        thumb: p.urls.thumb,
+        author: p.user.name,
+        alt: p.alt_description || '',
+      })),
+      total,
+      page,
+      perPage,
+    }
   }
 
   async _downloadImage(imageUrl, word) {
@@ -142,6 +166,10 @@ class UnsplashClient {
     const buffer = Buffer.from(await response.arrayBuffer())
     fs.writeFileSync(this._filePath(word), buffer)
     return fs.statSync(this._filePath(word)).size > 0
+  }
+
+  async downloadImage(imageUrl, word) {
+    return this._downloadImage(imageUrl, word)
   }
 }
 

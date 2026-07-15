@@ -134,6 +134,46 @@ function registerAdminRoutes(router) {
       ctx.body = { error: e.message }
     }
   })
+
+  router.get('/api/admin/word-images/candidates/:word', async (ctx) => {
+    const { word } = ctx.params
+    if (!wordBank.getAllWords().includes(word)) {
+      ctx.status = 400
+      ctx.body = { error: `"${word}" 不在词库中` }
+      return
+    }
+    const page = parseInt(ctx.query.page) || 1
+    const perPage = parseInt(ctx.query.perPage) || 15
+    try {
+      const result = await unsplashClient.searchCandidates(word, page, perPage)
+      ctx.body = { word, ...result }
+    } catch (e) {
+      ctx.status = 500
+      ctx.body = { error: e.message }
+    }
+  })
+
+  router.post('/api/admin/word-images/confirm/:word', async (ctx) => {
+    const { word } = ctx.params
+    const { imageUrl } = ctx.request.body || {}
+    if (!imageUrl) {
+      ctx.status = 400
+      ctx.body = { error: '缺少 imageUrl' }
+      return
+    }
+    try {
+      const saved = await unsplashClient.downloadImage(imageUrl, word)
+      if (!saved) {
+        ctx.status = 500
+        ctx.body = { error: '图片下载失败' }
+        return
+      }
+      ctx.body = { word, imageUrl: unsplashClient.getImageUrl(word) }
+    } catch (e) {
+      ctx.status = 500
+      ctx.body = { error: e.message }
+    }
+  })
 }
 
 module.exports = registerAdminRoutes
