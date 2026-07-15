@@ -1,6 +1,7 @@
 [
   {
-    "chapter": "Chapter 1: Our school",
+    "chapter": "1 Be good at school",
+    "context": "school",
     "words": [
       "classroom",
       "art room",
@@ -10,8 +11,22 @@
       "playground",
       "garden",
       "corridor",
-      "lift",
+      "tuck shop",
       "hall"
+    ]
+  },
+  {
+    "chapter": "2 Please behave!",
+    "context": "behave",
+    "words": [
+      "litter",
+      "spit",
+      "push",
+      "rush to the seats",
+      "talk on the phone",
+      "pick the flowers",
+      "feed the animals",
+      "touch the animals"
     ]
   }
 ]
