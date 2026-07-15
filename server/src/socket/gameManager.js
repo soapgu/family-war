@@ -1,4 +1,5 @@
 const roomManager = require('./roomManager')
+const unsplashClient = require('../unsplashClient')
 const words = require('../data/words.json')
 
 const CHOICES = ['rock', 'paper', 'scissors']
@@ -408,7 +409,7 @@ class GameManager {
       word,
       wordLength: word.length,
       blanks,
-      unsplashImageUrl: '',
+      unsplashImageUrl: unsplashClient.getImageUrl(word),
       round: game.round,
     }
     game.currentQuestion = question
