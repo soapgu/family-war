@@ -114,9 +114,9 @@ describe('有 API Key', () => {
       await client.syncAll()
 
       expect(mockSearchPhotos).toHaveBeenCalledTimes(3)
-      expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 1, { orientation: 'squarish' })
-      expect(mockSearchPhotos).toHaveBeenCalledWith('dog', 1, 1, { orientation: 'squarish' })
-      expect(mockSearchPhotos).toHaveBeenCalledWith('elephant', 1, 1, { orientation: 'squarish' })
+      expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 5, { orientation: 'squarish' })
+      expect(mockSearchPhotos).toHaveBeenCalledWith('dog', 1, 5, { orientation: 'squarish' })
+      expect(mockSearchPhotos).toHaveBeenCalledWith('elephant', 1, 5, { orientation: 'squarish' })
 
       expect(fs.writeFileSync).toHaveBeenCalledTimes(3)
       expect(fs.statSync).toHaveBeenCalledTimes(3)
@@ -225,7 +225,7 @@ describe('有 API Key', () => {
         await client.syncMissing()
 
         expect(mockSearchPhotos).toHaveBeenCalledTimes(1)
-        expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 1, { orientation: 'squarish' })
+        expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 5, { orientation: 'squarish' })
         expect(fs.writeFileSync).toHaveBeenCalledTimes(1)
 
         delete global.fetch
@@ -257,7 +257,7 @@ describe('有 API Key', () => {
         await client.syncWord('cat')
 
         expect(mockSearchPhotos).toHaveBeenCalledTimes(1)
-        expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 1, { orientation: 'squarish' })
+        expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 5, { orientation: 'squarish' })
         expect(fs.writeFileSync).toHaveBeenCalledTimes(1)
 
         delete global.fetch

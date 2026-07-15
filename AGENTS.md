@@ -4,52 +4,54 @@
 
 ```
 root package.json  (concurrently orchestrates both)
-├── client/   React 19 + Vite + Antd v5 + Socket.IO client
-└── server/   Koa + Socket.IO + Jest (nodemon for dev)
+├── client/   React 19 + Vite + Antd v5 + Socket.IO client (port :3000)
+└── server/   Koa + Socket.IO + Jest + nodemon (port :4000)
 ```
 
 ## commands
 
 | what | command | notes |
 |------|---------|-------|
-| dev | `npm run dev` | starts both client (:3000) and server (:4000) concurrently |
-| server only | `npm run server` | or `npm run dev --prefix server` (nodemon) |
-| client only | `npm run client` | or `npm start --prefix client` (Vite) |
-| all unit tests | `npm test` | runs server Jest + client Vitest concurrently |
-| server unit | `npm test --prefix server` | Jest direct, not CRA wrapper |
+| dev (both) | `npm run dev` | concurrently server + client |
+| server only | `npm run server` | nodemon |
+| client only | `npm run client` | Vite dev server |
+| client build | `npm run build --prefix client` | outputs to `client/build/` |
+| client preview | `npm run preview --prefix client` | preview production build |
+| all unit tests | `npm test` | server Jest + client Vitest concurrently |
+| server unit | `npm test --prefix server` | |
 | server unit watch | `npm run test:watch --prefix server` | |
-| server integration | `npm run test:integration` | raw node script, not Jest |
-| client unit | `npm test --prefix client` | Vitest, not react-app-rewired |
-| client unit watch | `npm run test:watch --prefix client` | Vitest watch mode |
+| server integration | `npm run test:integration` | plain Node script, real sockets, port :4001 |
+| client unit | `npm test --prefix client` | Vitest |
+| client unit watch | `npm run test:watch --prefix client` | |
+| Unsplash API tests | `npm run test:unsplash --prefix server` | requires `UNSPLASH_ACCESS_KEY` env |
+| sync Unsplash images | `npm run unsplash:sync --prefix server` | `--keep` to save locally |
+| release | `gh release create vX --title "vX" --notes-file /tmp/NOTES.md` | annotated tags, see `docs/RELEASE.md` |
 
 ## architecture facts
 
-- **No database** — all state lives in `server/src/socket/roomManager.js` / `gameManager.js` singletons
-- **Socket.IO is a module-level singleton** on the client (`client/src/hooks/useSocket.js`). Not tied to React lifecycle. Tests must mock it via `client/src/hooks/__mocks__/useSocket.js`
-- **Client socket URL** resolves dynamically: `http://{window.location.hostname}:4000` in dev, supports LAN
-- **Vite proxy** (`client/vite.config.js`) forwards `/api` → `:4000` and `/socket.io` → `:4000` (with WebSocket)
-- **Room ID** is hardcoded to `'default'` everywhere; `roomId` param exists on events as a design预留
-- **Robot player** has `id: '__robot__'`, role `'机器人'` — always present, never human-selectable
-
-## v2.0 arithmetic mode
-
-Arithmetic mode is fully implemented. See README for details — mode switch (`Segmented` in `Room.js`), question/answer/timer UI (`ArithmeticBoard.js`), and match result (`ArithmeticMatchResult.js`).
+- **No database** — all state in `server/src/socket/roomManager.js` / `gameManager.js` singletons
+- **Socket.IO is a module-level singleton** on client (`client/src/hooks/useSocket.js`). Tests mock via `client/src/hooks/__mocks__/useSocket.js` (exports `triggerSocketEvent`)
+- **Client socket URL** — dev: `http://{hostname}:4000`; production: `/` with socket path `/family-war/socket.io`
+- **Vite proxy** (`client/vite.config.js`): forwards `/api` → `:4000`, `/socket.io` → `:4000` (ws)
+- **Vite base** is `/family-war/` for production (nginx reverse proxy)
+- **Three game modes**: RPS (1v1), 算术 (arithmetic, all-vs-all), 默写 (spelling, all-vs-all with TTS + Unsplash images)
+- **Spelling mode** uses `server/src/data/words.json` word bank; difficulty levels: `easy` / `normal` / `hard`
+- **Room ID** hardcoded to `'default'`; `roomId` param on events is a design预留
+- **Robot player** `id: '__robot__'`, role `'机器人'` — always present, never human-selectable
+- **State lost on page refresh** — no URL for room, Home/Room toggle is `GameApp` state
 
 ## testing quirks
 
-- Server integration test (`server/tests/integration.js`) is a plain Node script with real Socket.IO connections — not Jest. Requires server not already running on :4000.
-- Client `setup-vitest.js` mocks `matchMedia`, `AudioContext`, and suppresses React Router Future Flag warnings.
-- Client tests import `useSocket` — the mock file lives in `__mocks__/useSocket.js` adjacent to the real hook.
-- Test coverage: 124 assertions total (server unit: 77, server integration: 36, client unit: 47).
+- Integration test (`server/tests/integration.js`): plain Node script using real Socket.IO connections on port **4001**. Server must not already be running on that port.
+- Unsplash tests (`server/__tests__/unsplashClient.test.js`) require `UNSPLASH_ACCESS_KEY` env var — 3 tests fail without it (expected).
+- Client tests import `useSocket` — automock via `__mocks__/useSocket.js` in same directory.
+- `setup-vitest.js` mocks `matchMedia`, `AudioContext`, suppresses React Router Future Flag warnings.
+- Server: Jest v29; Client: Vitest v3 + jsdom.
 
 ## UI / conventions
 
-- Roles (constants): `爸爸`, `妈妈`, `儿子`, `机器人` — used both in UI strings and socket event data
-- Audio: BGM uses `<audio>` elements with mp3 files in `client/public/`. UI sfx use Web Audio API (oscillator synthesis in `Room.js`)
-- Routing: `/admin` → `<Admin/>`, everything else → `<GameApp/>` (state-controlled Home/Room toggle, no URL for room)
-- Client is plain JS (no TypeScript). `jsconfig.json` provides VSCode intellisense.
-- Build is Vite-based; all source files with JSX use `.jsx` extension.
-
-## release
-
-See `docs/RELEASE.md` — uses `gh release create` with annotated tags.
+- Roles: `爸爸`, `妈妈`, `儿子`, `机器人`
+- BGM: `<audio>` elements with mp3 in `client/public/`. UI sfx: Web Audio API oscillator synthesis (in `Room.js`)
+- Routing: `/admin` → `<Admin/>`, everything else → `<GameApp/>` (state-controlled, no URL for room)
+- Plain JS (no TypeScript). `jsconfig.json` for VSCode intellisense.
+- All JSX source files use `.jsx` extension (Vite requirement).
