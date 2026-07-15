@@ -35,7 +35,7 @@ root package.json  (concurrently orchestrates both)
 - **Vite proxy** (`client/vite.config.js`): forwards `/api` → `:4000`, `/socket.io` → `:4000` (ws)
 - **Vite base** is `/family-war/` for production (nginx reverse proxy)
 - **Three game modes**: RPS (1v1), 算术 (arithmetic, all-vs-all), 默写 (spelling, all-vs-all with TTS + Unsplash images)
-- **Spelling mode** uses `server/src/data/words.json` word bank; difficulty levels: `easy` / `normal` / `hard`
+- **Spelling mode** uses `server/src/data/words.json` word bank (每章包含 `context` 字段配文章节上下文，用于 Unsplash 搜索退选); difficulty levels: `easy` / `normal` / `hard`
 - **Room ID** hardcoded to `'default'`; `roomId` param on events is a design预留
 - **Robot player** `id: '__robot__'`, role `'机器人'` — always present, never human-selectable
 - **State lost on page refresh** — no URL for room, Home/Room toggle is `GameApp` state

@@ -146,7 +146,7 @@ family-war/
 │   │   │   ├── Home.js                        # 首页：输入昵称（纯 UI，无 socket/routing）
 │   │   │   ├── Room.js                        # 房间页：选角色、挑战、对战（纯 props 组件）
 │   │   │   ├── Admin.js                       # 后台：房间状态 + 对局记录
-│   │   │   └── WordConfig.js                  # 词库管理：章节/单词启用 + 图片同步/替换（v3.0 新增）
+│   │   │   └── WordConfig.jsx                 # 词库管理：章节/单词启用 + 图片同步/手动选图 + 语音播放（v3.0 新增）
 │   │   ├── components/
 │   │   │   ├── RoleCard.js                    # 角色卡片（空闲/选中/对战中）
 │   │   │   ├── GameBoard.js                   # RPS 对战面板（石头剪刀布按钮）
@@ -495,9 +495,11 @@ MatchResult.js
 - API: `GET /api/admin/status` → 房间列表 + 历史对局
 - API: `GET /api/admin/word-config` → 章节结构 + 图片同步状态 + 当前启用配置
 - API: `POST /api/admin/word-config` → 保存词库启用配置
-- API: `POST /api/admin/word-images/replace/:word` → 替换单张 Unsplash 图片
+- API: `GET /api/admin/word-images/candidates/:word?page=1&perPage=15` → 候选图片列表（支持翻页）
+- API: `POST /api/admin/word-images/confirm/:word` → 确认选中图片并下载保存
+- API: `POST /api/admin/word-images/replace/:word` → 替换单张 Unsplash 图片（随机选，UI 已不使用）
 - API: `GET /api/admin/word-images/status` → 图片同步状态
-- API: `POST /api/admin/word-images/sync` → 触发全量图片同步
+- API: `POST /api/admin/word-images/sync` → 触发全量图片同步（UI 已隐藏）
 - API: `POST /api/admin/word-images/sync-missing` → 仅同步缺失图片
 
 ## 测试
@@ -555,10 +557,10 @@ npm test --prefix client
 | Admin 渲染 + 数据 | client Admin | 前端单元 | 3 |
 | ArithmeticBoard 渲染 + 交互 | client ArithmeticBoard | 前端单元 | 13 |
 | ArithmeticMatchResult 渲染 + 交互 | client ArithmeticMatchResult | 前端单元 | 9 |
-| **服务端单元** | | | **77** |
-| **集成** | | | **36** |
+| **服务端单元** | | | **134** |
+| **集成** | | | **92** |
 | **前端单元** | | | **47** |
-| **总计** | | | **160** |
+| **总计** | | | **273** |
 
 ## 端口
 
