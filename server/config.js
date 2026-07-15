@@ -3,6 +3,7 @@ const path = require('path')
 
 const config = {
   unsplashAccessKey: '',
+  unsplashPerPage: 10,
 }
 
 const localPath = path.join(__dirname, 'config.local.js')

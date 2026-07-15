@@ -114,7 +114,7 @@ class UnsplashClient {
     if (first !== word) queries.push(first)
 
     for (const q of queries) {
-      const result = await this.api.search.photos(q, 1, 5, {
+      const result = await this.api.search.photos(q, 1, config.unsplashPerPage, {
         orientation: 'squarish',
       })
       const data = await result.json()

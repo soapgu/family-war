@@ -30,7 +30,7 @@ describe('无 API Key', () => {
       mkdirSync: jest.fn(),
       statSync: jest.fn(() => ({ size: 100 })),
     }))
-    jest.doMock('../config', () => ({ unsplashAccessKey: '' }))
+    jest.doMock('../config', () => ({ unsplashAccessKey: '', unsplashPerPage: 10 }))
   })
 
   it('syncAll 抛出错误', async () => {
@@ -93,7 +93,7 @@ describe('有 API Key', () => {
 
     mockSearchPhotos = jest.fn()
 
-    jest.doMock('../config', () => ({ unsplashAccessKey: 'test-key' }))
+    jest.doMock('../config', () => ({ unsplashAccessKey: 'test-key', unsplashPerPage: 10 }))
     jest.doMock('unsplash-js', () => ({
       default: jest.fn(() => ({
         search: { photos: mockSearchPhotos },
@@ -120,9 +120,9 @@ describe('有 API Key', () => {
       await client.syncAll()
 
       expect(mockSearchPhotos).toHaveBeenCalledTimes(3)
-      expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 5, { orientation: 'squarish' })
-      expect(mockSearchPhotos).toHaveBeenCalledWith('dog', 1, 5, { orientation: 'squarish' })
-      expect(mockSearchPhotos).toHaveBeenCalledWith('elephant', 1, 5, { orientation: 'squarish' })
+      expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 10, { orientation: 'squarish' })
+      expect(mockSearchPhotos).toHaveBeenCalledWith('dog', 1, 10, { orientation: 'squarish' })
+      expect(mockSearchPhotos).toHaveBeenCalledWith('elephant', 1, 10, { orientation: 'squarish' })
 
       expect(fs.writeFileSync).toHaveBeenCalledTimes(3)
       expect(fs.statSync).toHaveBeenCalledTimes(3)
@@ -231,7 +231,7 @@ describe('有 API Key', () => {
         await client.syncMissing()
 
         expect(mockSearchPhotos).toHaveBeenCalledTimes(1)
-        expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 5, { orientation: 'squarish' })
+        expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 10, { orientation: 'squarish' })
         expect(fs.writeFileSync).toHaveBeenCalledTimes(1)
 
         delete global.fetch
@@ -263,7 +263,7 @@ describe('有 API Key', () => {
         await client.syncWord('cat')
 
         expect(mockSearchPhotos).toHaveBeenCalledTimes(1)
-        expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 5, { orientation: 'squarish' })
+        expect(mockSearchPhotos).toHaveBeenCalledWith('cat', 1, 10, { orientation: 'squarish' })
         expect(fs.writeFileSync).toHaveBeenCalledTimes(1)
 
         delete global.fetch
