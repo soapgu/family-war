@@ -229,13 +229,13 @@ location /family-war/socket.io/ {
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 1h-1 | words.json 重构为章节结构（含短语词组示例） | `server/src/data/words.json` | ⬜ |
-| 1h-2 | **新建** `wordBank.js`：加载章节词库 + 读/写 `word-config.json` 持久化启用配置 + 提供 `getAllWords()` / `getActiveWords()` / `getChapters()` / `getConfig()` / `saveConfig()` | `server/src/data/wordBank.js`, `server/src/data/word-config.json` | ⬜ |
-| 1h-3 | `.gitignore` 追加 `word-config.json` | `.gitignore` | ⬜ |
-| 1h-4 | `unsplashClient.js` 改用 `wordBank.getAllWords()` | `server/src/unsplashClient.js` | ⬜ |
-| 1h-5 | `gameManager.js` 改用 `wordBank.getActiveWords()`；`generateBlanks` 词组空格显示为 `·` | `server/src/socket/gameManager.js` | ⬜ |
-| 1h-6 | admin 路由新增 `GET/POST /api/admin/word-config` + `POST /api/admin/word-images/replace/:word` | `server/src/routes/admin.js` | ⬜ |
-| 1h-7 | 测试：mock wordBank 适配新结构 | `server/__tests__/gameManager.test.js`, `server/__tests__/unsplashClient.test.js` | ⬜ |
+| 1h-1 | words.json 重构为章节结构（含短语词组示例） | `server/src/data/words.json` | ✅ |
+| 1h-2 | **新建** `wordBank.js`：加载章节词库 + 读/写 `word-config.json` 持久化启用配置 + 提供 `getAllWords()` / `getActiveWords()` / `getChapters()` / `getConfig()` / `saveConfig()` | `server/src/data/wordBank.js`, `server/src/data/word-config.json` | ✅ |
+| 1h-3 | `.gitignore` 追加 `word-config.json` | `.gitignore` | ✅ |
+| 1h-4 | `unsplashClient.js` 改用 `wordBank.getAllWords()` | `server/src/unsplashClient.js` | ✅ |
+| 1h-5 | `gameManager.js` 改用 `wordBank.getActiveWords()`；`generateBlanks` 词组空格显示为 `·` | `server/src/socket/gameManager.js` | ✅ |
+| 1h-6 | admin 路由新增 `GET/POST /api/admin/word-config` + `POST /api/admin/word-images/replace/:word` | `server/src/routes/admin.js` | ✅ |
+| 1h-7 | 测试：mock wordBank 适配新结构 | `server/__tests__/gameManager.test.js`, `server/__tests__/unsplashClient.test.js` | ✅ |
 
 ### Phase 2: 客户端兼容（不改 UI）
 
