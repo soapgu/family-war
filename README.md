@@ -293,7 +293,7 @@ App (BrowserRouter)
 | 抢答 | 首位答对者得 1 分，其余玩家不得分 |
 | 机器人 | 固定 20 秒后自动提交正确单词，若 20 秒内无人答对则机器人得 1 分 |
 | 赛制 | 先得 5 分者获胜，游戏结束 |
-| 词库 | 管理员可通过 `/admin/words` 选择启用的章节和单词 |
+| 词库 | 管理员可通过 `/admin/word-config` 选择启用的章节和单词 |
 | 断线 | 玩家断线不影响默写游戏继续（仍在局中不扣分） |
 
 ### 通用规则
@@ -498,6 +498,7 @@ MatchResult.js
 - API: `POST /api/admin/word-images/replace/:word` → 替换单张 Unsplash 图片
 - API: `GET /api/admin/word-images/status` → 图片同步状态
 - API: `POST /api/admin/word-images/sync` → 触发全量图片同步
+- API: `POST /api/admin/word-images/sync-missing` → 仅同步缺失图片
 
 ## 测试
 
@@ -573,7 +574,7 @@ npm test --prefix client
 
 
 
-完整的实现步骤（v1.0 / v2.0 / v2.1 部署）请参阅 [`step.md`](step.md)。
+完整的实现步骤（v1.0 / v2.0 / v2.1 / v3.0）请参阅 [`step.md`](step.md)。
 
 ## 生产部署
 
