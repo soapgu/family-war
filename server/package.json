@@ -7,7 +7,9 @@
     "start": "node src/index.js",
     "test": "jest --verbose --no-cache",
     "test:watch": "jest --watch",
-    "test:integration": "node tests/integration.js"
+    "test:integration": "node tests/integration.js",
+    "test:unsplash": "node tests/unsplash-integration.js",
+    "unsplash:sync": "node tests/unsplash-integration.js --keep"
   },
   "dependencies": {
     "@koa/cors": "^5.0.0",
