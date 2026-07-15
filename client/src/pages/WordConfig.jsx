@@ -11,8 +11,8 @@ function WordConfig() {
   useEffect(() => {
     const load = () => {
       const voices = window.speechSynthesis.getVoices()
-      const preferred = voices.find(v => /Google US English/.test(v.name))
-        || voices.find(v => /Samantha|Karen/.test(v.name))
+      const preferred = voices.find(v => /Google UK English/.test(v.name))
+        || voices.find(v => /Daniel|Kate/.test(v.name))
         || voices.find(v => v.lang.startsWith('en'))
       voiceRef.current = preferred || null
     }
@@ -148,8 +148,8 @@ function WordConfig() {
   const speak = useCallback((text) => {
     if (!window.speechSynthesis) return message.warning('当前浏览器不支持语音')
     const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'en-US'
-    utterance.rate = 0.6
+    utterance.lang = 'en-GB'
+    utterance.rate = 0.8
     if (voiceRef.current) utterance.voice = voiceRef.current
     window.speechSynthesis.cancel()
     window.speechSynthesis.speak(utterance)
