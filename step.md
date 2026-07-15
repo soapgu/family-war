@@ -203,7 +203,7 @@ location /family-war/socket.io/ {
 
 ### 概览
 
-英文默写新玩法，全员抢答 + TTS 朗读 + Unsplash 图片 + 三档难度，共用 5 分赛制和 20s 机器人超时机制。
+英文默写新玩法，全员抢答 + TTS 朗读 + Unsplash 图片 + 三档难度，共用 5 分赛制和 20s 机器人超时机制。词库按教材章节组织，支持词组（含空格），管理员可通过网页选择启用哪些章节/单词。
 
 ### Phase 1: 服务端改造
 
@@ -217,11 +217,25 @@ location /family-war/socket.io/ {
 | 1f | 测试：spelling 集成测试（56 断言） | `tests/integration.js` | ✅ |
 | 1g-1 | **新建** `config.js` 自定义配置 + `config.local.js` 本地覆盖（不上传 git）+ `unsplashClient.js`：Singleton，`syncAll()` 逐词搜索 Unsplash → 下载图片到 `server/public/images/`，`getImageUrl(word)` / `getSyncStatus()` 基于文件系统存在性检查，无持久化 JSON | `server/config.js`, `server/config.local.js`, `server/src/unsplashClient.js` | ✅ |
 | 1g-2 | **新建** unsplashClient 单元测试 + 集成测试（mock + 真实 API Key 验证搜图/下载/持久化 34 断言全部通过） | `server/__tests__/unsplashClient.test.js`, `server/tests/unsplash-integration.js` | ✅ |
-| 1g-3 | admin 路由新增 `GET /api/admin/word-images/status` + `POST /api/admin/word-images/sync` | `server/src/routes/admin.js` | ⬜ |
-| 1g-4 | `GET /api/images/:name` 路由，`fs.createReadStream` 提供本地图片 | `server/src/index.js` | ⬜ |
-| 1g-5 | `generateSpellingQuestion` 调用 `getImageUrl(word)` 填充 `unsplashImageUrl`（值为 `/api/images/cat.jpg` 或 `''`） | `server/src/socket/gameManager.js` | ⬜ |
-| 1g-6 | gameManager.test.js mock unsplashClient，验证 question 含 URL | `server/__tests__/gameManager.test.js` | ⬜ |
-| 1g-7 | 集成测试调整 unsplashImageUrl 断言 | `tests/integration.js` | ⬜ |
+| 1g-3 | admin 路由新增 `GET /api/admin/word-images/status` + `POST /api/admin/word-images/sync` | `server/src/routes/admin.js` | ✅ |
+| 1g-4 | `GET /api/images/:name` 路由，`fs.createReadStream` 提供本地图片 | `server/src/index.js` | ✅ |
+| 1g-5 | `generateSpellingQuestion` 调用 `getImageUrl(word)` 填充 `unsplashImageUrl`（值为 `/api/images/cat.jpg` 或 `''`） | `server/src/socket/gameManager.js` | ✅ |
+| 1g-6 | gameManager.test.js mock unsplashClient，验证 question 含 URL | `server/__tests__/gameManager.test.js` | ✅ |
+| 1g-7 | 集成测试调整 unsplashImageUrl 断言 | `tests/integration.js` | ✅ |
+
+### Phase 1h: 词库结构化
+
+词库从扁平单词数组升级为按章节组织的结构，支持词组（含空格）和动态启用/禁用。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1h-1 | words.json 重构为章节结构（含短语词组示例） | `server/src/data/words.json` | ⬜ |
+| 1h-2 | **新建** `wordBank.js`：加载章节词库 + 读/写 `word-config.json` 持久化启用配置 + 提供 `getAllWords()` / `getActiveWords()` / `getChapters()` / `getConfig()` / `saveConfig()` | `server/src/data/wordBank.js`, `server/src/data/word-config.json` | ⬜ |
+| 1h-3 | `.gitignore` 追加 `word-config.json` | `.gitignore` | ⬜ |
+| 1h-4 | `unsplashClient.js` 改用 `wordBank.getAllWords()` | `server/src/unsplashClient.js` | ⬜ |
+| 1h-5 | `gameManager.js` 改用 `wordBank.getActiveWords()`；`generateBlanks` 词组空格显示为 `·` | `server/src/socket/gameManager.js` | ⬜ |
+| 1h-6 | admin 路由新增 `GET/POST /api/admin/word-config` + `POST /api/admin/word-images/replace/:word` | `server/src/routes/admin.js` | ⬜ |
+| 1h-7 | 测试：mock wordBank 适配新结构 | `server/__tests__/gameManager.test.js`, `server/__tests__/unsplashClient.test.js` | ⬜ |
 
 ### Phase 2: 客户端兼容（不改 UI）
 
@@ -236,8 +250,8 @@ location /family-war/socket.io/ {
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | `Admin.jsx` 增加「词库图库」入口按钮；**新建** `WordImages.jsx`：卡片列表（单词名 + 缩略图预览 + ✅/⏳/❌ 状态）+ 「同步所有」按钮 + 上次同步时间 | `client/src/pages/Admin.jsx`, `client/src/pages/WordImages.jsx` | ⬜ |
-| 3b | `App.jsx` 增加 `/admin/word-images` 路由 | `client/src/App.jsx` | ⬜ |
+| 3a | **新建** `WordConfig.jsx` 统一词库管理页（章节/单词启用开关 + 图片预览 + 同步 + 替换图片） | `client/src/pages/WordConfig.jsx` | ⬜ |
+| 3b | `App.jsx` 增加 `/admin/words` 路由；`Admin.jsx` 增加「词库管理」导航按钮 | `App.jsx`, `Admin.jsx` | ⬜ |
 | 3c | SpellingBoard.js（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效） | `SpellingBoard.js` | ⬜ |
 | 3d | SpellingMatchResult.js（终榜排名 + 每题单词回顾） | `SpellingMatchResult.js` | ⬜ |
 | 3e | 验证：默写全流程测试 | — | ⬜ |

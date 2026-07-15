@@ -145,7 +145,8 @@ family-war/
 │   │   ├── pages/
 │   │   │   ├── Home.js                        # 首页：输入昵称（纯 UI，无 socket/routing）
 │   │   │   ├── Room.js                        # 房间页：选角色、挑战、对战（纯 props 组件）
-│   │   │   └── Admin.js                       # 后台：房间状态 + 对局记录
+│   │   │   ├── Admin.js                       # 后台：房间状态 + 对局记录
+│   │   │   └── WordConfig.js                  # 词库管理：章节/单词启用 + 图片同步/替换（v3.0 新增）
 │   │   ├── components/
 │   │   │   ├── RoleCard.js                    # 角色卡片（空闲/选中/对战中）
 │   │   │   ├── GameBoard.js                   # RPS 对战面板（石头剪刀布按钮）
@@ -178,7 +179,9 @@ family-war/
 │   │   │   ├── roomManager.js      # 房间/角色状态管理（内存）
 │   │   │   └── gameManager.js      # 猜拳判定 + 三局两胜 + 断线处理
 │   │   ├── data/
-│   │   │   └── words.json          # 默写词库（v3.0 新增）
+│   │   │   ├── words.json          # 默写词库（按章节组织，v3.0 新增）
+│   │   │   ├── wordBank.js         # 词库加载 + 配置管理（读/写 word-config.json）
+│   │   │   └── word-config.json    # 词库启用配置（不提交 git，v3.0 新增）
 │   │   └── routes/
 │   │       └── admin.js            # Koa REST 管理接口
 │   ├── jsconfig.json               # VSCode JS 类型提示
@@ -284,12 +287,13 @@ App (BrowserRouter)
 | 规则 | 内容 |
 |------|------|
 | 参赛 | 所有已选角色的人类玩家 + 机器人，全员参加 |
-| 题目 | 英文单词默写，TTS 朗读 + Unsplash 图片示意 |
-| 难度 | 简单（填 ~50% 字母）/ 普通（显示 1-2 字母）/ 困难（完整拼写） |
+| 题目 | 英文单词/词组默写，TTS 朗读 + Unsplash 图片示意；词库按教材章节组织 |
+| 难度 | 简单（显露 ~50% 字母）/ 普通（显露 1-2 字母）/ 困难（全部隐藏）；词组中的空格始终可见 |
 | 答题 | 输入完整单词提交，大小写不敏感 |
 | 抢答 | 首位答对者得 1 分，其余玩家不得分 |
 | 机器人 | 固定 20 秒后自动提交正确单词，若 20 秒内无人答对则机器人得 1 分 |
 | 赛制 | 先得 5 分者获胜，游戏结束 |
+| 词库 | 管理员可通过 `/admin/words` 选择启用的章节和单词 |
 | 断线 | 玩家断线不影响默写游戏继续（仍在局中不扣分） |
 
 ### 通用规则
@@ -484,11 +488,16 @@ MatchResult.js
 
 ## 后台管理
 
-无数据库，当前提供纯监控页面：
+无数据库，当前提供纯监控页面 + 词库管理接口：
 
 - 当前房间状态（谁在线、选了谁、是否对战中）
 - 已完成对局记录（存在内存数组中）
 - API: `GET /api/admin/status` → 房间列表 + 历史对局
+- API: `GET /api/admin/word-config` → 章节结构 + 图片同步状态 + 当前启用配置
+- API: `POST /api/admin/word-config` → 保存词库启用配置
+- API: `POST /api/admin/word-images/replace/:word` → 替换单张 Unsplash 图片
+- API: `GET /api/admin/word-images/status` → 图片同步状态
+- API: `POST /api/admin/word-images/sync` → 触发全量图片同步
 
 ## 测试
 
