@@ -250,7 +250,8 @@ async function run() {
   assert(typeof ss1.firstQuestion.wordLength === 'number', 'firstQuestion 含 wordLength')
   assert(typeof ss1.firstQuestion.blanks === 'string', 'firstQuestion 含 blanks')
   assert(ss1.firstQuestion.blanks.includes('_'), 'blanks 包含下划线')
-  assert(ss1.firstQuestion.unsplashImageUrl !== undefined, 'firstQuestion 含 unsplashImageUrl')
+  assert(typeof ss1.firstQuestion.unsplashImageUrl === 'string', 'unsplashImageUrl 为字符串')
+  assert(ss1.firstQuestion.unsplashImageUrl === '' || ss1.firstQuestion.unsplashImageUrl.startsWith('/api/images/'), 'unsplashImageUrl 格式正确')
 
   const sq1 = ss1.firstQuestion
 
