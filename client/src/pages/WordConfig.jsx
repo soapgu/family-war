@@ -1,11 +1,25 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App } from 'antd'
-import { ReloadOutlined, SyncOutlined } from '@ant-design/icons'
+import { ReloadOutlined, SyncOutlined, SoundOutlined } from '@ant-design/icons'
 
 const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
 
 function WordConfig() {
   const { message } = App.useApp()
+  const voiceRef = useRef(null)
+
+  useEffect(() => {
+    const load = () => {
+      const voices = window.speechSynthesis.getVoices()
+      const preferred = voices.find(v => /Google US English/.test(v.name))
+        || voices.find(v => /Samantha|Karen/.test(v.name))
+        || voices.find(v => v.lang.startsWith('en'))
+      voiceRef.current = preferred || null
+    }
+    load()
+    window.speechSynthesis.addEventListener('voiceschanged', load)
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
+  }, [])
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -131,6 +145,16 @@ function WordConfig() {
     }
   }
 
+  const speak = useCallback((text) => {
+    if (!window.speechSynthesis) return message.warning('当前浏览器不支持语音')
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.6
+    if (voiceRef.current) utterance.voice = voiceRef.current
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utterance)
+  }, [message])
+
   if (loading && !data) {
     return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
   }
@@ -210,6 +234,12 @@ function WordConfig() {
                   <Typography.Text style={{ minWidth: 120, fontWeight: 500 }}>
                     {w.word}
                   </Typography.Text>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<SoundOutlined />}
+                    onClick={() => speak(w.word)}
+                  />
                   <Tag color={w.synced ? 'green' : 'default'} style={{ minWidth: 52, textAlign: 'center' }}>
                     {w.synced ? '已同步' : '待同步'}
                   </Tag>

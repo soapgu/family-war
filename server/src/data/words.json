@@ -28,5 +28,26 @@
       "feed the animals",
       "touch the animals"
     ]
+  },
+  {
+    "chapter": "3 Food we like",
+    "context": "food",
+    "words": [
+      "mushroom",
+      "tomato",
+      "egg",
+      "sausage",
+      "hot dog",
+      "sandwich",
+      "ham",
+      "butter",
+      "cheese",
+      "jam",
+      "juice",
+      "lemon tea",
+      "soya milk",
+      "milk",
+      "bread"
+    ]
   }
 ]
