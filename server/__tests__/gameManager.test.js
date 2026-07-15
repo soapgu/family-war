@@ -5,8 +5,15 @@ jest.mock('../src/socket/roomManager', () => ({
   ROBOT_ID: '__robot__',
 }))
 
+jest.mock('../src/unsplashClient', () => ({
+  getImageUrl: jest.fn(() => ''),
+  getSyncStatus: jest.fn(() => ({ total: 0, synced: 0, pending: 0, words: [] })),
+  getSyncRunning: jest.fn(() => false),
+}))
+
 const roomManager = require('../src/socket/roomManager')
 const gameManager = require('../src/socket/gameManager')
+const unsplashClient = require('../src/unsplashClient')
 
 const ROOM_ID = 'default'
 const P1 = 's1'
@@ -704,6 +711,17 @@ describe('generateSpellingQuestion', () => {
     const question = gameManager.generateSpellingQuestion(game)
     const parts = question.blanks.split(' ')
     expect(parts).toHaveLength(question.wordLength)
+  })
+
+  it('unsplashImageUrl 来自 getImageUrl', () => {
+    const mockUrl = '/api/images/cat.jpg'
+    unsplashClient.getImageUrl.mockReturnValue(mockUrl)
+
+    const game = startSpellingGame('easy')
+    const question = gameManager.generateSpellingQuestion(game)
+
+    expect(unsplashClient.getImageUrl).toHaveBeenCalledWith(question.word)
+    expect(question.unsplashImageUrl).toBe(mockUrl)
   })
 })
 
