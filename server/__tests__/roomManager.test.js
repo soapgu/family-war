@@ -355,6 +355,15 @@ describe('setGameMode', () => {
     const state = roomManager.getRoomState('default')
     expect(state.spellingDifficulty).toBeUndefined()
   })
+
+  it('spelling 拒绝无效难度', () => {
+    const socket = mockSocket('s1')
+    roomManager.joinRoom(socket, 'default', '小明')
+
+    const result = roomManager.setGameMode('default', 'spelling', 'invalid')
+    expect(result.error).toBe('无效的默写难度')
+    expect(roomManager.getRoomState('default').gameMode).toBe('rps')
+  })
 })
 
 // ==================== 游戏状态挂钩 ====================

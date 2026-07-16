@@ -1,6 +1,6 @@
 # Family War 🎮 v3.0 开发中
 
-一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）和**算术达人**（全员抢答），并支持机器人对局；v3.0 **爱拼才会赢**（英文默写）的服务端与词库管理已完成，玩家端仍在开发。
+一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）、**算术达人**（全员抢答）和 v3.0 **爱拼才会赢**（英文默写），并支持机器人对局；默写专属结算页仍在开发。
 
 ## 系统架构
 
@@ -64,17 +64,24 @@ flowchart TD
     T -->|否 🔄| O
     T -->|是 🏆| U[🏆 比赛结算]
 
-    D -->|✍️ 默写模式| Sp[开发中<br>玩家端按钮暂禁用]
+    D -->|✍️ 默写模式| Sp[选择难度<br>简单 / 普通 / 困难]
+    Sp --> SpQ[🔊 英式发音 + 图片提示<br>字母格填空]
+    SpQ --> SpA[✏️ 玩家抢答<br>输入完整单词]
+    SpA --> SpR{先得5分?}
+    SpR -->|否 🔄| SpQ
+    SpR -->|是 🏆| SpM[🏆 比赛结算]
 
     M --> V[🔄 返回房间 / 重赛]
     U --> V
+    SpM --> V
     V --> C
 
     style A fill:#fff3e0,stroke:#ff6f00
     style D fill:#e3f2fd,stroke:#1976d2
     style M fill:#f3e5f5,stroke:#7b1fa2
     style U fill:#f3e5f5,stroke:#7b1fa2
-    style Sp fill:#eeeeee,stroke:#757575
+    style Sp fill:#e8f5e9,stroke:#2e7d32
+    style SpM fill:#f3e5f5,stroke:#7b1fa2
     style S fill:#fce4ec,stroke:#c62828
     style V fill:#e8f5e9,stroke:#2e7d32
 ```
@@ -137,6 +144,7 @@ family-war/
 │   │   │   ├── RoleCard.jsx                   # 角色卡片（空闲/选中/对战中）
 │   │   │   ├── GameBoard.jsx                  # RPS 对战面板
 │   │   │   ├── ArithmeticBoard.jsx            # 算术抢答面板
+│   │   │   ├── SpellingBoard.jsx              # 默写抢答面板（图片、TTS、字母格）
 │   │   │   ├── MatchResult.jsx                # RPS/算术结算分发
 │   │   │   ├── RpsMatchResult.jsx             # RPS 结算
 │   │   │   └── ArithmeticMatchResult.jsx      # 算术结算
@@ -185,10 +193,10 @@ App (BrowserRouter)
     ├── roomState = null  →  Home
     │   └── onEnter(nickname) → emit room:join → setRoomState
     └── roomState ≠ null  →  Room
-    ├── 选角色 / 切换游戏模式 (RPS / 算术 / 默写占位)
+    ├── 选角色 / 切换游戏模式 (RPS / 算术 / 默写)
     ├── gameType === 'rps'        → GameBoard → RpsMatchResult
     ├── gameType === 'arithmetic' → ArithmeticBoard → ArithmeticMatchResult
-    ├── gameMode === 'spelling'   → 开发中按钮（当前禁用）
+    ├── gameType === 'spelling'   → SpellingBoard → MatchResult（暂用通用排名）
     └── onBack() → setRoomState(null) 返回首页
 ```
 
@@ -235,17 +243,18 @@ App (BrowserRouter)
 ### 默写达人（v3.0）
 
 ```
-选角色 → 切换默写模式 → 开发中（玩家端暂不可启动）
+选角色 → 切换默写模式并选择难度 → 开始默写挑战 → 听音/看图/填空 → 抢答 → 结算
 ```
 
 | 步骤 | 行为 | 通讯 |
 |------|------|------|
-| 切换模式 | 房间内可切换到“默写达人”，当前没有玩家端难度选择 | `socket.emit('game:setMode', { mode: 'spelling' })` |
-| 开始游戏 | 按钮显示“开发中...”并禁用 | 尚不发送挑战事件 |
-| 服务端能力 | 已具备三档难度、出题、判题、计分、机器人超时和图片 URL | 已通过单元及 Socket 集成测试 |
+| 切换模式 | 房间内切换到“默写达人”，可选择简单、普通、困难三档 | `socket.emit('game:setMode', { mode: 'spelling', difficulty })` |
+| 开始游戏 | 已选角色后点击“开始默写比赛”，所有已选角色玩家和机器人参赛 | `socket.emit('game:challenge', { mode: 'spelling' })` |
+| 出题 | 首题随 `game:start` 下发，后续题走 `game:question`；自动朗读一次并可手动重播 | 题目包含 `ttsText`、填空、词长和图片 URL |
+| 抢答 | 根据图片、英式发音和字母格输入完整单词；首位答对者得 1 分 | `socket.emit('game:answer', { questionId, answer })` |
 | 管理能力 | 可配置章节/单词、同步图片、手动选图和试听英式发音 | `/admin/word-config` |
-| 重赛 | 服务端已支持重新发起默写挑战并沿用房间难度；玩家端尚未接通 | 规划发送 `game:challenge`，参数为 `{ mode: 'spelling' }` |
-| 待完成 | `SpellingBoard`、玩家端 TTS/图片/填空/输入、专属结算和前端全流程测试 | 见 `step.md` Phase 3c-3e |
+| 重赛 | 结算页重新发起默写挑战，服务端沿用房间当前难度并重新读取参赛角色 | `socket.emit('game:challenge', { mode: 'spelling' })` |
+| 待完成 | 默写专属结算和更完整的重赛集成场景 | 见 `step.md` Phase 3d-3e |
 
 ## 游戏规则
 
@@ -419,9 +428,9 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 |------|------------|------------|----------|
 | RPS | `game:rematch` | 取已结束比赛的原两名玩家，创建新的 RPS 比赛 | 已完成 |
 | 算术 | `game:challenge { mode: 'arithmetic' }` | 清除已结束比赛，按当前已选角色重新创建全员算术比赛 | 已完成 |
-| 默写 | `game:challenge { mode: 'spelling' }` | 清除已结束比赛，按当前已选角色和房间难度重新创建默写比赛 | 服务端已支持，玩家端待实现 |
+| 默写 | `game:challenge { mode: 'spelling' }` | 清除已结束比赛，按当前已选角色和房间难度重新创建默写比赛 | 已完成 |
 
-算术和默写采用“重新发起挑战”而不是 `game:rematch`，因为两者是全员模式，重赛时应重新读取当前角色阵容；默写还需要读取房间当前的 `spellingDifficulty`。当前默写临时复用的 `ArithmeticBoard` 会把重赛模式写成 `arithmetic`，因此在 `SpellingBoard` 完成前不能视为已接通默写重赛。
+算术和默写采用“重新发起挑战”而不是 `game:rematch`，因为两者是全员模式，重赛时应重新读取当前角色阵容；默写还需要读取房间当前的 `spellingDifficulty`。
 
 ### Socket 事件清单
 
@@ -434,7 +443,7 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 | `role:select` | `{ role }` | 选角色（爸爸/妈妈/儿子，机器人不可选） |
 | `role:deselect` | — | 放弃当前角色 |
 | `game:setMode` | `{ mode: 'rps' \| 'arithmetic' \| 'spelling', difficulty?: 'easy' \| 'normal' \| 'hard' }` | 切换房间游戏模式 |
-| `game:challenge` | RPS: `{ targetId, mode?: 'rps' }`<br>算术: `{ mode: 'arithmetic' }`<br>默写: `{ mode: 'spelling' }` | 发起挑战；当前玩家端只会发起 RPS/算术挑战 |
+| `game:challenge` | RPS: `{ targetId, mode?: 'rps' }`<br>算术: `{ mode: 'arithmetic' }`<br>默写: `{ mode: 'spelling' }` | 发起挑战或全员模式重赛 |
 | `game:move` | `{ choice }` | 出拳（rock/paper/scissors） |
 | `game:answer` | RPS: `{ choice }`<br>算术/默写: `{ questionId, answer }` | 出拳或抢答 |
 | `game:rematch` | `{ roomId? }` | 仅用于 RPS：原对战双方再来一局 |
@@ -447,8 +456,8 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 | `room:state` | `{ ..., gameMode: 'rps' }` | `{ ..., gameMode: 'arithmetic' }` | `{ ..., gameMode: 'spelling', spellingDifficulty: 'easy' \| 'normal' \| 'hard' }` |
 | `player:joined` | `{ nickname }` | 相同 | 相同 |
 | `player:left` | `{ socketId }` | 相同 | 相同 |
-| `game:start` | `{ gameType: 'rps', opponent, round }` | `{ gameType: 'arithmetic', players: [...], round, firstQuestion: { questionId, expression, round } }` | `{ gameType: 'spelling', players: [...], round, difficulty, firstQuestion: { questionId, wordLength, blanks, unsplashImageUrl, round } }` |
-| `game:question` | — | `{ questionId, expression, round }` | `{ questionId, wordLength, blanks, unsplashImageUrl, round }` |
+| `game:start` | `{ gameType: 'rps', opponent, round }` | `{ gameType: 'arithmetic', players: [...], round, firstQuestion: { questionId, expression, round } }` | `{ gameType: 'spelling', players: [...], round, difficulty, firstQuestion: { questionId, ttsText, wordLength, blanks, unsplashImageUrl, round } }` |
+| `game:question` | — | `{ questionId, expression, round }` | `{ questionId, ttsText, wordLength, blanks, unsplashImageUrl, round }` |
 | `game:waiting` | 等待对手出拳 | 等待其他人 / 机器人倒计时 | 等待其他人 / 机器人倒计时 |
 | `game:roundResult` | `{ round, winner, yourMove, oppMove, scores }` | `{ gameType: 'arithmetic', round, questionId, expression, correctAnswer, yourAnswer, winner, scores }` | `{ gameType: 'spelling', round, questionId, word, blanks, correctAnswer, yourAnswer, winner, scores }` |
 | `game:matchResult` | `{ gameType: 'rps', matchWinner, scores, history }` | `{ gameType: 'arithmetic', matchWinner, scores, ranking, history }` | `{ gameType: 'spelling', matchWinner, scores, ranking, history }` |
@@ -541,7 +550,7 @@ npm test --prefix client
 | broadcastRoomState | roomManager | 单元 | 2 |
 | getAdminStatus | roomManager | 单元 | 3 |
 | setGame / clearGame | roomManager | 单元 | 3 |
-| setGameMode | roomManager | 单元 | 6 |
+| setGameMode | roomManager | 单元 | 7 |
 | createGame | gameManager | 单元 | 1 |
 | submitMove | gameManager | 单元 | 11 |
 | handleDisconnect | gameManager | 单元 | 4 |
@@ -552,18 +561,19 @@ npm test --prefix client
 | submitArithmeticAnswer | gameManager | 单元 | 10 |
 | 算术 5 分赛制 | gameManager | 单元 | 6 |
 | handleRobotArithmeticAnswer | gameManager | 单元 | 4 |
-| Socket 游戏流程（RPS + 算术 + 默写服务端） | handler | 集成 | 58 |
+| Socket 游戏流程（RPS + 算术 + 默写服务端） | handler | 集成 | 61 |
 | Home 渲染 + 回调 | client Home | 前端单元 | 5 |
-| Room 渲染 + 交互 | client Room | 前端单元 | 10 |
+| Room 渲染 + 交互 | client Room | 前端单元 | 14 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
 | Admin 渲染 + 数据 | client Admin | 前端单元 | 3 |
 | ArithmeticBoard 渲染 + 交互 | client ArithmeticBoard | 前端单元 | 13 |
 | ArithmeticMatchResult 渲染 + 交互 | client ArithmeticMatchResult | 前端单元 | 9 |
-| WordConfig 非空防守 + 图片状态独立更新 + 保存 | client WordConfig | 前端单元 | 9 |
-| **服务端单元** | | | **153** |
-| **集成** | | | **58** |
-| **前端单元** | | | **56** |
-| **总计** | | | **267** |
+| WordConfig 非空防守 + 图片状态独立更新 + 保存 + 语音播放 | client WordConfig | 前端单元 | 10 |
+| SpellingBoard 渲染 + TTS + 答题 + 事件 + 重赛 | client SpellingBoard | 前端单元 | 11 |
+| **服务端单元** | | | **154** |
+| **集成** | | | **61** |
+| **前端单元** | | | **72** |
+| **总计** | | | **287** |
 
 ## 端口
 

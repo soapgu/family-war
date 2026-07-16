@@ -1,10 +1,13 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { App } from 'antd'
 import userEvent from '@testing-library/user-event'
-import useSocket from '../hooks/useSocket'
+import useSocket, { triggerSocketEvent } from '../hooks/useSocket'
 import Room from '../pages/Room'
 
 vi.mock('../hooks/useSocket')
+vi.mock('../components/SpellingBoard', () => ({
+  default: ({ gameInfo }) => <div>默写面板：{gameInfo.firstQuestion?.ttsText}</div>,
+}))
 
 const MOCK_ROOM_STATE = {
   id: 'default',
@@ -121,5 +124,48 @@ describe('Room', () => {
     await userEvent.click(screen.getByText('退出房间'))
     expect(socket.emit).toHaveBeenCalledWith('room:leave')
     expect(onBack).toHaveBeenCalled()
+  })
+
+  it('切换默写模式时携带默认难度', async () => {
+    const socket = useSocket()
+    renderRoom({ ...MOCK_ROOM_STATE, gameMode: 'rps' })
+    await userEvent.click(screen.getByText('🔤 默写'))
+    expect(socket.emit).toHaveBeenCalledWith('game:setMode', { mode: 'spelling', difficulty: 'easy' })
+  })
+
+  it('默写模式可以切换难度', async () => {
+    const socket = useSocket()
+    renderRoom({ ...MOCK_ROOM_STATE, gameMode: 'spelling', spellingDifficulty: 'easy' })
+    await userEvent.click(screen.getByText('困难'))
+    expect(socket.emit).toHaveBeenCalledWith('game:setMode', { mode: 'spelling', difficulty: 'hard' })
+  })
+
+  it('已选角色时可以开始默写比赛', async () => {
+    const socket = useSocket()
+    const state = {
+      ...MOCK_ROOM_STATE,
+      gameMode: 'spelling',
+      spellingDifficulty: 'normal',
+      roles: { ...MOCK_ROOM_STATE.roles, '爸爸': { id: 'test-socket-id', nickname: '小明' } },
+      players: MOCK_ROOM_STATE.players.map((player) => (
+        player.id === 'test-socket-id' ? { ...player, role: '爸爸' } : player
+      )),
+    }
+    renderRoom(state)
+    await userEvent.click(screen.getByRole('button', { name: '开始默写比赛' }))
+    expect(socket.emit).toHaveBeenCalledWith('game:challenge', { mode: 'spelling' })
+  })
+
+  it('默写 game:start 渲染 SpellingBoard', async () => {
+    renderRoom({ ...MOCK_ROOM_STATE, gameMode: 'spelling', spellingDifficulty: 'easy' })
+    act(() => {
+      triggerSocketEvent('game:start', {
+        gameType: 'spelling',
+        players: MOCK_ROOM_STATE.players,
+        difficulty: 'easy',
+        firstQuestion: { questionId: 'q1', ttsText: 'classroom' },
+      })
+    })
+    expect(await screen.findByText('默写面板：classroom')).toBeInTheDocument()
   })
 })

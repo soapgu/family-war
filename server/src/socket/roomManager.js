@@ -186,6 +186,11 @@ class RoomManager {
       return { error: '无效的游戏模式' }
     }
 
+    if (mode === 'spelling' && difficulty !== undefined
+      && !['easy', 'normal', 'hard'].includes(difficulty)) {
+      return { error: '无效的默写难度' }
+    }
+
     if (room.game && room.game.status === 'playing') {
       return { error: '当前有进行中的比赛，无法切换模式' }
     }

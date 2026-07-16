@@ -200,6 +200,11 @@ function registerHandlers(io) {
         return
       }
 
+      if (mode !== room.gameMode) {
+        socket.emit('game:error', { message: '游戏模式已变更，请返回房间重试' })
+        return
+      }
+
       if (room.game && room.game.status === 'playing') {
         socket.emit('game:error', { message: '当前房间已有进行中的比赛' })
         return
@@ -291,6 +296,7 @@ function registerHandlers(io) {
           difficulty,
           firstQuestion: {
             questionId: firstQuestion.questionId,
+            ttsText: firstQuestion.word,
             wordLength: firstQuestion.wordLength,
             blanks: firstQuestion.blanks,
             unsplashImageUrl: firstQuestion.unsplashImageUrl,
@@ -406,6 +412,7 @@ function registerHandlers(io) {
       game.players.forEach((id) => {
         io.to(id).emit('game:question', {
           questionId: question.questionId,
+          ttsText: question.word,
           wordLength: question.wordLength,
           blanks: question.blanks,
           unsplashImageUrl: question.unsplashImageUrl,

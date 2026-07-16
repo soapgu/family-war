@@ -4,6 +4,7 @@ import useSocket from '../hooks/useSocket'
 import RoleCard from '../components/RoleCard'
 import GameBoard from '../components/GameBoard'
 import ArithmeticBoard from '../components/ArithmeticBoard'
+import SpellingBoard from '../components/SpellingBoard'
 
 function getAudioContext(audioCtxRef) {
   if (!audioCtxRef.current) {
@@ -201,7 +202,9 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
         </div>
 
         {gameInfo ? (
-          gameInfo.gameType === 'arithmetic' || gameInfo.gameType === 'spelling' ? (
+          gameInfo.gameType === 'spelling' ? (
+            <SpellingBoard gameInfo={gameInfo} onFinish={() => setGameInfo(null)} />
+          ) : gameInfo.gameType === 'arithmetic' ? (
             <ArithmeticBoard gameInfo={gameInfo} onFinish={() => setGameInfo(null)} />
           ) : (
             <GameBoard key={gameKey}
@@ -223,8 +226,24 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                   { label: '🧮 算术', value: 'arithmetic' },
                   { label: '🔤 默写', value: 'spelling' },
                 ]}
-                onChange={(value) => socket.emit('game:setMode', { mode: value })}
+                onChange={(value) => socket.emit('game:setMode', value === 'spelling'
+                  ? { mode: value, difficulty: roomState?.spellingDifficulty || 'easy' }
+                  : { mode: value })}
               />
+              {roomState?.gameMode === 'spelling' && (
+                <div style={{ marginTop: 12 }}>
+                  <Typography.Text type="secondary" style={{ marginRight: 8 }}>难度</Typography.Text>
+                  <Segmented
+                    value={roomState?.spellingDifficulty || 'easy'}
+                    options={[
+                      { label: '简单', value: 'easy' },
+                      { label: '普通', value: 'normal' },
+                      { label: '困难', value: 'hard' },
+                    ]}
+                    onChange={(difficulty) => socket.emit('game:setMode', { mode: 'spelling', difficulty })}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Player List */}
@@ -295,7 +314,6 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                   <Button
                     type="primary"
                     size="large"
-                    disabled={roomState?.gameMode === 'spelling'}
                     onClick={() => {
                       socket.emit('game:challenge', { mode: roomState?.gameMode })
                     }}
@@ -307,7 +325,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                       fontWeight: 600,
                     }}
                   >
-                    {roomState?.gameMode === 'spelling' ? '开发中...' : '开始比赛'}
+                    {roomState?.gameMode === 'spelling' ? '开始默写比赛' : '开始比赛'}
                   </Button>
                 </div>
               ) : challengableRoles.length > 0 ? (

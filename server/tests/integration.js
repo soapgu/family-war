@@ -175,6 +175,11 @@ async function run() {
   const modeState = await waitForRoomState(s1, (s) => s.gameMode === 'arithmetic')
   assert(modeState.gameMode === 'arithmetic', '切换算术模式')
 
+  const staleModeErrorPromise = waitFor(s1, 'game:error')
+  s1.emit('game:challenge', { mode: 'spelling' })
+  const staleModeError = await staleModeErrorPromise
+  assert(staleModeError.message === '游戏模式已变更，请返回房间重试', '拒绝发起非当前房间模式的挑战')
+
   s1.emit('game:challenge', { mode: 'arithmetic' })
   const [as1, as2] = await Promise.all([
     waitFor(s1, 'game:start'),
@@ -247,6 +252,7 @@ async function run() {
   assert(ss1.players.length === 3, '3 名玩家参赛（含机器人）')
   assert(ss1.difficulty === 'easy', 'game:start 含难度')
   assert(ss1.firstQuestion, 'game:start 含 firstQuestion')
+  assert(typeof ss1.firstQuestion.ttsText === 'string', 'firstQuestion 含 ttsText')
   assert(typeof ss1.firstQuestion.wordLength === 'number', 'firstQuestion 含 wordLength')
   assert(typeof ss1.firstQuestion.blanks === 'string', 'firstQuestion 含 blanks')
   assert(ss1.firstQuestion.blanks.includes('_'), 'blanks 包含下划线')
@@ -283,6 +289,7 @@ async function run() {
   const sq2 = await sq2Promise
   assert(typeof sq2.wordLength === 'number', '下一题含 wordLength')
   assert(typeof sq2.blanks === 'string', '下一题含 blanks')
+  assert(typeof sq2.ttsText === 'string', '下一题含 ttsText')
   assert(sq2.round === 2, '下一题 round 为 2')
 
   console.log('')

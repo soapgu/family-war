@@ -216,7 +216,7 @@ location /family-war/socket.io/ {
 | 1c | gameManager 新增 `generateBlanks` / `generateSpellingQuestion` / `submitSpellingAnswer` / `handleRobotSpellingAnswer` | `gameManager.js` | ✅ |
 | 1d | handler：`game:challenge` 增加 `mode==='spelling'` 分支 + robot 定时器 + answer 分流 + spelling 广播函数 | `handler.js` | ✅ |
 | 1e | roomManager `setGameMode` 允许 `'spelling'`，存储 `spellingDifficulty` | `roomManager.js` | ✅ |
-| 1f | 测试：spelling 集成测试（56 断言） | `tests/integration.js` | ✅ |
+| 1f | 测试：spelling 集成测试（当前完整 Socket 流程共 61 断言） | `tests/integration.js` | ✅ |
 | 1g-1 | **新建** `config.js` 自定义配置 + `config.local.js` 本地覆盖（不上传 git）+ `unsplashClient.js`：Singleton，`syncAll()` 逐词搜索 Unsplash → 下载图片到 `server/public/images/`，`getImageUrl(word)` / `getSyncStatus()` 基于文件系统存在性检查，无持久化 JSON | `server/config.js`, `server/config.local.js`, `server/src/unsplashClient.js` | ✅ |
 | 1g-2 | **新建** unsplashClient 单元测试 + 集成测试（mock + 真实 API Key 验证搜图/下载/持久化 34 断言全部通过） | `server/__tests__/unsplashClient.test.js`, `server/tests/unsplash-integration.js` | ✅ |
 | 1g-3 | admin 路由新增 `GET /api/admin/word-images/status` + `POST /api/admin/word-images/sync` | `server/src/routes/admin.js` | ✅ |
@@ -255,7 +255,7 @@ location /family-war/socket.io/ {
 |------|------|----------|------|
 | 3a | **新建** `WordConfig.jsx` 统一词库管理页（章节/单词启用开关 + 至少保留一个可用词的前端防守 + 图片预览 + 同步缺失 + 手动选图翻页 + 英式英语 TTS 语音播放 + cache-busting 刷新） | `client/src/pages/WordConfig.jsx` | ✅ |
 | 3b | `App.jsx` 增加 `/admin/word-config` 路由；`Admin.jsx` 增加「词库管理」导航按钮 | `App.jsx`, `Admin.jsx` | ✅ |
-| 3c | SpellingBoard.jsx（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效）；结算重赛发送 `game:challenge { mode: 'spelling' }`，不使用仅支持 RPS 的 `game:rematch` | `SpellingBoard.jsx` | ⬜ |
+| 3c | SpellingBoard.jsx（Unsplash 图片 + 自动/手动英式 TTS + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效）；Room 开放三档难度和启动入口；结算重赛发送 `game:challenge { mode: 'spelling' }`，不使用仅支持 RPS 的 `game:rematch` | `SpellingBoard.jsx`, `Room.jsx` | ✅ |
 | 3d | SpellingMatchResult.jsx（终榜排名 + 每题单词回顾） | `SpellingMatchResult.jsx` | ⬜ |
 | 3e | 验证：默写全流程测试；覆盖重赛后仍为 spelling、沿用房间难度、重新读取参赛角色、比分与题目重置 | — | ⬜ |
 

@@ -4,6 +4,7 @@ import { ReloadOutlined, SyncOutlined, SoundOutlined } from '@ant-design/icons'
 
 const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
 const EMPTY_WORD_BANK_MESSAGE = '至少需要保留一个可用的默写单词'
+const SPEECH_RESTART_DELAY = 50
 
 function getActiveWordCount(config) {
   if (!config) return 0
@@ -18,18 +19,30 @@ function getActiveWordCount(config) {
 function WordConfig() {
   const { message } = App.useApp()
   const voiceRef = useRef(null)
+  const utteranceRef = useRef(null)
+  const speechTimerRef = useRef(null)
 
   useEffect(() => {
+    const synth = window.speechSynthesis
+    if (!synth) return undefined
     const load = () => {
-      const voices = window.speechSynthesis.getVoices()
+      const voices = synth.getVoices?.() || []
       const preferred = voices.find(v => /Google UK English/.test(v.name))
         || voices.find(v => /Daniel|Kate/.test(v.name))
-        || voices.find(v => v.lang.startsWith('en'))
+        || voices.find(v => v.lang?.startsWith('en-GB'))
+        || voices.find(v => v.lang?.startsWith('en'))
       voiceRef.current = preferred || null
     }
-    load()
-    window.speechSynthesis.addEventListener('voiceschanged', load)
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
+    if (synth.getVoices) {
+      load()
+      synth.addEventListener?.('voiceschanged', load)
+    }
+    return () => {
+      synth.removeEventListener?.('voiceschanged', load)
+      if (speechTimerRef.current) clearTimeout(speechTimerRef.current)
+      synth.cancel?.()
+      utteranceRef.current = null
+    }
   }, [])
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -241,13 +254,28 @@ function WordConfig() {
   }
 
   const speak = useCallback((text) => {
-    if (!window.speechSynthesis) return message.warning('当前浏览器不支持语音')
+    const synth = window.speechSynthesis
+    if (!synth?.speak || typeof SpeechSynthesisUtterance === 'undefined') {
+      message.warning('当前浏览器不支持语音')
+      return
+    }
+    if (speechTimerRef.current) clearTimeout(speechTimerRef.current)
+    synth.cancel?.()
+    synth.resume?.()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'en-GB'
     utterance.rate = 0.8
     if (voiceRef.current) utterance.voice = voiceRef.current
-    window.speechSynthesis.cancel()
-    window.speechSynthesis.speak(utterance)
+    utteranceRef.current = utterance
+    const release = () => {
+      if (utteranceRef.current === utterance) utteranceRef.current = null
+    }
+    utterance.onend = release
+    utterance.onerror = release
+    speechTimerRef.current = setTimeout(() => {
+      speechTimerRef.current = null
+      if (utteranceRef.current === utterance) synth.speak(utterance)
+    }, SPEECH_RESTART_DELAY)
   }, [message])
 
   if (loading && !data) {

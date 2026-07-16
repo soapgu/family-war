@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { App as AntApp } from 'antd'
 import WordConfig from '../pages/WordConfig'
 
@@ -40,16 +40,39 @@ beforeEach(() => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       cancel: vi.fn(),
+      resume: vi.fn(),
       speak: vi.fn(),
     },
+  })
+  vi.stubGlobal('SpeechSynthesisUtterance', class {
+    constructor(text) { this.text = text }
   })
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
 describe('WordConfig', () => {
+  it('重置 Chrome 语音队列后延迟播放英式发音', async () => {
+    renderWordConfig()
+    await screen.findByText('classroom')
+    vi.useFakeTimers()
+
+    fireEvent.click(screen.getByRole('button', { name: '播放 classroom' }))
+    expect(window.speechSynthesis.cancel).toHaveBeenCalled()
+    expect(window.speechSynthesis.resume).toHaveBeenCalled()
+    expect(window.speechSynthesis.speak).not.toHaveBeenCalled()
+
+    act(() => vi.advanceTimersByTime(50))
+    expect(window.speechSynthesis.speak).toHaveBeenCalledOnce()
+    const utterance = window.speechSynthesis.speak.mock.calls[0][0]
+    expect(utterance.text).toBe('classroom')
+    expect(utterance.lang).toBe('en-GB')
+    expect(utterance.rate).toBe(0.8)
+  })
+
   it('阻止关闭最后一个启用章节', async () => {
     renderWordConfig()
     await screen.findByText('第一章')

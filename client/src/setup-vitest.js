@@ -41,6 +41,7 @@ class MockAudioContext {
     }
   }
   resume() { return Promise.resolve() }
+  close() { return Promise.resolve() }
 }
 
 window.AudioContext = MockAudioContext
