@@ -1,6 +1,6 @@
 # Family War 🎮 v3.0 开发中
 
-一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）、**算术达人**（全员抢答）和 v3.0 **爱拼才会赢**（英文默写），并支持机器人对局；默写专属结算页仍在开发。
+一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）、**算术达人**（全员抢答）和 v3.0 **爱拼才会赢**（英文默写），并支持机器人对局。
 
 ## 系统架构
 
@@ -145,9 +145,10 @@ family-war/
 │   │   │   ├── GameBoard.jsx                  # RPS 对战面板
 │   │   │   ├── ArithmeticBoard.jsx            # 算术抢答面板
 │   │   │   ├── SpellingBoard.jsx              # 默写抢答面板（图片、TTS、字母格）
-│   │   │   ├── MatchResult.jsx                # RPS/算术结算分发
+│   │   │   ├── MatchResult.jsx                # 三种模式结算分发
 │   │   │   ├── RpsMatchResult.jsx             # RPS 结算
-│   │   │   └── ArithmeticMatchResult.jsx      # 算术结算
+│   │   │   ├── ArithmeticMatchResult.jsx      # 算术结算
+│   │   │   └── SpellingMatchResult.jsx        # 默写终榜与逐题单词回顾
 │   │   ├── hooks/
 │   │   │   ├── __mocks__/
 │   │   │   │   └── useSocket.js               # Socket mock（测试用）
@@ -252,9 +253,9 @@ App (BrowserRouter)
 | 开始游戏 | 已选角色后点击“开始默写比赛”，所有已选角色玩家和机器人参赛 | `socket.emit('game:challenge', { mode: 'spelling' })` |
 | 出题 | 首题随 `game:start` 下发，后续题走 `game:question`；自动朗读一次并可手动重播 | 题目包含 `ttsText`、填空、词长和图片 URL |
 | 抢答 | 根据图片、英式发音和字母格输入完整单词；首位答对者得 1 分 | `socket.emit('game:answer', { questionId, answer })` |
+| 结算 | 展示最终排名，并可展开回顾每题单词、填空提示和各玩家答案 | 客户端收到 `game:matchResult` |
 | 管理能力 | 可配置章节/单词、同步图片、手动选图和试听英式发音 | `/admin/word-config` |
 | 重赛 | 结算页重新发起默写挑战，服务端沿用房间当前难度并重新读取参赛角色 | `socket.emit('game:challenge', { mode: 'spelling' })` |
-| 待完成 | 默写专属结算和更完整的重赛集成场景 | 见 `step.md` Phase 3d-3e |
 
 ## 游戏规则
 
@@ -561,7 +562,7 @@ npm test --prefix client
 | submitArithmeticAnswer | gameManager | 单元 | 10 |
 | 算术 5 分赛制 | gameManager | 单元 | 6 |
 | handleRobotArithmeticAnswer | gameManager | 单元 | 4 |
-| Socket 游戏流程（RPS + 算术 + 默写服务端） | handler | 集成 | 61 |
+| Socket 游戏流程（RPS + 算术 + 默写完整比赛及重赛） | handler | 集成 | 81 |
 | Home 渲染 + 回调 | client Home | 前端单元 | 5 |
 | Room 渲染 + 交互 | client Room | 前端单元 | 14 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
@@ -570,10 +571,11 @@ npm test --prefix client
 | ArithmeticMatchResult 渲染 + 交互 | client ArithmeticMatchResult | 前端单元 | 9 |
 | WordConfig 非空防守 + 图片状态独立更新 + 保存 + 语音播放 | client WordConfig | 前端单元 | 10 |
 | SpellingBoard 渲染 + TTS + 答题 + 事件 + 重赛 | client SpellingBoard | 前端单元 | 11 |
+| SpellingMatchResult 胜负 + 排名 + 单词回顾 + 操作 | client SpellingMatchResult | 前端单元 | 3 |
 | **服务端单元** | | | **154** |
-| **集成** | | | **61** |
-| **前端单元** | | | **72** |
-| **总计** | | | **287** |
+| **集成** | | | **81** |
+| **前端单元** | | | **75** |
+| **总计** | | | **310** |
 
 ## 端口
 

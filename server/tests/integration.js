@@ -292,6 +292,71 @@ async function run() {
   assert(typeof sq2.ttsText === 'string', '下一题含 ttsText')
   assert(sq2.round === 2, '下一题 round 为 2')
 
+  // 小明继续答对 4 题，让默写比赛真实结束
+  let currentQuestion = sq2
+  let spellingMatchResult
+  for (let expectedScore = 2; expectedScore <= 5; expectedScore++) {
+    const isFinalRound = expectedScore === 5
+    const nextQuestionPromise = isFinalRound ? null : waitFor(s1, 'game:question')
+    const resultPromise = waitFor(s1, isFinalRound ? 'game:matchResult' : 'game:roundResult')
+
+    s1.emit('game:answer', {
+      questionId: currentQuestion.questionId,
+      answer: currentQuestion.ttsText,
+    })
+
+    const result = await resultPromise
+    assert(result.scores[s1.id] === expectedScore, `默写小明达到 ${expectedScore} 分`)
+
+    if (isFinalRound) {
+      spellingMatchResult = result
+    } else {
+      currentQuestion = await nextQuestionPromise
+    }
+  }
+
+  assert(spellingMatchResult.gameType === 'spelling', '默写赛果含 gameType')
+  assert(spellingMatchResult.matchWinner === s1.id, '默写比赛小明获胜')
+  assert(spellingMatchResult.history.length === 5, '默写赛果包含 5 题历史')
+  assert(spellingMatchResult.ranking[0].playerId === s1.id, '默写终榜小明第一')
+
+  // 结算后调整当前房间配置，重赛必须重新读取难度与角色阵容
+  s1.emit('game:setMode', { mode: 'spelling', difficulty: 'hard' })
+  const hardState = await waitForRoomState(s1, (s) => s.spellingDifficulty === 'hard')
+  assert(hardState.spellingDifficulty === 'hard', '结算后难度改为 hard')
+
+  s2.emit('role:deselect')
+  const rosterState = await waitForRoomState(s1, (s) => !s.roles['妈妈'])
+  assert(!rosterState.roles['妈妈'], '结算后小红退出参赛角色')
+
+  s1.emit('game:challenge', { mode: 'spelling' })
+  const rematchStart = await waitFor(s1, 'game:start')
+  assert(rematchStart.gameType === 'spelling', '重赛仍为 spelling')
+  assert(rematchStart.difficulty === 'hard', '重赛沿用当前房间难度')
+  assert(rematchStart.players.length === 2, '重赛重新读取角色阵容（小明 + 机器人）')
+  assert(!rematchStart.players.some((p) => p.id === s2.id), '重赛不包含已退出角色的小红')
+  assert(rematchStart.round === 1, '重赛 round 重置为 1')
+  assert(rematchStart.firstQuestion.round === 1, '重赛首题 round 为 1')
+  assert(rematchStart.firstQuestion.questionId !== sq1.questionId, '重赛题目 ID 已更新')
+
+  const rematchRoundPromise = waitFor(s1, 'game:roundResult')
+  s1.emit('game:answer', {
+    questionId: rematchStart.firstQuestion.questionId,
+    answer: rematchStart.firstQuestion.ttsText,
+  })
+  const rematchRound = await rematchRoundPromise
+  assert(rematchRound.scores[s1.id] === 1, '重赛比分从 0 重新累计')
+  assert(rematchRound.round === 1, '重赛第一题结果 round 为 1')
+
+  // 模拟旧结算页：房间已切换模式后再发起 spelling 重赛应明确拒绝
+  s1.emit('game:forfeit')
+  s1.emit('game:setMode', { mode: 'arithmetic' })
+  await waitForRoomState(s1, (s) => s.gameMode === 'arithmetic')
+  const oldResultErrorPromise = waitFor(s1, 'game:error')
+  s1.emit('game:challenge', { mode: 'spelling' })
+  const oldResultError = await oldResultErrorPromise
+  assert(oldResultError.message === '游戏模式已变更，请返回房间重试', '旧默写结算页不能跨模式重赛')
+
   console.log('')
 
   // ========== 结果 ==========

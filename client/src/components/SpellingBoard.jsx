@@ -265,7 +265,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
         matchWinner={matchResult.matchWinner}
         scores={matchResult.scores}
         ranking={matchResult.ranking}
-        history={[]}
+        history={matchResult.history}
         myId={socket.id}
         onBack={onFinish}
         onRematch={() => socket.emit('game:challenge', { mode: 'spelling' })}
