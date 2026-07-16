@@ -213,6 +213,7 @@ App (BrowserRouter)
 | 双方出拳 | 点击出拳按钮，滚筒定格 + punch 音效 → 交锋动画展示结果 | `socket.emit('game:move', { choice })` |
 | 判定结果 | 服务器比对，广播本局结果 | 客户端收到 `game:roundResult` |
 | 赛果 | 先赢 2 局者胜，切换到结算 BGM | 客户端收到 `game:matchResult` |
+| 重赛 | 结算页点击“再来一局”，原对战双方重新开始 RPS | `socket.emit('game:rematch')` |
 
 ### 算术达人（v2.0）
 
@@ -228,6 +229,7 @@ App (BrowserRouter)
 | 抢答 | 在输入框中填写答案并提交 | `socket.emit('game:answer', { questionId, answer })` |
 | 判定 | 首位答对者得 1 分；机器人固定 20 秒后自动答对 | 客户端收到 `game:roundResult` |
 | 赛果 | 先得 5 分者胜，切换到结算 BGM | 客户端收到 `game:matchResult` |
+| 重赛 | 结算页点击“再来一局”，重新发起一场算术挑战 | `socket.emit('game:challenge', { mode: 'arithmetic' })` |
 
 ### 默写达人（v3.0）
 
@@ -241,6 +243,7 @@ App (BrowserRouter)
 | 开始游戏 | 按钮显示“开发中...”并禁用 | 尚不发送挑战事件 |
 | 服务端能力 | 已具备三档难度、出题、判题、计分、机器人超时和图片 URL | 已通过单元及 Socket 集成测试 |
 | 管理能力 | 可配置章节/单词、同步图片、手动选图和试听英式发音 | `/admin/word-config` |
+| 重赛 | 服务端已支持重新发起默写挑战并沿用房间难度；玩家端尚未接通 | 规划发送 `game:challenge`，参数为 `{ mode: 'spelling' }` |
 | 待完成 | `SpellingBoard`、玩家端 TTS/图片/填空/输入、专属结算和前端全流程测试 | 见 `step.md` Phase 3c-3e |
 
 ## 游戏规则
@@ -407,6 +410,17 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 - 每个事件增加 `gameType: 'rps' | 'arithmetic' | 'spelling'` 字段区分模式
 - 仅新增 2 个事件：`game:question`（S→C 出题）、`game:answer`（C→S 答题）
 - `game:challenge` 通过 `mode` 分流；RPS 可省略并默认使用 `rps`，算术和默写需显式传入模式
+- `game:rematch` 不是三种模式的通用重赛事件，目前只用于 RPS
+
+### 重赛机制
+
+| 模式 | 客户端事件 | 服务端行为 | 当前状态 |
+|------|------------|------------|----------|
+| RPS | `game:rematch` | 取已结束比赛的原两名玩家，创建新的 RPS 比赛 | 已完成 |
+| 算术 | `game:challenge { mode: 'arithmetic' }` | 清除已结束比赛，按当前已选角色重新创建全员算术比赛 | 已完成 |
+| 默写 | `game:challenge { mode: 'spelling' }` | 清除已结束比赛，按当前已选角色和房间难度重新创建默写比赛 | 服务端已支持，玩家端待实现 |
+
+算术和默写采用“重新发起挑战”而不是 `game:rematch`，因为两者是全员模式，重赛时应重新读取当前角色阵容；默写还需要读取房间当前的 `spellingDifficulty`。当前默写临时复用的 `ArithmeticBoard` 会把重赛模式写成 `arithmetic`，因此在 `SpellingBoard` 完成前不能视为已接通默写重赛。
 
 ### Socket 事件清单
 
@@ -422,7 +436,7 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 | `game:challenge` | RPS: `{ targetId, mode?: 'rps' }`<br>算术: `{ mode: 'arithmetic' }`<br>默写: `{ mode: 'spelling' }` | 发起挑战；当前玩家端只会发起 RPS/算术挑战 |
 | `game:move` | `{ choice }` | 出拳（rock/paper/scissors） |
 | `game:answer` | RPS: `{ choice }`<br>算术/默写: `{ questionId, answer }` | 出拳或抢答 |
-| `game:rematch` | — | 再来一局 |
+| `game:rematch` | `{ roomId? }` | 仅用于 RPS：原对战双方再来一局 |
 | `game:forfeit` | — | 认输回房 |
 
 #### 服务端 → 客户端

@@ -254,9 +254,9 @@ location /family-war/socket.io/ {
 |------|------|----------|------|
 | 3a | **新建** `WordConfig.jsx` 统一词库管理页（章节/单词启用开关 + 图片预览 + 同步 + 同步缺失 + 手动选图翻页 + 英式英语 TTS 语音播放 + cache-busting 刷新） | `client/src/pages/WordConfig.jsx` | ✅ |
 | 3b | `App.jsx` 增加 `/admin/word-config` 路由；`Admin.jsx` 增加「词库管理」导航按钮 | `App.jsx`, `Admin.jsx` | ✅ |
-| 3c | SpellingBoard.jsx（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效） | `SpellingBoard.jsx` | ⬜ |
+| 3c | SpellingBoard.jsx（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效）；结算重赛发送 `game:challenge { mode: 'spelling' }`，不使用仅支持 RPS 的 `game:rematch` | `SpellingBoard.jsx` | ⬜ |
 | 3d | SpellingMatchResult.jsx（终榜排名 + 每题单词回顾） | `SpellingMatchResult.jsx` | ⬜ |
-| 3e | 验证：默写全流程测试 | — | ⬜ |
+| 3e | 验证：默写全流程测试；覆盖重赛后仍为 spelling、沿用房间难度、重新读取参赛角色、比分与题目重置 | — | ⬜ |
 
 ### 后续 TODO：管理接口安全加固
 
