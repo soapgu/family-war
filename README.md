@@ -154,7 +154,8 @@ family-war/
 │   ├── __tests__/
 │   │   ├── roomManager.test.js     # 房间和模式管理单元测试
 │   │   ├── gameManager.test.js     # 三种游戏规则单元测试
-│   │   └── unsplashClient.test.js  # 图片同步单元测试
+│   │   ├── unsplashClient.test.js  # 图片同步单元测试
+│   │   └── wordBank.test.js        # 词库配置校验单元测试
 │   ├── tests/
 │   │   └── integration.js          # 真实 Socket.IO 集成测试
 │   ├── src/
@@ -495,7 +496,7 @@ MatchResult.jsx
 - 已完成对局记录（存在内存数组中）
 - API: `GET /api/admin/status` → 房间列表 + 历史对局
 - API: `GET /api/admin/word-config` → 章节结构 + 图片同步状态 + 当前启用配置
-- API: `POST /api/admin/word-config` → 保存词库启用配置
+- API: `POST /api/admin/word-config` → 校验并保存词库启用配置（至少保留一个可用单词）
 - API: `GET /api/admin/word-images/candidates/:word?page=1&perPage=15` → 候选图片列表（支持翻页）
 - API: `POST /api/admin/word-images/confirm/:word` → 确认选中图片并下载保存
 - API: `POST /api/admin/word-images/replace/:word` → 替换单张 Unsplash 图片（随机选，UI 已不使用）
@@ -508,7 +509,7 @@ MatchResult.jsx
 | 项目 | 说明 |
 |------|------|
 | 框架 | 服务端 Jest v29；客户端 Vitest v3 + jsdom |
-| 服务端单元测试 | `server/__tests__/roomManager.test.js`、`gameManager.test.js`、`unsplashClient.test.js` |
+| 服务端单元测试 | `server/__tests__/roomManager.test.js`、`gameManager.test.js`、`unsplashClient.test.js`、`wordBank.test.js` |
 | 服务端集成测试 | `server/tests/integration.js`（真实 Socket 连接走完整流程） |
 | 前端单元测试 | `client/src/__tests__/*.test.jsx`（Vitest + React Testing Library + Antd） |
 | 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
@@ -551,17 +552,17 @@ npm test --prefix client
 | submitArithmeticAnswer | gameManager | 单元 | 10 |
 | 算术 5 分赛制 | gameManager | 单元 | 6 |
 | handleRobotArithmeticAnswer | gameManager | 单元 | 4 |
-| Socket 游戏流程（RPS + 算术 + 默写服务端） | handler | 集成 | 57 |
+| Socket 游戏流程（RPS + 算术 + 默写服务端） | handler | 集成 | 58 |
 | Home 渲染 + 回调 | client Home | 前端单元 | 5 |
 | Room 渲染 + 交互 | client Room | 前端单元 | 10 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
 | Admin 渲染 + 数据 | client Admin | 前端单元 | 3 |
 | ArithmeticBoard 渲染 + 交互 | client ArithmeticBoard | 前端单元 | 13 |
 | ArithmeticMatchResult 渲染 + 交互 | client ArithmeticMatchResult | 前端单元 | 9 |
-| **服务端单元** | | | **134** |
-| **集成** | | | **57** |
+| **服务端单元** | | | **153** |
+| **集成** | | | **58** |
 | **前端单元** | | | **47** |
-| **总计** | | | **238** |
+| **总计** | | | **258** |
 
 ## 端口
 

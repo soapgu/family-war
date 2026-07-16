@@ -266,7 +266,14 @@ function registerHandlers(io) {
 
       const difficulty = room.spellingDifficulty || 'easy'
       const game = gameManager.createGame(rid, playerIds, 'spelling', difficulty)
-      const firstQuestion = gameManager.generateSpellingQuestion(game)
+      let firstQuestion
+      try {
+        firstQuestion = gameManager.generateSpellingQuestion(game)
+      } catch (error) {
+        roomManager.clearGame(rid)
+        socket.emit('game:error', { message: error.message })
+        return
+      }
 
       const playerList = playerIds.map((id) => ({
         id,

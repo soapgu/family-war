@@ -402,6 +402,11 @@ class GameManager {
    */
   generateSpellingQuestion(game) {
     const activeWords = wordBank.getActiveWords()
+      .filter((word) => typeof word === 'string' && word.length > 0)
+    if (activeWords.length === 0) {
+      throw new Error('当前没有可用的默写单词，请先配置词库')
+    }
+
     let available = activeWords.filter((w) => !game.usedWords.includes(w))
     if (available.length === 0) {
       game.usedWords = []
@@ -443,6 +448,10 @@ class GameManager {
       return { action: 'error', message: '比赛已结束' }
     }
 
+    if (typeof questionId !== 'string' || questionId.length === 0) {
+      return { action: 'error', message: '题目编号无效' }
+    }
+
     if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) {
       return { action: 'error', message: '题目已过期' }
     }
@@ -455,14 +464,19 @@ class GameManager {
       return { action: 'error', message: '你已经回答过本题' }
     }
 
-    game.answeredThisRound[socketId] = answer
+    if (typeof answer !== 'string' || answer.trim().length === 0) {
+      return { action: 'error', message: '答案必须是非空字符串' }
+    }
 
-    if (answer.toLowerCase() !== game.currentQuestion.word.toLowerCase()) {
+    const normalizedAnswer = answer.trim()
+    game.answeredThisRound[socketId] = normalizedAnswer
+
+    if (normalizedAnswer.toLowerCase() !== game.currentQuestion.word.toLowerCase()) {
       return {
         action: 'waiting',
         correctAnswer: game.currentQuestion.word,
         word: game.currentQuestion.word,
-        yourAnswer: answer,
+        yourAnswer: normalizedAnswer,
       }
     }
 

@@ -238,6 +238,7 @@ location /family-war/socket.io/ {
 | 1h-5 | `gameManager.js` 改用 `wordBank.getActiveWords()`；`generateBlanks` 词组空格显示为 `·` | `server/src/socket/gameManager.js` | ✅ |
 | 1h-6 | admin 路由新增 `GET/POST /api/admin/word-config` + `POST /api/admin/word-images/replace/:word` | `server/src/routes/admin.js` | ✅ |
 | 1h-7 | 测试：mock wordBank 适配新结构 | `server/__tests__/gameManager.test.js`, `server/__tests__/unsplashClient.test.js` | ✅ |
+| 1h-8 | 健壮性：校验词库配置并保证至少一个可用词；拒绝非法默写答案；空词库开局返回业务错误 | `wordBank.js`, `gameManager.js`, `handler.js`, `admin.js` | ✅ |
 
 ### Phase 2: 客户端兼容（不改 UI，spelling 按钮暂禁用）
 

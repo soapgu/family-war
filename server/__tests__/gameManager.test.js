@@ -19,6 +19,7 @@ jest.mock('../src/data/wordBank', () => ({
 const roomManager = require('../src/socket/roomManager')
 const gameManager = require('../src/socket/gameManager')
 const unsplashClient = require('../src/unsplashClient')
+const wordBank = require('../src/data/wordBank')
 
 const ROOM_ID = 'default'
 const P1 = 's1'
@@ -56,6 +57,7 @@ function mockRoomWithPlayers(game, playerIds) {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  wordBank.getActiveWords.mockReturnValue(['classroom', 'art room', 'library'])
   gameManager.matchHistory = []
 })
 
@@ -728,6 +730,14 @@ describe('generateSpellingQuestion', () => {
     expect(unsplashClient.getImageUrl).toHaveBeenCalledWith(question.word)
     expect(question.unsplashImageUrl).toBe(mockUrl)
   })
+
+  it('有效词库为空时返回可识别错误', () => {
+    wordBank.getActiveWords.mockReturnValue([])
+    const game = startSpellingGame('easy')
+
+    expect(() => gameManager.generateSpellingQuestion(game))
+      .toThrow('当前没有可用的默写单词，请先配置词库')
+  })
 })
 
 describe('submitSpellingAnswer', () => {
@@ -762,6 +772,27 @@ describe('submitSpellingAnswer', () => {
     const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, question.word.toUpperCase())
     expect(result.action).toBe('round_result')
     expect(result.winner).toBe(P1)
+  })
+
+  it('忽略答案首尾空白', () => {
+    const { question } = startWithQuestion()
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, `  ${question.word}  `)
+    expect(result.action).toBe('round_result')
+    expect(result.answeredBy[P1]).toBe(question.word)
+  })
+
+  it.each([undefined, null, 123, {}, '', '   '])('非法答案 %p 返回 error', (answer) => {
+    const { game, question } = startWithQuestion()
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, answer)
+
+    expect(result).toEqual({ action: 'error', message: '答案必须是非空字符串' })
+    expect(game.answeredThisRound[P1]).toBeUndefined()
+  })
+
+  it('非法题目编号返回 error', () => {
+    startWithQuestion()
+    const result = gameManager.submitSpellingAnswer(ROOM_ID, P1, null, 'classroom')
+    expect(result).toEqual({ action: 'error', message: '题目编号无效' })
   })
 
   it('错误答案返回 waiting', () => {

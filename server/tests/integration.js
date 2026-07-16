@@ -255,6 +255,12 @@ async function run() {
 
   const sq1 = ss1.firstQuestion
 
+  // 非字符串答案应返回业务错误，且不影响玩家随后正常答题
+  const invalidAnswerPromise = waitFor(s2, 'game:error')
+  s2.emit('game:answer', { questionId: sq1.questionId, answer: null })
+  const invalidAnswerError = await invalidAnswerPromise
+  assert(invalidAnswerError.message === '答案必须是非空字符串', '默写拒绝非字符串答案')
+
   // s2 故意答错 → 捕获正确单词
   const spellingAckPromise = waitFor(s2, 'game:answerAck')
   s2.emit('game:answer', { questionId: sq1.questionId, answer: 'wrongguess' })

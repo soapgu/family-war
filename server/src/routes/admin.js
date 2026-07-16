@@ -105,9 +105,13 @@ function registerAdminRoutes(router) {
   })
 
   router.post('/api/admin/word-config', (ctx) => {
-    const { enabledChapters, disabledWords } = ctx.request.body || {}
-    wordBank.setConfig({ enabledChapters, disabledWords })
-    ctx.body = { ok: true }
+    try {
+      wordBank.setConfig(ctx.request.body || {})
+      ctx.body = { ok: true }
+    } catch (error) {
+      ctx.status = 400
+      ctx.body = { error: error.message }
+    }
   })
 
   router.post('/api/admin/word-images/replace/:word', async (ctx) => {
