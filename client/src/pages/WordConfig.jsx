@@ -1,8 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App, Modal } from 'antd'
+import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App, Modal, Alert, Progress } from 'antd'
 import { ReloadOutlined, SyncOutlined, SoundOutlined } from '@ant-design/icons'
 
 const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
+const EMPTY_WORD_BANK_MESSAGE = '至少需要保留一个可用的默写单词'
+
+function getActiveWordCount(config) {
+  if (!config) return 0
+  const enabledChapters = new Set(config.enabledChapters)
+  const disabledWords = new Set(config.disabledWords)
+  return config.chapters.reduce((count, chapter) => {
+    if (!enabledChapters.has(chapter.chapter)) return count
+    return count + chapter.words.filter((word) => !disabledWords.has(word.word)).length
+  }, 0)
+}
 
 function WordConfig() {
   const { message } = App.useApp()
@@ -58,6 +69,10 @@ function WordConfig() {
       if (i !== -1) chapters.splice(i, 1)
     }
     const next = { ...data, enabledChapters: chapters }
+    if (getActiveWordCount(next) === 0) {
+      message.warning(EMPTY_WORD_BANK_MESSAGE)
+      return
+    }
     setData(next)
   }
 
@@ -71,11 +86,19 @@ function WordConfig() {
       if (i !== -1) disabled.splice(i, 1)
     }
     const next = { ...data, disabledWords: disabled }
+    if (getActiveWordCount(next) === 0) {
+      message.warning(EMPTY_WORD_BANK_MESSAGE)
+      return
+    }
     setData(next)
   }
 
   const handleSave = async () => {
     if (!data) return
+    if (getActiveWordCount(data) === 0) {
+      message.warning(EMPTY_WORD_BANK_MESSAGE)
+      return
+    }
     setSaving(true)
     try {
       const body = { enabledChapters: data.enabledChapters, disabledWords: data.disabledWords }
@@ -88,7 +111,8 @@ function WordConfig() {
         setSavedNotify(true)
         setTimeout(() => setSavedNotify(false), 2000)
       } else {
-        message.error('保存失败')
+        const err = await res.json().catch(() => ({}))
+        message.error(err.error || '保存失败')
       }
     } catch {
       message.error('保存请求失败')
@@ -200,6 +224,21 @@ function WordConfig() {
     return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
   }
 
+  const activeWordCount = getActiveWordCount(data)
+  const totalWordCount = data?.chapters.reduce((sum, chapter) => sum + chapter.words.length, 0) || 0
+  const syncedWordCount = data?.chapters.reduce(
+    (sum, chapter) => sum + chapter.words.filter((word) => word.synced).length,
+    0
+  ) || 0
+  const missingWordCount = Math.max(totalWordCount - syncedWordCount, 0)
+  const allWordsSynced = totalWordCount > 0 && syncedWordCount === totalWordCount
+  const syncPercent = totalWordCount > 0 ? Math.round((syncedWordCount / totalWordCount) * 100) : 0
+  const syncButtonLabel = totalWordCount === 0
+    ? '暂无单词'
+    : allWordsSynced
+      ? '已全部同步'
+      : `同步缺失 ${missingWordCount} 个`
+
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -212,15 +251,96 @@ function WordConfig() {
 
       {data && (
         <Card style={{ marginBottom: 20 }}>
-          <Space wrap>
-            <Button icon={<SyncOutlined />} onClick={handleSyncMissing} loading={syncing}>
-              仅同步缺失
-            </Button>
-            <Typography.Text type="secondary">
-              已同步 {data.chapters.reduce((s, c) => s + c.words.filter((w) => w.synced).length, 0)} / {data.chapters.reduce((s, c) => s + c.words.length, 0)} 个单词
-            </Typography.Text>
-          </Space>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'stretch' }}>
+            <div
+              aria-label={`图片同步 ${syncedWordCount} / ${totalWordCount}`}
+              style={{
+                flex: '1.4 1 420px',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 20,
+                padding: '12px 16px',
+                borderRadius: 10,
+                background: allWordsSynced ? '#f6ffed' : '#fffbe6',
+                border: `1px solid ${allWordsSynced ? '#b7eb8f' : '#ffe58f'}`,
+              }}
+            >
+              <div>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>图片同步</Typography.Text>
+                <div style={{ marginTop: 2, display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <span style={{ fontSize: 28, lineHeight: 1.2, fontWeight: 750, color: allWordsSynced ? '#389e0d' : '#d48806' }}>
+                    {syncedWordCount}
+                  </span>
+                  <span style={{ fontSize: 14, color: '#8c8c8c' }}>/ {totalWordCount}</span>
+                </div>
+              </div>
+              <div style={{ flex: '1 1 150px', minWidth: 130 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>同步进度</Typography.Text>
+                  <Typography.Text style={{ fontSize: 12, color: allWordsSynced ? '#52c41a' : '#d48806' }}>
+                    {syncPercent}%
+                  </Typography.Text>
+                </div>
+                <Progress
+                  percent={syncPercent}
+                  showInfo={false}
+                  size="small"
+                  strokeColor={allWordsSynced ? '#52c41a' : '#faad14'}
+                  trailColor={allWordsSynced ? '#d9f7be' : '#fff1b8'}
+                />
+                <Typography.Text style={{ fontSize: 12, color: allWordsSynced ? '#52c41a' : '#d48806' }}>
+                  {totalWordCount === 0
+                    ? '暂无单词图片'
+                    : allWordsSynced
+                      ? '所有图片均已就绪'
+                      : `还差 ${missingWordCount} 张图片待同步`}
+                </Typography.Text>
+              </div>
+              <Button
+                aria-label={syncButtonLabel}
+                icon={<SyncOutlined />}
+                onClick={handleSyncMissing}
+                loading={syncing}
+                disabled={allWordsSynced || totalWordCount === 0}
+              >
+                {syncButtonLabel}
+              </Button>
+            </div>
+
+            <div
+              aria-label={`当前启用 ${activeWordCount} 个单词`}
+              style={{
+                flex: '1 1 280px',
+                padding: '12px 16px',
+                borderRadius: 10,
+                background: '#e6f4ff',
+                border: '1px solid #91caff',
+              }}
+            >
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>当前启用</Typography.Text>
+              <div style={{ marginTop: 2, display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ fontSize: 28, lineHeight: 1.2, fontWeight: 750, color: '#1677ff' }}>
+                  {activeWordCount}
+                </span>
+                <span style={{ fontSize: 14, color: '#8c8c8c' }}>个单词</span>
+              </div>
+              <Typography.Text style={{ fontSize: 12, color: '#4096ff' }}>
+                本轮默写选题范围
+              </Typography.Text>
+            </div>
+          </div>
         </Card>
+      )}
+
+      {data && activeWordCount === 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          message={EMPTY_WORD_BANK_MESSAGE}
+          description="请先启用至少一个章节和单词，再保存配置。"
+          style={{ marginBottom: 20 }}
+        />
       )}
 
       {data && data.chapters.length === 0 && (
@@ -323,7 +443,7 @@ function WordConfig() {
 
       {data && (
         <div style={{ textAlign: 'center', marginTop: 16 }}>
-          <Button type="primary" onClick={handleSave} loading={saving}>
+          <Button type="primary" onClick={handleSave} loading={saving} disabled={activeWordCount === 0}>
             {savedNotify ? '✅ 已保存' : '保存配置'}
           </Button>
         </div>

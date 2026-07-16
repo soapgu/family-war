@@ -253,7 +253,7 @@ location /family-war/socket.io/ {
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | **新建** `WordConfig.jsx` 统一词库管理页（章节/单词启用开关 + 图片预览 + 同步 + 同步缺失 + 手动选图翻页 + 英式英语 TTS 语音播放 + cache-busting 刷新） | `client/src/pages/WordConfig.jsx` | ✅ |
+| 3a | **新建** `WordConfig.jsx` 统一词库管理页（章节/单词启用开关 + 至少保留一个可用词的前端防守 + 图片预览 + 同步缺失 + 手动选图翻页 + 英式英语 TTS 语音播放 + cache-busting 刷新） | `client/src/pages/WordConfig.jsx` | ✅ |
 | 3b | `App.jsx` 增加 `/admin/word-config` 路由；`Admin.jsx` 增加「词库管理」导航按钮 | `App.jsx`, `Admin.jsx` | ✅ |
 | 3c | SpellingBoard.jsx（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效）；结算重赛发送 `game:challenge { mode: 'spelling' }`，不使用仅支持 RPS 的 `game:rematch` | `SpellingBoard.jsx` | ⬜ |
 | 3d | SpellingMatchResult.jsx（终榜排名 + 每题单词回顾） | `SpellingMatchResult.jsx` | ⬜ |
