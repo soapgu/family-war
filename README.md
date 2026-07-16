@@ -1,6 +1,6 @@
-# Family War 🎮 v3.0
+# Family War 🎮 v3.0 开发中
 
-一个线上多人游戏系统，支持**石头剪刀布**（1v1 对战）、**算术达人**（全员抢答）和**爱拼才会赢**（英文默写）三种玩法，以及和机器人对局。
+一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）和**算术达人**（全员抢答），并支持机器人对局；v3.0 **爱拼才会赢**（英文默写）的服务端与词库管理已完成，玩家端仍在开发。
 
 ## 系统架构
 
@@ -64,27 +64,17 @@ flowchart TD
     T -->|否 🔄| O
     T -->|是 🏆| U[🏆 比赛结算]
 
-    D -->|✍️ 默写模式| Sp[✍️ 开始默写<br>全员参加]
-    Sp --> SpQ[📝 系统出题<br>TTS 朗读 + 图片 + 填空]
-    SpQ --> SpAns[✏️ 玩家抢答<br>输入完整单词]
-    SpAns --> SpRes{20秒内<br>有人答对?}
-    SpRes -->|✅ 是| SpR[答对者 +1分]
-    SpRes -->|🤖 否| SpS[机器人 +1分<br>（20秒到自动答对）]
-    SpR --> SpT{先得5分?}
-    SpS --> SpT
-    SpT -->|否 🔄| SpQ
-    SpT -->|是 🏆| SpU[🏆 比赛结算]
+    D -->|✍️ 默写模式| Sp[开发中<br>玩家端按钮暂禁用]
 
     M --> V[🔄 返回房间 / 重赛]
     U --> V
-    SpU --> V
     V --> C
 
     style A fill:#fff3e0,stroke:#ff6f00
     style D fill:#e3f2fd,stroke:#1976d2
     style M fill:#f3e5f5,stroke:#7b1fa2
     style U fill:#f3e5f5,stroke:#7b1fa2
-    style SpU fill:#f3e5f5,stroke:#7b1fa2
+    style Sp fill:#eeeeee,stroke:#757575
     style S fill:#fce4ec,stroke:#c62828
     style V fill:#e8f5e9,stroke:#2e7d32
 ```
@@ -118,11 +108,11 @@ flowchart TD
 
 | 层 | 技术 |
 |------|------|
-| 前端 | React + react-app-rewired + Antd + JS |
+| 前端 | React 19 + Vite 6 + Antd v5 + JS |
 | 后端 | Koa + @koa/router + JS |
 | 实时通信 | Socket.IO（模块级单例，不依赖 React 生命周期） |
 | UI 库 | Antd v5 |
-| 测试框架 | Jest + React Testing Library |
+| 测试框架 | 服务端 Jest；客户端 Vitest + React Testing Library |
 | 测试策略 | TDD（先写测试后实现） |
 | 管理接口 | Koa REST 路由 |
 | 数据库 | 无（纯内存） |
@@ -134,50 +124,45 @@ family-war/
 ├── client/                                   # React 前端 (端口 3000)
 │   ├── public/
 │   │   ├── favicon.svg
-│   │   ├── logo.svg
-│   │   └── index.html
+│   │   └── logo.svg
+│   ├── index.html                              # Vite HTML 入口
 │   ├── src/
-│   │   ├── __tests__/
-│   │   │   ├── Home.test.js                   # 首页 TDD 测试 (5 个)
-│   │   │   ├── Room.test.js                   # 房间页 TDD 测试 (9 个)
-│   │   │   ├── RoleCard.test.js               # 角色卡片 TDD 测试 (7 个)
-│   │   │   └── Admin.test.js                  # 后台页 TDD 测试 (3 个)
+│   │   ├── __tests__/                          # Vitest + React Testing Library
 │   │   ├── pages/
-│   │   │   ├── Home.js                        # 首页：输入昵称（纯 UI，无 socket/routing）
-│   │   │   ├── Room.js                        # 房间页：选角色、挑战、对战（纯 props 组件）
-│   │   │   ├── Admin.js                       # 后台：房间状态 + 对局记录
+│   │   │   ├── Home.jsx                       # 首页：输入昵称、加入房间
+│   │   │   ├── Room.jsx                       # 房间：选角色、切模式、游戏入口
+│   │   │   ├── Admin.jsx                      # 后台：房间状态 + 对局记录
 │   │   │   └── WordConfig.jsx                 # 词库管理：章节/单词启用 + 图片同步/手动选图 + 语音播放（v3.0 新增）
 │   │   ├── components/
-│   │   │   ├── RoleCard.js                    # 角色卡片（空闲/选中/对战中）
-│   │   │   ├── GameBoard.js                   # RPS 对战面板（石头剪刀布按钮）
-│   │   │   ├── ArithmeticBoard.js             # 算术达人面板（v2.0 新增）
-│   │   │   ├── SpellingBoard.js               # 默写达人面板（v3.0 新增）
-│   │   │   ├── MatchResult.js                 # 结算弹窗（v2.0 拆为 RpsMatchResult + ArithmeticMatchResult 子组件）
-│   │   │   ├── ArithmeticMatchResult.js       # 算术结算（v2.0 新增）
-│   │   │   └── SpellingMatchResult.js         # 默写结算（v3.0 新增）
+│   │   │   ├── RoleCard.jsx                   # 角色卡片（空闲/选中/对战中）
+│   │   │   ├── GameBoard.jsx                  # RPS 对战面板
+│   │   │   ├── ArithmeticBoard.jsx            # 算术抢答面板
+│   │   │   ├── MatchResult.jsx                # RPS/算术结算分发
+│   │   │   ├── RpsMatchResult.jsx             # RPS 结算
+│   │   │   └── ArithmeticMatchResult.jsx      # 算术结算
 │   │   ├── hooks/
 │   │   │   ├── __mocks__/
 │   │   │   │   └── useSocket.js               # Socket mock（测试用）
 │   │   │   └── useSocket.js                   # Socket.IO 模块级单例
-│   │   ├── setupProxy.js                      # CRA 代理 /api → :4000
-│   │   ├── setupTests.js                      # Jest 全局配置 + matchMedia mock + 抑制 React Router 警告
-│   │   ├── App.js                             # GameApp 容器，state 控制 Home/Room 切换
-│   │   └── index.js
+│   │   ├── setup-vitest.js                    # Vitest/jsdom 全局测试配置
+│   │   ├── App.jsx                            # 路由和 GameApp 状态容器
+│   │   └── index.jsx
 │   ├── jsconfig.json
-│   ├── config-overrides.js
+│   ├── vite.config.js                         # Vite、代理、构建和测试配置
 │   └── package.json
 ├── server/                         # Koa 后端 (端口 4000)
 │   ├── __tests__/
-│   │   ├── roomManager.test.js     # roomManager 单元测试 (24 个)
-│   │   └── gameManager.test.js     # gameManager 单元测试 (22 个)
+│   │   ├── roomManager.test.js     # 房间和模式管理单元测试
+│   │   ├── gameManager.test.js     # 三种游戏规则单元测试
+│   │   └── unsplashClient.test.js  # 图片同步单元测试
 │   ├── tests/
-│   │   └── integration.js          # 集成测试 (21 个断言)
+│   │   └── integration.js          # 真实 Socket.IO 集成测试
 │   ├── src/
 │   │   ├── index.js                # Koa + Socket.IO 启动入口
 │   │   ├── socket/
 │   │   │   ├── handler.js          # 事件注册路由
 │   │   │   ├── roomManager.js      # 房间/角色状态管理（内存）
-│   │   │   └── gameManager.js      # 猜拳判定 + 三局两胜 + 断线处理
+│   │   │   └── gameManager.js      # 猜拳、算术和默写规则引擎
 │   │   ├── data/
 │   │   │   ├── words.json          # 默写词库（按章节组织，v3.0 新增）
 │   │   │   ├── wordBank.js         # 词库加载 + 配置管理（读/写 word-config.json）
@@ -194,14 +179,15 @@ family-war/
 ```
 App (BrowserRouter)
 ├── /admin → Admin
+├── /admin/word-config → WordConfig
 └── * → GameApp (状态容器)
     ├── roomState = null  →  Home
     │   └── onEnter(nickname) → emit room:join → setRoomState
     └── roomState ≠ null  →  Room
-    ├── 选角色 / 切换游戏模式 (RPS / 算术 / 默写)
+    ├── 选角色 / 切换游戏模式 (RPS / 算术 / 默写占位)
     ├── gameType === 'rps'        → GameBoard → RpsMatchResult
     ├── gameType === 'arithmetic' → ArithmeticBoard → ArithmeticMatchResult
-    ├── gameType === 'spelling'   → SpellingBoard → SpellingMatchResult
+    ├── gameMode === 'spelling'   → 开发中按钮（当前禁用）
     └── onBack() → setRoomState(null) 返回首页
 ```
 
@@ -246,17 +232,16 @@ App (BrowserRouter)
 ### 默写达人（v3.0）
 
 ```
-选角色 → 切换默写模式 → 选择难度 → 开始默写挑战 → 朗读 + 图片 + 填空 → 抢答 → 结算
+选角色 → 切换默写模式 → 开发中（玩家端暂不可启动）
 ```
 
 | 步骤 | 行为 | 通讯 |
 |------|------|------|
-| 切换模式 | 在房间内点击 "默写达人" 模式切换 + 选择难度（简单/普通/困难） | `socket.emit('game:setMode', { mode: 'spelling', difficulty })` |
-| 开始游戏 | 🔤 开始默写挑战按钮（UI 已完成，功能开发中暂禁用） | `socket.emit('game:challenge', { mode: 'spelling' })` |
-| 出题 | 第一题随 `game:start` 下发；TTS 自动朗读单词 + Unsplash 图片示意 + 填空展示 | 客户端收到 `game:start.firstQuestion`（首题）或 `game:question`（后续） |
-| 抢答 | 在输入框中填写完整单词并提交 | `socket.emit('game:answer', { questionId, answer })` |
-| 判定 | 首位答对者得 1 分；机器人固定 20 秒后自动答对 | 客户端收到 `game:roundResult` |
-| 赛果 | 先得 5 分者胜，切换到结算 BGM | 客户端收到 `game:matchResult` |
+| 切换模式 | 房间内可切换到“默写达人”，当前没有玩家端难度选择 | `socket.emit('game:setMode', { mode: 'spelling' })` |
+| 开始游戏 | 按钮显示“开发中...”并禁用 | 尚不发送挑战事件 |
+| 服务端能力 | 已具备三档难度、出题、判题、计分、机器人超时和图片 URL | 已通过单元及 Socket 集成测试 |
+| 管理能力 | 可配置章节/单词、同步图片、手动选图和试听英式发音 | `/admin/word-config` |
+| 待完成 | `SpellingBoard`、玩家端 TTS/图片/填空/输入、专属结算和前端全流程测试 | 见 `step.md` Phase 3c-3e |
 
 ## 游戏规则
 
@@ -345,7 +330,7 @@ App (BrowserRouter)
 
 ### 背景音乐（BGM）
 
-通过监听 `roomState.game.status` 自动切换三种 BGM，由 `App.js` 统一管理：
+通过监听 `roomState.game.status` 自动切换三种 BGM，由 `App.jsx` 统一管理：
 
 | 阶段 | 触发条件 | 文件路径 | 循环 |
 |------|---------|---------|------|
@@ -421,7 +406,7 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 - `game:start` / `game:roundResult` / `game:matchResult` / `game:waiting` / `game:forfeited` 全部复用
 - 每个事件增加 `gameType: 'rps' | 'arithmetic' | 'spelling'` 字段区分模式
 - 仅新增 2 个事件：`game:question`（S→C 出题）、`game:answer`（C→S 答题）
-- `game:challenge` 增加必传 `mode` 字段，服务端根据 `mode` 路由到不同游戏逻辑
+- `game:challenge` 通过 `mode` 分流；RPS 可省略并默认使用 `rps`，算术和默写需显式传入模式
 
 ### Socket 事件清单
 
@@ -434,7 +419,7 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 | `role:select` | `{ role }` | 选角色（爸爸/妈妈/儿子，机器人不可选） |
 | `role:deselect` | — | 放弃当前角色 |
 | `game:setMode` | `{ mode: 'rps' \| 'arithmetic' \| 'spelling', difficulty?: 'easy' \| 'normal' \| 'hard' }` | 切换房间游戏模式 |
-| `game:challenge` | RPS: `{ mode: 'rps', targetId }`<br>算术: `{ mode: 'arithmetic' }`<br>默写: `{ mode: 'spelling' }` | 发起挑战（mode 必传） |
+| `game:challenge` | RPS: `{ targetId, mode?: 'rps' }`<br>算术: `{ mode: 'arithmetic' }`<br>默写: `{ mode: 'spelling' }` | 发起挑战；当前玩家端只会发起 RPS/算术挑战 |
 | `game:move` | `{ choice }` | 出拳（rock/paper/scissors） |
 | `game:answer` | RPS: `{ choice }`<br>算术/默写: `{ questionId, answer }` | 出拳或抢答 |
 | `game:rematch` | — | 再来一局 |
@@ -469,26 +454,28 @@ v2.0 采用**复用事件 + gameType 分流**策略，不新增事件命名空�
 
 ## MatchResult 架构
 
-v2.0 将 `MatchResult.js` 重构为内部根据 `gameType` 分发子组件，预留未来扩展：
+v2.0 将 `MatchResult.jsx` 重构为内部根据 `gameType` 分发子组件，预留未来扩展：
 
 ```
-MatchResult.js
+MatchResult.jsx
 ├── 接收完整 data（含 gameType）
 ├── Modal 壳（antd Modal）
 ├── 内部 switch:
 │   ├── gameType === 'arithmetic' → <ArithmeticMatchResult />
-│   ├── gameType === 'spelling'   → <SpellingMatchResult />
+│   ├── gameType === 'spelling'   → 暂时复用 <ArithmeticMatchResult />
 │   └── default (rps)            → <RpsMatchResult />
-└── 新增子组件只需加一条 case
+└── SpellingMatchResult 尚待实现
 ```
 
 - `RpsMatchResult` — 现有逻辑搬入（历史回放 + 🏆/😢 + 比分）
 - `ArithmeticMatchResult` — 终榜排名（🥇🥈🥉）+ 每题回放
-- `SpellingMatchResult` — 终榜排名 + 每题单词回顾（v3.0 新增）
+- `SpellingMatchResult` — 规划为终榜排名 + 每题单词回顾，目前未实现
 
 ## 后台管理
 
 无数据库，当前提供纯监控页面 + 词库管理接口：
+
+> 当前管理接口没有身份认证，CORS 也未限制来源，仅适合可信局域网。安全加固计划见 `step.md` 的“后续 TODO：管理接口安全加固”。
 
 - 当前房间状态（谁在线、选了谁、是否对战中）
 - 已完成对局记录（存在内存数组中）
@@ -506,16 +493,16 @@ MatchResult.js
 
 | 项目 | 说明 |
 |------|------|
-| 框架 | Jest v29（server/ 和 client/ 均使用） |
-| 服务端单元测试 | `server/__tests__/roomManager.test.js`、`server/__tests__/gameManager.test.js` |
+| 框架 | 服务端 Jest v29；客户端 Vitest v3 + jsdom |
+| 服务端单元测试 | `server/__tests__/roomManager.test.js`、`gameManager.test.js`、`unsplashClient.test.js` |
 | 服务端集成测试 | `server/tests/integration.js`（真实 Socket 连接走完整流程） |
-| 前端单元测试 | `client/src/__tests__/*.test.js`（React Testing Library + Antd） |
+| 前端单元测试 | `client/src/__tests__/*.test.jsx`（Vitest + React Testing Library + Antd） |
 | 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
 
 ### 运行测试
 
 ```bash
-# 服务端单元测试（根目录）
+# 服务端和客户端单元测试（根目录并行运行）
 npm test
 
 # 服务端单元测试（watch 模式）
@@ -524,7 +511,7 @@ npm test:watch --prefix server
 # 服务端集成测试
 npm run test:integration
 
-# 前端单元测试（需 cd client）
+# 前端单元测试
 npm test --prefix client
 ```
 
@@ -550,7 +537,7 @@ npm test --prefix client
 | submitArithmeticAnswer | gameManager | 单元 | 10 |
 | 算术 5 分赛制 | gameManager | 单元 | 6 |
 | handleRobotArithmeticAnswer | gameManager | 单元 | 4 |
-| 完整游戏流程（RPS + 算术） | handler | 集成 | 36 |
+| Socket 游戏流程（RPS + 算术 + 默写服务端） | handler | 集成 | 57 |
 | Home 渲染 + 回调 | client Home | 前端单元 | 5 |
 | Room 渲染 + 交互 | client Room | 前端单元 | 10 |
 | RoleCard 渲染 + 交互 | client RoleCard | 前端单元 | 7 |
@@ -558,9 +545,9 @@ npm test --prefix client
 | ArithmeticBoard 渲染 + 交互 | client ArithmeticBoard | 前端单元 | 13 |
 | ArithmeticMatchResult 渲染 + 交互 | client ArithmeticMatchResult | 前端单元 | 9 |
 | **服务端单元** | | | **134** |
-| **集成** | | | **92** |
+| **集成** | | | **57** |
 | **前端单元** | | | **47** |
-| **总计** | | | **273** |
+| **总计** | | | **238** |
 
 ## 端口
 
@@ -571,8 +558,8 @@ npm test --prefix client
 
 - **server**: 4000（Koa + Socket.IO）
 - **client**: 3000（React 开发服务器）
-- 开发环境下 socket.io 客户端通过 `window.location.hostname` 动态拼接服务器地址，支持局域网 IP 访问（CORS 已配置）
-- `/api` 请求通过 CRA 代理 (`setupProxy.js`) 转发到 4000
+- 开发环境下 socket.io 客户端通过 `window.location.hostname` 动态拼接服务器地址，支持局域网 IP 访问；当前 CORS 全开放，仅适合可信局域网
+- `/api` 和 `/socket.io` 由 Vite 开发服务器代理到 4000
 
 
 
@@ -689,8 +676,8 @@ location /family-war/socket.io/ {
 
 | 层级 | 开发环境 | 预发布环境 |
 |------|----------|------------|
-| 前端服务 | CRA dev server `:3000`（热重载） | Nginx `:8080/family-war/`（静态文件） |
+| 前端服务 | Vite dev server `:3000`（热更新） | Nginx `:8080/family-war/`（静态文件） |
 | 后端进程 | nodemon `:4000`（自动重启） | PM2 `:4010`（手动重启） |
-| API 入口 | `http://localhost:3000/api/*`（CRA 代理） | `http://localhost:8080/family-war/api/*`（nginx 反代） |
+| API 入口 | `http://localhost:3000/api/*`（Vite 代理） | `http://localhost:8080/family-war/api/*`（nginx 反代） |
 | Socket.IO | 直连 `http://{host}:4000` | nginx 反代 `/family-war/socket.io` → `:4010` |
-| 配置文件 | `setupProxy.js` | `nginx conf.d/family-war.conf` |
+| 配置文件 | `client/vite.config.js` | `nginx conf.d/family-war.conf` |

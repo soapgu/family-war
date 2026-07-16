@@ -64,6 +64,8 @@
 
 ## v2.1 部署规划
 
+> 本节保留最初基于 CRA 的实施记录。项目已在 v2.2.0 迁移到 Vite，当前配置以 `client/vite.config.js` 和 [`docs/UPGRADE-v2.2.0.md`](docs/UPGRADE-v2.2.0.md) 为准。
+
 ### 概览
 
 将 `family-war` 部署到 `http://localhost:8080/family-war`，分三步实施。
@@ -191,11 +193,11 @@ location /family-war/socket.io/ {
 
 | 层级 | 开发环境 | 预发布环境 |
 |------|----------|------------|
-| 前端服务 | CRA dev server `:3000`（热重载） | Nginx `:8080/family-war/`（静态文件） |
+| 前端服务 | Vite dev server `:3000`（热更新） | Nginx `:8080/family-war/`（静态文件） |
 | 后端进程 | nodemon `:4000`（自动重启） | PM2 `:4010`（手动重启） |
-| API 入口 | `http://localhost:3000/api/*`（CRA 代理） | `http://localhost:8080/family-war/api/*`（nginx 反代） |
+| API 入口 | `http://localhost:3000/api/*`（Vite 代理） | `http://localhost:8080/family-war/api/*`（nginx 反代） |
 | Socket.IO | 直连 `http://{host}:4000` | nginx 反代 `/family-war/socket.io` → `:4010` |
-| 配置文件 | `setupProxy.js` | `nginx conf.d/family-war.conf` |
+| 配置文件 | `client/vite.config.js` | `nginx conf.d/family-war.conf` |
 
 ---
 
@@ -252,9 +254,29 @@ location /family-war/socket.io/ {
 |------|------|----------|------|
 | 3a | **新建** `WordConfig.jsx` 统一词库管理页（章节/单词启用开关 + 图片预览 + 同步 + 同步缺失 + 手动选图翻页 + 英式英语 TTS 语音播放 + cache-busting 刷新） | `client/src/pages/WordConfig.jsx` | ✅ |
 | 3b | `App.jsx` 增加 `/admin/word-config` 路由；`Admin.jsx` 增加「词库管理」导航按钮 | `App.jsx`, `Admin.jsx` | ✅ |
-| 3c | SpellingBoard.js（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效） | `SpellingBoard.js` | ⬜ |
-| 3d | SpellingMatchResult.js（终榜排名 + 每题单词回顾） | `SpellingMatchResult.js` | ⬜ |
+| 3c | SpellingBoard.jsx（Unsplash 图片 + TTS 按钮 + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效） | `SpellingBoard.jsx` | ⬜ |
+| 3d | SpellingMatchResult.jsx（终榜排名 + 每题单词回顾） | `SpellingMatchResult.jsx` | ⬜ |
 | 3e | 验证：默写全流程测试 | — | ⬜ |
+
+### 后续 TODO：管理接口安全加固
+
+当前管理接口面向家庭局域网使用，尚未设置身份认证，服务端 CORS 也允许任意来源。公网部署或开放给不可信设备前必须完成以下加固。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| S1 | 增加管理员认证机制，保护 `/api/admin/*` 和词库图片管理操作；密钥只从环境变量或本地配置读取，不提交仓库 | `server/src/routes/admin.js`, `server/config.js` | ⬜ |
+| S2 | 将 CORS 从全开放改为允许来源白名单，分别配置开发、预发布环境 | `server/src/index.js`, `server/config.js` | ⬜ |
+| S3 | 为修改词库、同步图片、确认换图等写操作增加权限校验、参数校验和统一错误响应 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
+| S4 | 限制候选图片确认接口只能处理词库内单词和可信图片地址，防止任意 URL 下载与非法文件名 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
+| S5 | 补充未认证、错误凭据、非法来源、越权写操作和合法管理员流程测试 | `server/__tests__/`, `server/tests/` | ⬜ |
+
+**验收条件**
+
+- 未认证请求不能读取管理状态或执行任何管理操作
+- 非白名单来源无法跨域调用 API 或建立 Socket.IO 连接
+- 非词库单词、非法文件名和非可信图片 URL 被明确拒绝
+- 管理端凭据不出现在前端构建产物、日志或 Git 仓库中
+- 开发、预发布环境均能通过配置启用合法管理访问
 
 ### PM2 管理命令
 
