@@ -37,6 +37,7 @@ function WordConfig() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [saving, setSaving] = useState(false)
   const [savedNotify, setSavedNotify] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [selectingWord, setSelectingWord] = useState(null)
   const [candidates, setCandidates] = useState([])
   const [selectedPhotoId, setSelectedPhotoId] = useState(null)
@@ -48,7 +49,10 @@ function WordConfig() {
     setLoading(true)
     try {
       const res = await fetch(BASE + '/api/admin/word-config')
-      if (res.ok) setData(await res.json())
+      if (res.ok) {
+        setData(await res.json())
+        setHasUnsavedChanges(false)
+      }
     } catch {
       message.error('获取词库配置失败')
     } finally {
@@ -57,6 +61,19 @@ function WordConfig() {
   }, [])
 
   useEffect(() => { fetchConfig() }, [fetchConfig])
+
+  const updateImageStatuses = (statuses) => {
+    const syncedWords = new Set(
+      statuses.filter((item) => item.status === 'synced').map((item) => item.word)
+    )
+    setData((current) => current && ({
+      ...current,
+      chapters: current.chapters.map((chapter) => ({
+        ...chapter,
+        words: chapter.words.map((word) => ({ ...word, synced: syncedWords.has(word.word) })),
+      })),
+    }))
+  }
 
   const handleChapterToggle = (index, enabled) => {
     if (!data) return
@@ -74,6 +91,7 @@ function WordConfig() {
       return
     }
     setData(next)
+    setHasUnsavedChanges(true)
   }
 
   const handleWordToggle = (word, enabled) => {
@@ -91,6 +109,7 @@ function WordConfig() {
       return
     }
     setData(next)
+    setHasUnsavedChanges(true)
   }
 
   const handleSave = async () => {
@@ -108,6 +127,7 @@ function WordConfig() {
         body: JSON.stringify(body),
       })
       if (res.ok) {
+        setHasUnsavedChanges(false)
         setSavedNotify(true)
         setTimeout(() => setSavedNotify(false), 2000)
       } else {
@@ -126,8 +146,9 @@ function WordConfig() {
     try {
       const res = await fetch(BASE + '/api/admin/word-images/sync', { method: 'POST' })
       if (res.ok) {
+        const status = await res.json()
+        updateImageStatuses(status.words || [])
         message.success('同步完成')
-        fetchConfig()
       } else {
         const err = await res.json()
         message.error(err.error || '同步失败')
@@ -144,8 +165,9 @@ function WordConfig() {
     try {
       const res = await fetch(BASE + '/api/admin/word-images/sync-missing', { method: 'POST' })
       if (res.ok) {
+        const status = await res.json()
+        updateImageStatuses(status.words || [])
         message.success('缺失图片同步完成')
-        fetchConfig()
       } else {
         const err = await res.json()
         message.error(err.error || '同步失败')
@@ -200,7 +222,15 @@ function WordConfig() {
         setCandidates([])
         setSelectedPhotoId(null)
         setRefreshKey(k => k + 1)
-        fetchConfig()
+        setData((current) => current && ({
+          ...current,
+          chapters: current.chapters.map((chapter) => ({
+            ...chapter,
+            words: chapter.words.map((word) => (
+              word.word === selectingWord ? { ...word, synced: true } : word
+            )),
+          })),
+        }))
       } else {
         const err = await res.json()
         message.error(err.error || '确认换图失败')
@@ -240,7 +270,7 @@ function WordConfig() {
       : `同步缺失 ${missingWordCount} 个`
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
+    <div className="word-config-page" style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Typography.Title level={3} style={{ margin: 0 }}>词库管理</Typography.Title>
         <Space>
@@ -349,91 +379,90 @@ function WordConfig() {
 
       {data?.chapters.map((ch, ci) => {
         const chapterEnabled = data.enabledChapters.includes(ch.chapter)
+        const enabledWordCount = chapterEnabled
+          ? ch.words.filter((word) => !data.disabledWords.includes(word.word)).length
+          : 0
+        const syncedChapterWords = ch.words.filter((word) => word.synced).length
         return (
           <Card
             key={ch.chapter}
             size="small"
             style={{ marginBottom: 12 }}
             title={
-              <Space>
+              <Space wrap>
                 <Switch
                   checked={chapterEnabled}
                   onChange={(v) => handleChapterToggle(ci, v)}
-                  size="small"
                 />
                 <Typography.Text strong style={{ fontSize: 14 }}>
                   {ch.chapter}
                 </Typography.Text>
-                <Tag>{ch.words.length} 词</Tag>
+                <Tag color="blue">{enabledWordCount}/{ch.words.length} 已启用</Tag>
+                <Tag color={syncedChapterWords === ch.words.length ? 'green' : 'gold'}>
+                  图片 {syncedChapterWords}/{ch.words.length}
+                </Tag>
               </Space>
             }
           >
+            <div className="word-config-grid word-config-grid-header" aria-hidden="true">
+              <span>单词</span>
+              <span>图片状态</span>
+              <span>预览</span>
+              <span>操作</span>
+            </div>
             {ch.words.map((w) => {
               const wordDisabled = data.disabledWords.includes(w.word)
               const active = chapterEnabled && !wordDisabled
               return (
                 <div
                   key={w.word}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '8px 0',
-                    borderBottom: '1px solid #f0f0f0',
-                    opacity: active ? 1 : 0.4,
-                  }}
+                  className={`word-config-grid word-config-word-row${active ? '' : ' is-inactive'}`}
                 >
+                  <div className="word-config-word-info">
                   <Switch
                     checked={!wordDisabled}
                     onChange={(v) => handleWordToggle(w.word, v)}
                     size="small"
                     disabled={!chapterEnabled}
                   />
-                  <Typography.Text style={{ minWidth: 120, fontWeight: 500 }}>
+                  <Typography.Text className="word-config-word-name" strong>
                     {w.word}
                   </Typography.Text>
                   <Button
+                    aria-label={`播放 ${w.word}`}
                     type="text"
                     size="small"
                     icon={<SoundOutlined />}
                     onClick={() => speak(w.word)}
                   />
-                  <Tag color={w.synced ? 'green' : 'default'} style={{ minWidth: 52, textAlign: 'center' }}>
-                    {w.synced ? '已同步' : '待同步'}
-                  </Tag>
+                  </div>
+                  <div className="word-config-image-status">
+                    {w.synced ? <span className="word-config-synced">✓ 已同步</span> : <Tag color="gold" style={{ margin: 0 }}>待同步</Tag>}
+                  </div>
+                  <div className="word-config-preview">
                   {w.synced ? (
                     <Image
                       src={BASE + `/api/images/${encodeURIComponent(w.word)}?t=${refreshKey}`}
-                      width={48}
-                      height={48}
-                      style={{ borderRadius: 4, objectFit: 'cover' }}
+                      width={56}
+                      height={56}
+                      style={{ borderRadius: 8, objectFit: 'cover', border: '1px solid #e8e8e8' }}
                       preview={{ mask: '预览' }}
                       fallback="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iMjQiIHk9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZm9udC1zaXplPSIxMCIgZmlsbD0iIzk5OSI+5pqC5L2T55WZPC90ZXh0Pjwvc3ZnPg=="
                     />
                   ) : (
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 4,
-                        background: '#fafafa',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 12,
-                        color: '#ccc',
-                      }}
-                    >
-                      无图
-                    </div>
+                    <div className="word-config-no-image">无图</div>
                   )}
+                  </div>
+                  <div className="word-config-action">
                   <Button
+                    aria-label={`更换 ${w.word} 图片`}
                     size="small"
                     onClick={() => openSelector(w.word)}
                     disabled={syncing}
                   >
                     换图
                   </Button>
+                  </div>
                 </div>
               )
             })}
@@ -442,8 +471,19 @@ function WordConfig() {
       })}
 
       {data && (
-        <div style={{ textAlign: 'center', marginTop: 16 }}>
-          <Button type="primary" onClick={handleSave} loading={saving} disabled={activeWordCount === 0}>
+        <div className={`word-config-save-bar${hasUnsavedChanges ? ' has-changes' : ''}`}>
+          <div>
+            <Typography.Text strong>{hasUnsavedChanges ? '有未保存的修改' : '配置已保存'}</Typography.Text>
+            <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+              当前启用 {activeWordCount} 个单词
+            </Typography.Text>
+          </div>
+          <Button
+            type="primary"
+            onClick={handleSave}
+            loading={saving}
+            disabled={activeWordCount === 0 || !hasUnsavedChanges}
+          >
             {savedNotify ? '✅ 已保存' : '保存配置'}
           </Button>
         </div>

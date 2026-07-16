@@ -11,6 +11,17 @@ const ONE_WORD_CONFIG = {
   disabledWords: [],
 }
 
+const TWO_WORD_CONFIG = {
+  ...ONE_WORD_CONFIG,
+  chapters: [{
+    chapter: '第一章',
+    words: [
+      { word: 'classroom', synced: false },
+      { word: 'library', synced: true },
+    ],
+  }],
+}
+
 function response(body, ok = true) {
   return { ok, json: vi.fn().mockResolvedValue(body) }
 }
@@ -62,25 +73,31 @@ describe('WordConfig', () => {
   })
 
   it('合法配置可以保存', async () => {
-    renderWordConfig()
+    renderWordConfig(TWO_WORD_CONFIG)
     await screen.findByText('第一章')
     fetch.mockResolvedValueOnce(response({ ok: true }))
 
+    expect(screen.getByRole('button', { name: '保存配置' })).toBeDisabled()
+    fireEvent.click(screen.getAllByRole('switch')[1])
+    expect(screen.getByText('有未保存的修改')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '保存配置' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: '保存配置' }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
     expect(fetch.mock.calls[1][0]).toBe('/api/admin/word-config')
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({
       enabledChapters: ['第一章'],
-      disabledWords: [],
+      disabledWords: ['classroom'],
     })
+    expect(await screen.findByText('配置已保存')).toBeInTheDocument()
   })
 
   it('展示后端返回的保存错误', async () => {
-    renderWordConfig()
+    renderWordConfig(TWO_WORD_CONFIG)
     await screen.findByText('第一章')
     fetch.mockResolvedValueOnce(response({ error: '配置校验失败' }, false))
 
+    fireEvent.click(screen.getAllByRole('switch')[1])
     fireEvent.click(screen.getByRole('button', { name: '保存配置' }))
 
     expect(await screen.findByText('配置校验失败')).toBeInTheDocument()
@@ -115,5 +132,55 @@ describe('WordConfig', () => {
 
     expect(screen.getByRole('button', { name: '已全部同步' })).toBeDisabled()
     expect(screen.getByText('所有图片均已就绪')).toBeInTheDocument()
+  })
+
+  it('未保存配置时同步图片不会覆盖本地选择', async () => {
+    renderWordConfig(TWO_WORD_CONFIG)
+    await screen.findByText('第一章')
+    fireEvent.click(screen.getAllByRole('switch')[1])
+    fetch.mockResolvedValueOnce(response({
+      words: [
+        { word: 'classroom', status: 'synced' },
+        { word: 'library', status: 'synced' },
+      ],
+    }))
+
+    const syncButton = screen.getByRole('button', { name: '同步缺失 1 个' })
+    expect(syncButton).toBeEnabled()
+    fireEvent.click(syncButton)
+
+    expect(await screen.findByText('所有图片均已就绪')).toBeInTheDocument()
+    expect(screen.getByText('有未保存的修改')).toBeInTheDocument()
+    expect(screen.getAllByRole('switch')[1]).not.toBeChecked()
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('未保存配置时仍可换图且不会覆盖本地选择', async () => {
+    renderWordConfig(TWO_WORD_CONFIG)
+    await screen.findByText('第一章')
+    fireEvent.click(screen.getAllByRole('switch')[1])
+    fetch.mockResolvedValueOnce(response({
+      candidates: [{
+        id: 'photo-1',
+        url: 'https://example.com/full.jpg',
+        thumb: 'https://example.com/thumb.jpg',
+        alt: '候选教室图片',
+        author: 'Tester',
+      }],
+      total: 1,
+      page: 1,
+    }))
+
+    const replaceButton = screen.getByRole('button', { name: '更换 classroom 图片' })
+    expect(replaceButton).toBeEnabled()
+    fireEvent.click(replaceButton)
+    fireEvent.click(await screen.findByAltText('候选教室图片'))
+    fetch.mockResolvedValueOnce(response({ ok: true }))
+    fireEvent.click(screen.getByRole('button', { name: '确认换图' }))
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+    expect(screen.getByText('有未保存的修改')).toBeInTheDocument()
+    expect(screen.getAllByRole('switch')[1]).not.toBeChecked()
+    expect(screen.getByRole('button', { name: '保存配置' })).toBeEnabled()
   })
 })

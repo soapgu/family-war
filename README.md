@@ -559,11 +559,11 @@ npm test --prefix client
 | Admin 渲染 + 数据 | client Admin | 前端单元 | 3 |
 | ArithmeticBoard 渲染 + 交互 | client ArithmeticBoard | 前端单元 | 13 |
 | ArithmeticMatchResult 渲染 + 交互 | client ArithmeticMatchResult | 前端单元 | 9 |
-| WordConfig 非空防守 + 同步状态 + 保存 | client WordConfig | 前端单元 | 7 |
+| WordConfig 非空防守 + 图片状态独立更新 + 保存 | client WordConfig | 前端单元 | 9 |
 | **服务端单元** | | | **153** |
 | **集成** | | | **58** |
-| **前端单元** | | | **54** |
-| **总计** | | | **265** |
+| **前端单元** | | | **56** |
+| **总计** | | | **267** |
 
 ## 端口
 
