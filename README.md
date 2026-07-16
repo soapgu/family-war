@@ -570,12 +570,12 @@ npm test --prefix client
 | ArithmeticBoard 渲染 + 交互 | client ArithmeticBoard | 前端单元 | 13 |
 | ArithmeticMatchResult 渲染 + 交互 | client ArithmeticMatchResult | 前端单元 | 9 |
 | WordConfig 非空防守 + 图片状态独立更新 + 保存 + 语音播放 | client WordConfig | 前端单元 | 10 |
-| SpellingBoard 渲染 + TTS + 答题 + 事件 + 重赛 | client SpellingBoard | 前端单元 | 11 |
+| SpellingBoard 渲染 + 首题倒计时 + 异步 TTS 音色 + 答题 + 事件 + 重赛 | client SpellingBoard | 前端单元 | 13 |
 | SpellingMatchResult 胜负 + 排名 + 单词回顾 + 操作 | client SpellingMatchResult | 前端单元 | 3 |
 | **服务端单元** | | | **154** |
 | **集成** | | | **81** |
-| **前端单元** | | | **75** |
-| **总计** | | | **310** |
+| **前端单元** | | | **77** |
+| **总计** | | | **312** |
 
 ## 端口
 

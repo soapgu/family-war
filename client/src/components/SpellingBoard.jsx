@@ -6,6 +6,7 @@ import MatchResult from './MatchResult'
 
 const ROUND_TIME = 20
 const SPEECH_RESTART_DELAY = 50
+const VOICE_LOAD_TIMEOUT = 1500
 const PUBLIC_BASE = import.meta.env.DEV
   ? ''
   : (import.meta.env.BASE_URL || '').replace(/\/$/, '')
@@ -64,6 +65,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
   const [timeLeft, setTimeLeft] = useState(ROUND_TIME)
   const [matchResult, setMatchResult] = useState(null)
   const [imageError, setImageError] = useState(false)
+  const [voicesReady, setVoicesReady] = useState(false)
   const timerRef = useRef(null)
   const inputRef = useRef(null)
   const prevQuestionId = useRef(null)
@@ -80,19 +82,33 @@ function SpellingBoard({ gameInfo, onFinish }) {
   useEffect(() => {
     const synth = window.speechSynthesis
     if (!synth) return undefined
+    let fallbackTimer
     const loadVoices = () => {
       const voices = synth.getVoices?.() || []
+      if (voices.length === 0) return false
       voiceRef.current = voices.find((voice) => /Google UK English/.test(voice.name))
         || voices.find((voice) => /Daniel|Kate/.test(voice.name))
         || voices.find((voice) => voice.lang?.startsWith('en-GB'))
         || voices.find((voice) => voice.lang?.startsWith('en'))
         || null
+      clearTimeout(fallbackTimer)
+      fallbackTimer = null
+      synth.removeEventListener?.('voiceschanged', loadVoices)
+      setVoicesReady(true)
+      return true
     }
     if (synth.getVoices) {
-      loadVoices()
-      synth.addEventListener?.('voiceschanged', loadVoices)
+      if (!loadVoices()) {
+        synth.addEventListener?.('voiceschanged', loadVoices)
+        fallbackTimer = setTimeout(() => setVoicesReady(true), VOICE_LOAD_TIMEOUT)
+      }
+    } else {
+      setVoicesReady(true)
     }
-    return () => synth.removeEventListener?.('voiceschanged', loadVoices)
+    return () => {
+      clearTimeout(fallbackTimer)
+      synth.removeEventListener?.('voiceschanged', loadVoices)
+    }
   }, [])
 
   const cancelSpeech = useCallback(() => {
@@ -156,14 +172,24 @@ function SpellingBoard({ gameInfo, onFinish }) {
     setAnswered(false)
     setFeedback(null)
     setImageError(false)
-    startTimer()
-    speak(nextQuestion.ttsText)
     setTimeout(() => inputRef.current?.focus(), 100)
-  }, [speak, startTimer])
+  }, [])
 
   useEffect(() => {
     showQuestion(gameInfo?.firstQuestion)
   }, [])
+
+  useEffect(() => {
+    if (!question?.questionId) return undefined
+    startTimer()
+    return clearTimer
+  }, [question?.questionId, startTimer, clearTimer])
+
+  useEffect(() => {
+    if (!voicesReady || !question?.questionId || !question.ttsText) return undefined
+    speak(question.ttsText)
+    return cancelSpeech
+  }, [voicesReady, question?.questionId, question?.ttsText, speak, cancelSpeech])
 
   useEffect(() => {
     function onGameStart(data) {

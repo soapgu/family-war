@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { StrictMode } from 'react'
 import useSocket from '../hooks/useSocket'
 import SpellingBoard from '../components/SpellingBoard'
 
@@ -63,8 +64,28 @@ it('渲染首题、难度、图片和填空字母格', () => {
   expect(screen.getByLabelText(/填空 a _ _/)).toBeInTheDocument()
 })
 
+it('StrictMode 下首题倒计时正常更新', () => {
+  vi.useFakeTimers()
+  try {
+    render(
+      <StrictMode>
+        <SpellingBoard gameInfo={GAME_INFO} onFinish={vi.fn()} />
+      </StrictMode>
+    )
+    expect(screen.getByText(/20s/)).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(1000))
+    expect(screen.getByText(/19s/)).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 it('首题自动使用英式英语朗读并支持重播', async () => {
-  renderBoard()
+  render(
+    <StrictMode>
+      <SpellingBoard gameInfo={GAME_INFO} onFinish={vi.fn()} />
+    </StrictMode>
+  )
   await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalled())
   const firstUtterance = window.speechSynthesis.speak.mock.calls[0][0]
   expect(firstUtterance.text).toBe('art room')
@@ -73,6 +94,22 @@ it('首题自动使用英式英语朗读并支持重播', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: /再听一次/ }))
   await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2))
+})
+
+it('首题等待异步语音列表加载后再使用英式音色朗读', async () => {
+  const synth = window.speechSynthesis
+  synth.getVoices.mockReturnValue([])
+  renderBoard()
+
+  expect(synth.speak).not.toHaveBeenCalled()
+  const onVoicesChanged = synth.addEventListener.mock.calls.find(([event]) => event === 'voiceschanged')[1]
+  synth.getVoices.mockReturnValue([{ name: 'Daniel', lang: 'en-GB' }])
+  act(() => onVoicesChanged())
+
+  await waitFor(() => expect(synth.speak).toHaveBeenCalledOnce())
+  const utterance = synth.speak.mock.calls[0][0]
+  expect(utterance.text).toBe('art room')
+  expect(utterance.voice).toEqual({ name: 'Daniel', lang: 'en-GB' })
 })
 
 it('提交字符串答案并支持 Enter', () => {
