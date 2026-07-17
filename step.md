@@ -265,6 +265,7 @@ location /family-war/socket.io/ {
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
+| C1 | 客户端重连后自动重新加入房间（监听 `socket.on('connect', ...)` → 重发 `room:join`） | `client/src/App.jsx` | ⬜ |
 | S1 | 增加管理员认证机制，保护 `/api/admin/*` 和词库图片管理操作；密钥只从环境变量或本地配置读取，不提交仓库 | `server/src/routes/admin.js`, `server/config.js` | ⬜ |
 | S2 | 将 CORS 从全开放改为允许来源白名单，分别配置开发、预发布环境 | `server/src/index.js`, `server/config.js` | ⬜ |
 | S3 | 为修改词库、同步图片、确认换图等写操作增加权限校验、参数校验和统一错误响应 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
