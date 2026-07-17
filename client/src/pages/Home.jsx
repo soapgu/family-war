@@ -62,14 +62,14 @@ function Home({ onEnter }) {
       >
         <div style={{ fontSize: 42, marginBottom: 12, letterSpacing: 6 }}>
           <span style={{ display: 'inline-block', transform: 'rotate(-8deg)' }}>✊</span>
-          <span style={{ display: 'inline-block', transform: 'rotate(4deg)' }}>✋</span>
-          <span style={{ display: 'inline-block', transform: 'rotate(8deg)' }}>✌️</span>
+          <span style={{ display: 'inline-block', transform: 'rotate(4deg)' }}>🧮</span>
+          <span style={{ display: 'inline-block', transform: 'rotate(8deg)' }}>🔤</span>
         </div>
         <Typography.Title level={2} style={{ margin: 0 }}>
           Family War
         </Typography.Title>
         <Typography.Text type="secondary" style={{ fontSize: 15, display: 'block', marginTop: 4 }}>
-          家庭猜拳大作战
+          家庭联合大作战
         </Typography.Text>
 
         {/* Quotes */}
