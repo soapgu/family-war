@@ -53,6 +53,26 @@ function buildAnswer(blanks = '', letters = []) {
   }).join('').replace(/\s+/g, ' ').trim()
 }
 
+function playTypeSfx(audioRef) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext
+  if (!AudioContextClass) return
+  if (!audioRef.current) audioRef.current = new AudioContextClass()
+  const ctx = audioRef.current
+  if (ctx.state === 'suspended') ctx.resume()
+  const now = ctx.currentTime
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(1000, now)
+  osc.frequency.linearRampToValueAtTime(1200, now + 0.03)
+  gain.gain.setValueAtTime(0.04, now)
+  gain.gain.linearRampToValueAtTime(0, now + 0.04)
+  osc.start(now)
+  osc.stop(now + 0.04)
+}
+
 function playFeedbackTone(audioRef, correct) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext
   if (!AudioContextClass) return
@@ -275,7 +295,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
         yourAnswer: data.yourAnswer,
         winner: data.winner,
       })
-      playFeedbackTone(audioRef, correct)
+      if (correct) playFeedbackTone(audioRef, true)
     }
 
     function onMatchResult(data) {
@@ -344,6 +364,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
       return
     }
 
+    playTypeSfx(audioRef)
     const nextLetters = [...letterValues]
     let cursor = index
     letters.forEach((letter) => {

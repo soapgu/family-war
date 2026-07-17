@@ -149,7 +149,7 @@ describe('Room', () => {
   it('默写模式可以切换难度', async () => {
     const socket = useSocket()
     renderRoom({ ...MOCK_ROOM_STATE, gameMode: 'spelling', spellingDifficulty: 'easy' })
-    await userEvent.click(screen.getByText('困难'))
+    await userEvent.click(screen.getByText('HARD'))
     expect(socket.emit).toHaveBeenCalledWith('game:setMode', { mode: 'spelling', difficulty: 'hard' })
   })
 

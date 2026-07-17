@@ -6,6 +6,12 @@ import GameBoard from '../components/GameBoard'
 import ArithmeticBoard from '../components/ArithmeticBoard'
 import SpellingBoard from '../components/SpellingBoard'
 
+const SPELLING_DIFFICULTIES = [
+  { label: 'EASY', value: 'easy', icon: '🌱' },
+  { label: 'NORMAL', value: 'normal', icon: '⚡' },
+  { label: 'HARD', value: 'hard', icon: '🔥' },
+]
+
 function getAudioContext(audioCtxRef) {
   if (!audioCtxRef.current) {
     audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
@@ -223,7 +229,14 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
         ) : (
           <>
             {/* Mode Selector */}
-            <div style={{ marginBottom: 20, textAlign: 'center' }}>
+            <div style={{
+              marginBottom: 18,
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 10,
+            }}>
               <Segmented
                 value={roomState?.gameMode || 'rps'}
                 options={[
@@ -236,17 +249,50 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                   : { mode: value })}
               />
               {roomState?.gameMode === 'spelling' && (
-                <div style={{ marginTop: 12 }}>
-                  <Typography.Text type="secondary" style={{ marginRight: 8 }}>难度</Typography.Text>
-                  <Segmented
-                    value={roomState?.spellingDifficulty || 'easy'}
-                    options={[
-                      { label: '简单', value: 'easy' },
-                      { label: '普通', value: 'normal' },
-                      { label: '困难', value: 'hard' },
-                    ]}
-                    onChange={(difficulty) => socket.emit('game:setMode', { mode: 'spelling', difficulty })}
-                  />
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  padding: '6px',
+                  borderRadius: 16,
+                  background: 'rgba(255,255,255,0.68)',
+                  boxShadow: '0 8px 24px rgba(31,35,48,0.09)',
+                  backdropFilter: 'blur(8px)',
+                }}>
+                  {SPELLING_DIFFICULTIES.map((item) => {
+                    const active = (roomState?.spellingDifficulty || 'easy') === item.value
+                    return (
+                      <Button
+                        key={item.value}
+                        type={active ? 'primary' : 'default'}
+                        onClick={() => socket.emit('game:setMode', { mode: 'spelling', difficulty: item.value })}
+                        style={{
+                          height: 38,
+                          minWidth: 98,
+                          paddingInline: 12,
+                          borderRadius: 12,
+                          fontSize: 13,
+                          fontWeight: 800,
+                          letterSpacing: 0.5,
+                          border: active ? '0' : '1px solid rgba(22,119,255,0.16)',
+                          background: active
+                            ? 'linear-gradient(135deg, #1677ff 0%, #69b1ff 100%)'
+                            : 'rgba(255,255,255,0.78)',
+                          color: active ? '#fff' : '#475569',
+                          boxShadow: active
+                            ? '0 10px 24px rgba(22,119,255,0.28)'
+                            : '0 4px 12px rgba(31,35,48,0.06)',
+                          transform: active ? 'translateY(-2px)' : 'translateY(0)',
+                          transition: 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease',
+                        }}
+                      >
+                        <span style={{ marginRight: 6 }}>{item.icon}</span>
+                        {item.label}
+                      </Button>
+                    )
+                  })}
                 </div>
               )}
             </div>
