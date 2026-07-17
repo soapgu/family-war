@@ -3,6 +3,7 @@ import { Button, Image, Input, Space, Tag, Typography } from 'antd'
 import { SoundOutlined } from '@ant-design/icons'
 import useSocket from '../hooks/useSocket'
 import MatchResult from './MatchResult'
+import ScoreboardPanel from './ScoreboardPanel'
 
 const ROUND_TIME = 20
 const SPEECH_RESTART_DELAY = 50
@@ -10,13 +11,6 @@ const VOICE_LOAD_TIMEOUT = 1500
 const PUBLIC_BASE = import.meta.env.DEV
   ? ''
   : (import.meta.env.BASE_URL || '').replace(/\/$/, '')
-
-const ROLE_EMOJI = {
-  '爸爸': '👨',
-  '妈妈': '👩',
-  '儿子': '👦',
-  '机器人': '🤖',
-}
 
 const DIFFICULTY_LABELS = {
   easy: '简单',
@@ -282,6 +276,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
       const player = players.find((item) => item.id === id)
       return { id, nickname: player?.nickname || id, role: player?.role, score }
     })
+  const wrongPlayerIds = feedback && !feedback.correct ? [socket.id] : []
 
   if (matchResult) {
     return (
@@ -308,20 +303,12 @@ function SpellingBoard({ gameInfo, onFinish }) {
         <Tag color="blue">{DIFFICULTY_LABELS[difficulty] || difficulty}</Tag>
       </div>
 
-      <div className="spelling-ranking">
-        {ranking.map((player, index) => (
-          <div className={`spelling-player${index === 0 && player.score > 0 ? ' is-leading' : ''}`} key={player.id}>
-            <span className="spelling-player-role">{ROLE_EMOJI[player.role] || '🙂'}</span>
-            <span className="spelling-player-name">{player.nickname}</span>
-            <div className="spelling-score-track">
-              {[0, 1, 2, 3, 4].map((score) => (
-                <span className={score < player.score ? 'is-scored' : ''} key={score} />
-              ))}
-            </div>
-            <strong>{player.score}分</strong>
-          </div>
-        ))}
-      </div>
+      <ScoreboardPanel
+        players={ranking}
+        timeLeft={timeLeft}
+        isActive={!!question && !feedback}
+        wrongPlayerIds={wrongPlayerIds}
+      />
 
       {question ? (
         <div className="spelling-question-card">

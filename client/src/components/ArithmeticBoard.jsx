@@ -2,22 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Typography, Button, Input, Space } from 'antd'
 import useSocket from '../hooks/useSocket'
 import MatchResult from './MatchResult'
+import ScoreboardPanel from './ScoreboardPanel'
 
 const ROUND_TIME = 20
-
-const ROLE_EMOJI = {
-  '爸爸': '👨',
-  '妈妈': '👩',
-  '儿子': '👦',
-  '机器人': '🤖',
-}
-
-const ROLE_COLORS = {
-  '爸爸': '#1677ff',
-  '妈妈': '#eb2f96',
-  '儿子': '#52c41a',
-  '机器人': '#722ed1',
-}
 
 function getAudioCtx(audioCtxRef) {
   if (!audioCtxRef.current) {
@@ -274,7 +261,6 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       const p = players.find((pl) => pl.id === id)
       return { id, nickname: p?.nickname || id, role: p?.role, score }
     })
-  const maxScore = ranking.length > 0 ? ranking[0].score : 0
 
   if (matchResult) {
     return (
@@ -298,78 +284,12 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
         🧮 算术达人模式
       </Typography.Title>
 
-      {/* Leaderboard Grid */}
-      <div style={{ maxWidth: 420, margin: '0 auto 24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {ranking.map((p) => {
-            const isRobot = p.id === '__robot__'
-            const isMe = p.id === socket.id
-            const isLeading = p.score === maxScore && maxScore > 0
-            const isActive = !!question && !feedback
-            const rank = ranking.findIndex((r) => r.id === p.id)
-            const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : ''
-            const cellSize = 28, cellGap = 3
-
-            let emotion
-            if (isRobot && isActive) {
-              emotion = timeLeft <= 5 ? '💡' : '🤔'
-            } else if (isMe && wrongThisRound) {
-              emotion = '😭'
-            } else if (isLeading) {
-              emotion = '😊'
-            } else {
-              emotion = '😰'
-            }
-
-            return (
-              <div key={p.id} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '6px 8px', borderRadius: 8,
-                background: isLeading ? '#f6ffed' : 'transparent',
-              }}>
-                <span style={{ width: 28, textAlign: 'center', fontSize: 22 }}>{medal}</span>
-                <span style={{ width: 22, textAlign: 'center', fontSize: 22 }}>
-                  {ROLE_EMOJI[p.role]}
-                </span>
-                <span style={{ width: 44, fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {p.nickname}
-                </span>
-                <div style={{ position: 'relative', width: 6 * cellSize + 5 * cellGap, height: cellSize, flexShrink: 0 }}>
-                  {[0, 1, 2, 3, 4, 5].map((ci) => (
-                    <div key={ci} style={{
-                      position: 'absolute', left: ci * (cellSize + cellGap),
-                      width: cellSize, height: cellSize, borderRadius: 4,
-                      background: ci <= p.score ? '#1677ff' : '#f0f0f0',
-                      animation: ci === p.score ? 'cellBreath 1.5s ease-in-out infinite' : 'none',
-                      transition: 'background 0.3s',
-                    }} />
-                  ))}
-                  <span style={{
-                    position: 'absolute', left: 0, top: 0,
-                    width: cellSize, height: cellSize,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16,
-                    transform: `translateX(${p.score * (cellSize + cellGap)}px)`,
-                    transition: 'transform 0.3s ease',
-                  }}>
-                    {ROLE_EMOJI[p.role]}
-                  </span>
-                </div>
-                <span style={{
-                  width: 26, textAlign: 'center', fontSize: 22,
-                  animation: emotion === '💡' ? 'bulbUrgent 0.4s ease-in-out infinite' : emotion === '🤔' ? 'thinkingPulse 1.5s ease-in-out infinite' : 'none',
-                  flexShrink: 0,
-                }}>
-                  {emotion}
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#666', width: 30, textAlign: 'right' }}>
-                  {p.score}分
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <ScoreboardPanel
+        players={ranking}
+        timeLeft={timeLeft}
+        isActive={!!question && !feedback}
+        wrongPlayerIds={wrongThisRound ? [socket.id] : []}
+      />
 
       {question ? (
         <div style={{
