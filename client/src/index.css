@@ -353,6 +353,29 @@ body {
   opacity: 0.65;
 }
 
+.spelling-letter-input.is-correct {
+  border-color: #95de64;
+  background: #f6ffed;
+  color: #389e0d;
+}
+
+.spelling-letter-cell {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.spelling-letter-hint {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  font-size: 11px;
+  font-weight: 700;
+  color: #cf1322;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .spelling-word-gap {
   width: 6px;
   color: #bfbfbf;
@@ -386,37 +409,6 @@ body {
 
 .spelling-time.is-urgent {
   color: #ff4d4f;
-}
-
-.spelling-feedback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 26px;
-  margin: -4px auto 8px;
-  padding: 3px 10px;
-  border-radius: 9px;
-  font-size: 14px;
-  line-height: 20px;
-  box-sizing: border-box;
-}
-
-.spelling-feedback span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.spelling-feedback.is-correct {
-  background: #f6ffed;
-  color: #389e0d;
-}
-
-.spelling-feedback.is-wrong {
-  background: #fff2f0;
-  color: #cf1322;
 }
 
 @media (max-width: 640px) {

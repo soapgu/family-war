@@ -194,8 +194,8 @@ it('答错后展示正确答案并锁定本题', async () => {
     word: 'art room',
     yourAnswer: 'artroom',
   }))
-  expect(await screen.findByText('❌ 本题未答对')).toBeInTheDocument()
-  expect(screen.getByText(/正确答案：art room/)).toBeInTheDocument()
+  expect(screen.queryByText('❌ 本题未答对')).not.toBeInTheDocument()
+  expect(screen.queryByText(/正确答案：art room/)).not.toBeInTheDocument()
   screen.getAllByRole('textbox').forEach((input) => {
     expect(input).toBeDisabled()
   })
@@ -214,8 +214,9 @@ it('轮结果更新排行榜和正确反馈', async () => {
     winner: 'test-socket-id',
     scores: { 'test-socket-id': 1, __robot__: 0 },
   }))
-  expect(await screen.findByText('✅ 拼写正确！')).toBeInTheDocument()
+  expect(screen.queryByText('✅ 拼写正确！')).not.toBeInTheDocument()
   expect(screen.getByText('1分')).toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 })
 
 it('后续题清理旧反馈并自动朗读', async () => {
@@ -231,7 +232,6 @@ it('后续题清理旧反馈并自动朗读', async () => {
   emitSocketEvent(socket, 'game:question', nextQuestion)
 
   expect(await screen.findByText('第 2 题')).toBeInTheDocument()
-  expect(screen.queryByText('❌ 本题未答对')).not.toBeInTheDocument()
   screen.getAllByRole('textbox').forEach((input) => {
     expect(input).toBeEnabled()
   })

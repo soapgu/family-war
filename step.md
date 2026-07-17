@@ -255,7 +255,7 @@ location /family-war/socket.io/ {
 |------|------|----------|------|
 | 3a | **新建** `WordConfig.jsx` 统一词库管理页（章节/单词启用开关 + 至少保留一个可用词的前端防守 + 图片预览 + 同步缺失 + 手动选图翻页 + 英式英语 TTS 语音播放 + cache-busting 刷新） | `client/src/pages/WordConfig.jsx` | ✅ |
 | 3b | `App.jsx` 增加 `/admin/word-config` 路由；`Admin.jsx` 增加「词库管理」导航按钮 | `App.jsx`, `Admin.jsx` | ✅ |
-| 3c | SpellingBoard.jsx（Unsplash 图片 + 自动/手动英式 TTS + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效）；Room 开放三档难度和启动入口；结算重赛发送 `game:challenge { mode: 'spelling' }`，不使用仅支持 RPS 的 `game:rematch` | `SpellingBoard.jsx`, `Room.jsx` | ✅ |
+| 3c | SpellingBoard.jsx（Unsplash 图片 + 自动/手动英式 TTS + 填空字母格 + 输入框 + 排行榜 + 倒计时 + 音效 + 内联批改）；Room 开放三档难度和启动入口；结算重赛发送 `game:challenge { mode: 'spelling' }`，不使用仅支持 RPS 的 `game:rematch` | `SpellingBoard.jsx`, `Room.jsx` | ✅ |
 | 3d | SpellingMatchResult.jsx（终榜排名 + 每题单词、填空提示和玩家答案回顾） | `SpellingMatchResult.jsx` | ✅ |
 | 3e | 验证：默写完整 5 分流程；覆盖重赛后仍为 spelling、沿用房间难度、重新读取参赛角色、比分与题目重置，以及旧结算页跨模式重赛保护 | `server/tests/integration.js`, `client/src/__tests__/SpellingMatchResult.test.jsx` | ✅ |
 

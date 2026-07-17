@@ -53,6 +53,22 @@ function buildAnswer(blanks = '', letters = []) {
   }).join('').replace(/\s+/g, ' ').trim()
 }
 
+function getBlankCorrectLetters(blanks, correctAnswer) {
+  let pos = 0
+  const letters = []
+  for (const token of blanks.split(' ')) {
+    if (token === '_') {
+      letters.push(correctAnswer[pos] || '')
+      pos++
+    } else if (token === '·') {
+      pos++
+    } else {
+      pos += token.length
+    }
+  }
+  return letters
+}
+
 function playTypeSfx(audioRef) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext
   if (!AudioContextClass) return
@@ -415,6 +431,9 @@ function SpellingBoard({ gameInfo, onFinish }) {
   }
 
   const imageUrl = resolveImageUrl(question?.unsplashImageUrl)
+  const correctLetters = feedback && question?.blanks
+    ? getBlankCorrectLetters(question.blanks, feedback.correctAnswer)
+    : []
 
   return (
     <div className="spelling-board">
@@ -443,15 +462,6 @@ function SpellingBoard({ gameInfo, onFinish }) {
             />
           </div>
 
-          {feedback && (
-            <div className={`spelling-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'}`}>
-              <strong>{feedback.correct ? '✅ 拼写正确！' : '❌ 本题未答对'}</strong>
-              {!feedback.correct && (
-                <span>正确答案：{feedback.correctAnswer}，你的答案：{feedback.yourAnswer || '未作答'}</span>
-              )}
-            </div>
-          )}
-
           <div className="spelling-clue">
             {imageUrl && !imageError ? (
               <Image
@@ -478,20 +488,54 @@ function SpellingBoard({ gameInfo, onFinish }) {
                       }
                       const currentIndex = blankIndex
                       blankIndex += 1
+
+                      if (answered && feedback) {
+                        const userLetter = letterValues[currentIndex] || ''
+                        const correctLetter = correctLetters[currentIndex]
+                        const correct = feedback.correct || userLetter === correctLetter
+
+                        if (correct) {
+                          return (
+                            <span className="spelling-letter is-visible" key={`${token}-${tokenIndex}`}>
+                              {correctLetter}
+                            </span>
+                          )
+                        }
+
+                        return (
+                          <span className="spelling-letter-cell" key={`${token}-${tokenIndex}`}>
+                            {userLetter && (
+                              <span className="spelling-letter-hint">{userLetter}</span>
+                            )}
+                            <input
+                              aria-label={`第 ${currentIndex + 1} 个空格`}
+                              autoComplete="off"
+                              className="spelling-letter-input is-correct"
+                              disabled
+                              inputMode="text"
+                              maxLength={1}
+                              readOnly
+                              value={correctLetter}
+                            />
+                          </span>
+                        )
+                      }
+
                       return (
-                        <input
-                          aria-label={`第 ${currentIndex + 1} 个空格`}
-                          autoComplete="off"
-                          className="spelling-letter-input"
-                          disabled={submitting || answered}
-                          inputMode="text"
-                          key={`${token}-${tokenIndex}`}
-                          maxLength={1}
-                          onChange={(event) => handleLetterChange(currentIndex, event.target.value)}
-                          onKeyDown={(event) => handleLetterKeyDown(currentIndex, event)}
-                          ref={(element) => { letterRefs.current[currentIndex] = element }}
-                          value={letterValues[currentIndex] || ''}
-                        />
+                        <span className="spelling-letter-cell" key={`${token}-${tokenIndex}`}>
+                          <input
+                            aria-label={`第 ${currentIndex + 1} 个空格`}
+                            autoComplete="off"
+                            className="spelling-letter-input"
+                            disabled={submitting}
+                            inputMode="text"
+                            maxLength={1}
+                            onChange={(event) => handleLetterChange(currentIndex, event.target.value)}
+                            onKeyDown={(event) => handleLetterKeyDown(currentIndex, event)}
+                            ref={(element) => { letterRefs.current[currentIndex] = element }}
+                            value={letterValues[currentIndex] || ''}
+                          />
+                        </span>
                       )
                     })}
                   </span>
