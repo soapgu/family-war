@@ -62,6 +62,7 @@ it('渲染首题、难度、图片和填空字母格', () => {
   expect(screen.getByText('第 1 题')).toBeInTheDocument()
   expect(screen.getByAltText('单词提示图')).toHaveAttribute('src', '/api/images/art%20room.jpg')
   expect(screen.getByLabelText(/填空 a _ _/)).toBeInTheDocument()
+  expect(screen.getAllByRole('textbox')).toHaveLength(4)
 })
 
 it('StrictMode 下首题倒计时正常更新', () => {
@@ -140,21 +141,46 @@ it('首题等待异步语音列表加载后再使用英式音色朗读', async (
   expect(utterance.voice).toEqual({ name: 'Daniel', lang: 'en-GB' })
 })
 
-it('提交字符串答案并支持 Enter', () => {
+it('开始后自动聚焦第一个空格', () => {
+  vi.useFakeTimers()
+  try {
+    renderBoard()
+    act(() => vi.advanceTimersByTime(100))
+    expect(screen.getByLabelText('第 1 个空格')).toHaveFocus()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('逐格输入英文字母并在填满后自动提交完整答案', () => {
   const socket = useSocket()
   renderBoard()
-  const input = screen.getByPlaceholderText('输入完整单词')
-  fireEvent.change(input, { target: { value: '  art room  ' } })
-  fireEvent.keyDown(input, { key: 'Enter' })
+  fireEvent.change(screen.getByLabelText('第 1 个空格'), { target: { value: 'r' } })
+  expect(socket.emit).not.toHaveBeenCalledWith('game:answer', expect.anything())
+  fireEvent.change(screen.getByLabelText('第 2 个空格'), { target: { value: 't' } })
+  fireEvent.change(screen.getByLabelText('第 3 个空格'), { target: { value: 'o' } })
+  fireEvent.change(screen.getByLabelText('第 4 个空格'), { target: { value: 'o' } })
   expect(socket.emit).toHaveBeenCalledWith('game:answer', { questionId: 'q1', answer: 'art room' })
 })
 
-it('空白答案不会提交', () => {
+it('输入一个字母后自动跳到下一个空格', () => {
+  vi.useFakeTimers()
+  try {
+    renderBoard()
+    fireEvent.change(screen.getByLabelText('第 1 个空格'), { target: { value: 'r' } })
+    act(() => vi.advanceTimersByTime(0))
+    expect(screen.getByLabelText('第 2 个空格')).toHaveFocus()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('非法输入会清除并停留在当前空格', () => {
   const socket = useSocket()
   renderBoard()
-  const input = screen.getByPlaceholderText('输入完整单词')
-  fireEvent.change(input, { target: { value: '   ' } })
-  fireEvent.keyDown(input, { key: 'Enter' })
+  const firstBlank = screen.getByLabelText('第 1 个空格')
+  fireEvent.change(firstBlank, { target: { value: '1' } })
+  expect(firstBlank).toHaveValue('')
   expect(socket.emit).not.toHaveBeenCalledWith('game:answer', expect.anything())
 })
 
@@ -170,7 +196,9 @@ it('答错后展示正确答案并锁定本题', async () => {
   }))
   expect(await screen.findByText('❌ 本题未答对')).toBeInTheDocument()
   expect(screen.getByText(/正确答案：art room/)).toBeInTheDocument()
-  expect(screen.getByPlaceholderText('输入完整单词')).toBeDisabled()
+  screen.getAllByRole('textbox').forEach((input) => {
+    expect(input).toBeDisabled()
+  })
 })
 
 it('轮结果更新排行榜和正确反馈', async () => {
@@ -204,7 +232,9 @@ it('后续题清理旧反馈并自动朗读', async () => {
 
   expect(await screen.findByText('第 2 题')).toBeInTheDocument()
   expect(screen.queryByText('❌ 本题未答对')).not.toBeInTheDocument()
-  expect(screen.getByPlaceholderText('输入完整单词')).toBeEnabled()
+  screen.getAllByRole('textbox').forEach((input) => {
+    expect(input).toBeEnabled()
+  })
   await waitFor(() => {
     expect(window.speechSynthesis.speak.mock.calls.at(-1)[0].text).toBe('library')
   })

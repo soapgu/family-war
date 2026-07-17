@@ -235,7 +235,7 @@ body {
 .spelling-question-card {
   max-width: 480px;
   margin: 0 auto;
-  padding: 18px 20px 22px;
+  padding: 8px 20px 16px;
   border: 1px solid #d6e4ff;
   border-radius: 16px;
   background: linear-gradient(180deg, #f7fbff 0%, #fff 100%);
@@ -246,19 +246,29 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 4px;
+}
+
+.spelling-replay-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 22px;
 }
 
 .spelling-clue {
-  height: 170px;
-  margin-bottom: 18px;
+  width: min(240px, 100%);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto 12px;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 16px;
   background: #f0f5ff;
+  box-shadow: inset 0 0 0 1px rgba(22, 119, 255, 0.08);
 }
 
 .spelling-clue .ant-image,
 .spelling-clue .ant-image-img {
+  display: block;
   width: 100%;
   height: 100%;
 }
@@ -275,48 +285,80 @@ body {
   color: #8c8c8c;
 }
 
-.spelling-blanks {
+.spelling-composer {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: center;
-  gap: 7px;
-  min-height: 48px;
-  margin: 4px 0 22px;
+  column-gap: 16px;
+  row-gap: 10px;
+  min-height: 54px;
+  margin: 10px auto 16px;
 }
 
-.spelling-letter {
-  width: 28px;
+.spelling-word-wrap {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.spelling-word {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.spelling-letter,
+.spelling-letter-input {
+  width: 30px;
   height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 3px solid #1677ff;
-  color: transparent;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 9px;
+  color: #1677ff;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
+  line-height: 38px;
+  text-align: center;
 }
 
-.spelling-letter.is-visible {
-  color: #1677ff;
+.spelling-letter {
+  background: transparent;
+}
+
+.spelling-letter-input {
+  border: 2px solid #91caff;
+  background: #eaf4ff;
+  outline: none;
+  caret-color: #1677ff;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.spelling-letter-input:focus {
+  border-color: #1677ff;
+  background: #d6eaff;
+  box-shadow: 0 8px 18px rgba(22, 119, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.spelling-letter-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .spelling-word-gap {
   width: 14px;
   color: #bfbfbf;
-  font-size: 18px;
-}
-
-.spelling-answer {
-  width: 100%;
-  margin-bottom: 14px;
-}
-
-.spelling-answer input {
   text-align: center;
   font-size: 18px;
   font-weight: 600;
+  line-height: 38px;
 }
 
 .spelling-timer {
@@ -335,9 +377,10 @@ body {
 
 .spelling-time {
   display: block;
-  margin-top: 4px;
+  margin-top: 3px;
   color: #8c8c8c;
   font-size: 13px;
+  line-height: 18px;
 }
 
 .spelling-time.is-urgent {
@@ -345,11 +388,24 @@ body {
 }
 
 .spelling-feedback {
-  display: grid;
-  gap: 4px;
-  margin-top: 14px;
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 26px;
+  margin: -4px auto 8px;
+  padding: 3px 10px;
   border-radius: 9px;
+  font-size: 14px;
+  line-height: 20px;
+  box-sizing: border-box;
+}
+
+.spelling-feedback span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .spelling-feedback.is-correct {
@@ -433,17 +489,27 @@ body {
   }
 
   .spelling-question-card {
-    padding: 16px 12px 20px;
+    padding: 8px 12px 14px;
   }
 
   .spelling-clue {
-    height: 145px;
+    width: min(210px, 100%);
   }
 
-  .spelling-letter {
-    width: 24px;
-    height: 34px;
-    font-size: 21px;
+  .spelling-letter,
+  .spelling-letter-input {
+    width: 28px;
+    height: 36px;
+    font-size: 20px;
+    line-height: 36px;
+  }
+
+  .spelling-word {
+    gap: 6px;
+  }
+
+  .spelling-word-wrap {
+    gap: 10px;
   }
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button, Image, Input, Space, Tag, Typography } from 'antd'
+import { Button, Image, Tag, Typography } from 'antd'
 import { SoundOutlined } from '@ant-design/icons'
 import useSocket from '../hooks/useSocket'
 import MatchResult from './MatchResult'
@@ -23,6 +23,34 @@ const DIFFICULTY_LABELS = {
 function resolveImageUrl(url) {
   if (!url) return ''
   return url.startsWith('/api/') ? `${PUBLIC_BASE}${url}` : url
+}
+
+function getBlankCount(blanks = '') {
+  return blanks.split(' ').filter((token) => token === '_').length
+}
+
+function splitBlankWords(blanks = '') {
+  return blanks.split(' ').reduce((words, token) => {
+    if (token === '·') {
+      words.push([])
+    } else {
+      words[words.length - 1].push(token)
+    }
+    return words
+  }, [[]]).filter((word) => word.length > 0)
+}
+
+function buildAnswer(blanks = '', letters = []) {
+  let blankIndex = 0
+  return blanks.split(' ').map((token) => {
+    if (token === '·') return ' '
+    if (token === '_') {
+      const letter = letters[blankIndex] || ''
+      blankIndex += 1
+      return letter
+    }
+    return token
+  }).join('').replace(/\s+/g, ' ').trim()
 }
 
 function playFeedbackTone(audioRef, correct) {
@@ -54,7 +82,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
   ))
   const [difficulty, setDifficulty] = useState(gameInfo?.difficulty || 'easy')
   const [question, setQuestion] = useState(gameInfo?.firstQuestion || null)
-  const [inputValue, setInputValue] = useState('')
+  const [letterValues, setLetterValues] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [answered, setAnswered] = useState(false)
   const [feedback, setFeedback] = useState(null)
@@ -63,7 +91,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
   const [imageError, setImageError] = useState(false)
   const [voicesReady, setVoicesReady] = useState(false)
   const timerRef = useRef(null)
-  const inputRef = useRef(null)
+  const letterRefs = useRef([])
   const prevQuestionId = useRef(null)
   const onFinishRef = useRef(onFinish)
   const voiceRef = useRef(null)
@@ -178,12 +206,11 @@ function SpellingBoard({ gameInfo, onFinish }) {
     if (!nextQuestion || nextQuestion.questionId === prevQuestionId.current) return
     prevQuestionId.current = nextQuestion.questionId
     setQuestion(nextQuestion)
-    setInputValue('')
+    setLetterValues(Array(getBlankCount(nextQuestion.blanks)).fill(''))
     setSubmitting(false)
     setAnswered(false)
     setFeedback(null)
     setImageError(false)
-    setTimeout(() => inputRef.current?.focus(), 100)
   }, [])
 
   useEffect(() => {
@@ -195,6 +222,12 @@ function SpellingBoard({ gameInfo, onFinish }) {
     startTimer()
     return clearTimer
   }, [question?.questionId, startTimer, clearTimer])
+
+  useEffect(() => {
+    if (!question?.questionId || answered || submitting) return undefined
+    const focusTimer = setTimeout(() => letterRefs.current[0]?.focus(), 100)
+    return () => clearTimeout(focusTimer)
+  }, [question?.questionId, answered, submitting])
 
   useEffect(() => {
     if (!voicesReady || !question?.questionId || !question.ttsText) return undefined
@@ -280,11 +313,60 @@ function SpellingBoard({ gameInfo, onFinish }) {
     }
   }, [socket, cancelSpeech, clearTimer, showQuestion])
 
-  function handleSubmit() {
-    const answer = inputValue.trim()
+  function handleSubmit(nextLetters = letterValues) {
+    const answer = buildAnswer(question?.blanks, nextLetters)
     if (!question || !answer || submitting || answered) return
     setSubmitting(true)
     socket.emit('game:answer', { questionId: question.questionId, answer })
+  }
+
+  function updateLetters(nextLetters) {
+    setLetterValues(nextLetters)
+    if (nextLetters.length > 0 && nextLetters.every(Boolean)) {
+      handleSubmit(nextLetters)
+    }
+  }
+
+  function handleLetterChange(index, rawValue) {
+    if (submitting || answered) return
+    const letters = rawValue.replace(/\s/g, '').split('')
+    if (letters.length === 0) {
+      const nextLetters = [...letterValues]
+      nextLetters[index] = ''
+      setLetterValues(nextLetters)
+      return
+    }
+    if (letters.some((letter) => !/^[a-z]$/i.test(letter))) {
+      const nextLetters = [...letterValues]
+      nextLetters[index] = ''
+      setLetterValues(nextLetters)
+      setTimeout(() => letterRefs.current[index]?.focus(), 0)
+      return
+    }
+
+    const nextLetters = [...letterValues]
+    let cursor = index
+    letters.forEach((letter) => {
+      if (cursor < nextLetters.length) {
+        nextLetters[cursor] = letter.toLowerCase()
+        cursor += 1
+      }
+    })
+    updateLetters(nextLetters)
+    const nextEmptyIndex = nextLetters.findIndex((letter, letterIndex) => letterIndex >= index && !letter)
+    if (nextEmptyIndex >= 0) {
+      setTimeout(() => letterRefs.current[nextEmptyIndex]?.focus(), 0)
+    }
+  }
+
+  function handleLetterKeyDown(index, event) {
+    if (event.key === 'Backspace' && !letterValues[index] && index > 0) {
+      event.preventDefault()
+      const nextLetters = [...letterValues]
+      nextLetters[index - 1] = ''
+      setLetterValues(nextLetters)
+      setTimeout(() => letterRefs.current[index - 1]?.focus(), 0)
+    }
   }
 
   const ranking = Object.entries(scoreMap)
@@ -332,13 +414,22 @@ function SpellingBoard({ gameInfo, onFinish }) {
           <div className="spelling-question-meta">
             <Typography.Text type="secondary">第 {question.round} 题</Typography.Text>
             <Button
+              aria-label="再听一次"
+              className="spelling-replay-button"
               icon={<SoundOutlined />}
               onClick={() => speak(question.ttsText)}
               disabled={!question.ttsText}
-            >
-              再听一次
-            </Button>
+            />
           </div>
+
+          {feedback && (
+            <div className={`spelling-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'}`}>
+              <strong>{feedback.correct ? '✅ 拼写正确！' : '❌ 本题未答对'}</strong>
+              {!feedback.correct && (
+                <span>正确答案：{feedback.correctAnswer}，你的答案：{feedback.yourAnswer || '未作答'}</span>
+              )}
+            </div>
+          )}
 
           <div className="spelling-clue">
             {imageUrl && !imageError ? (
@@ -353,39 +444,40 @@ function SpellingBoard({ gameInfo, onFinish }) {
             )}
           </div>
 
-          <div className="spelling-blanks" aria-label={`填空 ${question.blanks}`}>
-            {question.blanks.split(' ').map((token, index) => (
-              token === '·' ? (
-                <span className="spelling-word-gap" key={`${token}-${index}`}>·</span>
-              ) : (
-                <span className={`spelling-letter${token === '_' ? '' : ' is-visible'}`} key={`${token}-${index}`}>
-                  {token}
+          <div className="spelling-composer" aria-label={`填空 ${question.blanks}`}>
+            {(() => {
+              let blankIndex = 0
+              return splitBlankWords(question.blanks).map((word, wordIndex) => (
+                <span className="spelling-word-wrap" key={`${word.join('')}-${wordIndex}`}>
+                  {wordIndex > 0 && <span className="spelling-word-gap" aria-hidden="true">·</span>}
+                  <span className="spelling-word">
+                    {word.map((token, tokenIndex) => {
+                      if (token !== '_') {
+                        return <span className="spelling-letter is-visible" key={`${token}-${tokenIndex}`}>{token}</span>
+                      }
+                      const currentIndex = blankIndex
+                      blankIndex += 1
+                      return (
+                        <input
+                          aria-label={`第 ${currentIndex + 1} 个空格`}
+                          autoComplete="off"
+                          className="spelling-letter-input"
+                          disabled={submitting || answered}
+                          inputMode="text"
+                          key={`${token}-${tokenIndex}`}
+                          maxLength={1}
+                          onChange={(event) => handleLetterChange(currentIndex, event.target.value)}
+                          onKeyDown={(event) => handleLetterKeyDown(currentIndex, event)}
+                          ref={(element) => { letterRefs.current[currentIndex] = element }}
+                          value={letterValues[currentIndex] || ''}
+                        />
+                      )
+                    })}
+                  </span>
                 </span>
-              )
-            ))}
+              ))
+            })()}
           </div>
-
-          <Space.Compact className="spelling-answer">
-            <Input
-              ref={inputRef}
-              size="large"
-              placeholder="输入完整单词"
-              value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
-              onKeyDown={(event) => event.key === 'Enter' && handleSubmit()}
-              disabled={submitting || answered}
-              autoComplete="off"
-            />
-            <Button
-              type="primary"
-              size="large"
-              onClick={handleSubmit}
-              loading={submitting}
-              disabled={!inputValue.trim() || submitting || answered}
-            >
-              提交
-            </Button>
-          </Space.Compact>
 
           <div className="spelling-timer">
             <div style={{ width: `${(timeLeft / ROUND_TIME) * 100}%` }} />
@@ -393,15 +485,6 @@ function SpellingBoard({ gameInfo, onFinish }) {
           <Typography.Text className={timeLeft <= 5 ? 'spelling-time is-urgent' : 'spelling-time'}>
             ⏱️ {timeLeft}s
           </Typography.Text>
-
-          {feedback && (
-            <div className={`spelling-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'}`}>
-              <strong>{feedback.correct ? '✅ 拼写正确！' : '❌ 本题未答对'}</strong>
-              {!feedback.correct && (
-                <span>正确答案：{feedback.correctAnswer}，你的答案：{feedback.yourAnswer || '未作答'}</span>
-              )}
-            </div>
-          )}
         </div>
       ) : (
         <Typography.Text type="secondary">等待题目…</Typography.Text>
