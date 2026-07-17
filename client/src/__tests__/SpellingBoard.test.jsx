@@ -96,6 +96,34 @@ it('首题自动使用英式英语朗读并支持重播', async () => {
   await waitFor(() => expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2))
 })
 
+it('首题默认自动朗读 3 遍且中间有停顿', async () => {
+  vi.useFakeTimers()
+  try {
+    renderBoard()
+    act(() => vi.advanceTimersByTime(50))
+    expect(window.speechSynthesis.speak).toHaveBeenCalledOnce()
+
+    act(() => window.speechSynthesis.speak.mock.calls[0][0].onend())
+    act(() => vi.advanceTimersByTime(449))
+    expect(window.speechSynthesis.speak).toHaveBeenCalledOnce()
+
+    act(() => vi.advanceTimersByTime(1))
+    act(() => vi.advanceTimersByTime(50))
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2)
+
+    act(() => window.speechSynthesis.speak.mock.calls[1][0].onend())
+    act(() => vi.advanceTimersByTime(450))
+    act(() => vi.advanceTimersByTime(50))
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3)
+
+    act(() => window.speechSynthesis.speak.mock.calls[2][0].onend())
+    act(() => vi.advanceTimersByTime(1000))
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 it('首题等待异步语音列表加载后再使用英式音色朗读', async () => {
   const synth = window.speechSynthesis
   synth.getVoices.mockReturnValue([])

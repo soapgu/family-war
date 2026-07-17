@@ -18,7 +18,7 @@ function GameApp() {
   const [nickname, setNickname] = useState('')
   const [roomState, setRoomState] = useState(null)
   const bgmRef = useRef(null)
-  const prevGameStatus = useRef(null)
+  const prevBgmState = useRef(null)
 
   function startBgm(path) {
     if (bgmRef.current) bgmRef.current.pause()
@@ -46,20 +46,25 @@ function GameApp() {
 
   useEffect(() => {
     const status = roomState?.game?.status || null
-    const prev = prevGameStatus.current
-    prevGameStatus.current = status
+    const isInGame = roomState?.game?.players?.includes(socket.id) ?? false
+    const gameType = roomState?.game?.type || roomState?.game?.gameType
+    const bgmState = `${status || 'none'}:${gameType || 'none'}:${isInGame ? 'in' : 'out'}`
+    const prev = prevBgmState.current
+    prevBgmState.current = bgmState
 
-    if (status === prev) return
+    if (bgmState === prev) return
 
     if (!roomState) {
       stopBgm()
       return
     }
 
-    const isInGame = roomState.game?.players?.includes(socket.id) ?? false
-
     if (status === 'playing' && isInGame) {
-      startBgm(BGM_BATTLE)
+      if (gameType === 'spelling') {
+        stopBgm()
+      } else {
+        startBgm(BGM_BATTLE)
+      }
     } else if (status === 'match_end' && isInGame) {
       startBgm(BGM_RESULT)
     } else {

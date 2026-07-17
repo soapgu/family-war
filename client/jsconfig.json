@@ -2,7 +2,8 @@
   "compilerOptions": {
     "checkJs": false,
     "module": "esnext",
-    "target": "es2020"
+    "target": "es2020",
+    "types": ["vitest/globals"]
   },
   "include": ["src/**/*"]
 }

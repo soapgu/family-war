@@ -7,6 +7,8 @@ import ScoreboardPanel from './ScoreboardPanel'
 
 const ROUND_TIME = 20
 const SPEECH_RESTART_DELAY = 50
+const AUTO_SPEECH_REPEAT_COUNT = 3
+const AUTO_SPEECH_REPEAT_PAUSE = 450
 const VOICE_LOAD_TIMEOUT = 1500
 const PUBLIC_BASE = import.meta.env.DEV
   ? ''
@@ -67,6 +69,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
   const voiceRef = useRef(null)
   const utteranceRef = useRef(null)
   const speechTimerRef = useRef(null)
+  const repeatTimerRef = useRef(null)
   const audioRef = useRef(null)
 
   useEffect(() => {
@@ -110,29 +113,43 @@ function SpellingBoard({ gameInfo, onFinish }) {
       clearTimeout(speechTimerRef.current)
       speechTimerRef.current = null
     }
+    if (repeatTimerRef.current) {
+      clearTimeout(repeatTimerRef.current)
+      repeatTimerRef.current = null
+    }
     utteranceRef.current = null
     window.speechSynthesis?.cancel?.()
   }, [])
 
-  const speak = useCallback((text) => {
+  const speak = useCallback((text, repeatCount = 1) => {
     const synth = window.speechSynthesis
     if (!text || !synth?.speak || typeof SpeechSynthesisUtterance === 'undefined') return
     cancelSpeech()
-    synth.resume?.()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'en-GB'
-    utterance.rate = 0.8
-    if (voiceRef.current) utterance.voice = voiceRef.current
-    utteranceRef.current = utterance
-    const release = () => {
-      if (utteranceRef.current === utterance) utteranceRef.current = null
+    const playOnce = (remaining) => {
+      synth.resume?.()
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = 'en-GB'
+      utterance.rate = 0.8
+      if (voiceRef.current) utterance.voice = voiceRef.current
+      utteranceRef.current = utterance
+      const release = () => {
+        if (utteranceRef.current === utterance) utteranceRef.current = null
+      }
+      utterance.onend = () => {
+        release()
+        if (remaining <= 1) return
+        repeatTimerRef.current = setTimeout(() => {
+          repeatTimerRef.current = null
+          playOnce(remaining - 1)
+        }, AUTO_SPEECH_REPEAT_PAUSE)
+      }
+      utterance.onerror = release
+      speechTimerRef.current = setTimeout(() => {
+        speechTimerRef.current = null
+        if (utteranceRef.current === utterance) synth.speak(utterance)
+      }, SPEECH_RESTART_DELAY)
     }
-    utterance.onend = release
-    utterance.onerror = release
-    speechTimerRef.current = setTimeout(() => {
-      speechTimerRef.current = null
-      if (utteranceRef.current === utterance) synth.speak(utterance)
-    }, SPEECH_RESTART_DELAY)
+    playOnce(Math.max(1, repeatCount))
   }, [cancelSpeech])
 
   const clearTimer = useCallback(() => {
@@ -181,7 +198,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
 
   useEffect(() => {
     if (!voicesReady || !question?.questionId || !question.ttsText) return undefined
-    speak(question.ttsText)
+    speak(question.ttsText, AUTO_SPEECH_REPEAT_COUNT)
     return cancelSpeech
   }, [voicesReady, question?.questionId, question?.ttsText, speak, cancelSpeech])
 
