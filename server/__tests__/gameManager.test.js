@@ -956,6 +956,40 @@ describe('默写 5 分赛制', () => {
   })
 })
 
+describe('areAllHumansAnswered', () => {
+  function startSpellingGame() {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2, ROBOT], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2, ROBOT]))
+    return game
+  }
+
+  it('无人作答时返回 false', () => {
+    startSpellingGame()
+    expect(gameManager.areAllHumansAnswered(ROOM_ID)).toBe(false)
+  })
+
+  it('部分人类作答返回 false', () => {
+    const game = startSpellingGame()
+    const question = gameManager.generateSpellingQuestion(game)
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, 'wrong')
+    expect(gameManager.areAllHumansAnswered(ROOM_ID)).toBe(false)
+  })
+
+  it('所有人类答错返回 true', () => {
+    const game = startSpellingGame()
+    const question = gameManager.generateSpellingQuestion(game)
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, question.questionId, 'wrong')
+    gameManager.submitSpellingAnswer(ROOM_ID, P2, question.questionId, 'wrong')
+    expect(gameManager.areAllHumansAnswered(ROOM_ID)).toBe(true)
+  })
+
+  it('只有机器人时返回 false', () => {
+    const game = gameManager.createGame(ROOM_ID, [ROBOT], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [ROBOT]))
+    expect(gameManager.areAllHumansAnswered(ROOM_ID)).toBe(false)
+  })
+})
+
 describe('handleRobotSpellingAnswer', () => {
   function startWithQuestion() {
     const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'spelling', 'easy')

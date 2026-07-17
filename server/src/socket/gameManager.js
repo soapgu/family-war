@@ -561,6 +561,18 @@ class GameManager {
     if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) return null
     return this.submitSpellingAnswer(roomId, roomManager.ROBOT_ID, questionId, game.currentQuestion.word)
   }
+
+  /**
+   * 检查游戏中的所有人类玩家是否都已作答
+   * @param {string} roomId
+   * @returns {boolean}
+   */
+  areAllHumansAnswered(roomId) {
+    const game = this.getGame(roomId)
+    if (!game || !game.answeredThisRound) return false
+    const humanIds = game.players.filter((id) => id !== roomManager.ROBOT_ID)
+    return humanIds.length > 0 && humanIds.every((id) => game.answeredThisRound[id] !== undefined)
+  }
 }
 
 const gameManager = new GameManager()

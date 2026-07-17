@@ -18,6 +18,7 @@ function randomChoice() {
 function registerHandlers(io) {
   /** @type {Map<string, ReturnType<typeof setTimeout>>} */
   const robotTimers = new Map()
+  const robotTimerEndAt = new Map()
 
   io.on('connection', (socket) => {
     console.log(`[${ts()}] [connect] ${socket.id}`)
@@ -471,6 +472,7 @@ function registerHandlers(io) {
         clearTimeout(robotTimers.get(rid))
         robotTimers.delete(rid)
       }
+      robotTimerEndAt.delete(rid)
     }
 
     /** 设置机器人定时器（按游戏类型/难度自动作答） */
@@ -480,6 +482,7 @@ function registerHandlers(io) {
       if (!game) return
 
       const timeout = game.type === 'spelling' ? (SPELLING_TIMEOUT_MAP[game.difficulty] || SPELLING_TIMEOUT_MAP.easy) : ARITHMETIC_TIMEOUT
+      robotTimerEndAt.set(rid, Date.now() + timeout)
       const timer = setTimeout(() => {
         if (game.type === 'spelling') {
           const result = gameManager.handleRobotSpellingAnswer(rid, questionId)
@@ -632,6 +635,20 @@ function registerHandlers(io) {
           word: result.word,
           yourAnswer: result.yourAnswer,
         })
+
+        if (gameManager.areAllHumansAnswered(rid)) {
+          const endAt = robotTimerEndAt.get(rid)
+          const remaining = endAt ? Math.max(0, endAt - Date.now()) : 0
+          if (remaining > 5000) {
+            clearRobotTimer(rid)
+            robotTimerEndAt.set(rid, Date.now() + 5000)
+            const timer = setTimeout(() => {
+              const robotResult = gameManager.handleRobotSpellingAnswer(rid, questionId)
+              if (robotResult) handleSpellingAnswerResult(rid, robotResult)
+            }, 5000)
+            robotTimers.set(rid, timer)
+          }
+        }
         return
       }
 
