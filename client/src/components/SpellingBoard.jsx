@@ -5,7 +5,7 @@ import useSocket from '../hooks/useSocket'
 import MatchResult from './MatchResult'
 import ScoreboardPanel from './ScoreboardPanel'
 
-const ROUND_TIME = 20
+const ROUND_TIME_MAP = { easy: 40, normal: 30, hard: 20 }
 const SPEECH_RESTART_DELAY = 50
 const AUTO_SPEECH_REPEAT_COUNT = 3
 const AUTO_SPEECH_REPEAT_PAUSE = 450
@@ -117,12 +117,13 @@ function SpellingBoard({ gameInfo, onFinish }) {
     (gameInfo?.players || []).map((player) => [player.id, 0])
   ))
   const [difficulty, setDifficulty] = useState(gameInfo?.difficulty || 'easy')
+  const roundTime = ROUND_TIME_MAP[difficulty] || 20
   const [question, setQuestion] = useState(gameInfo?.firstQuestion || null)
   const [letterValues, setLetterValues] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [answered, setAnswered] = useState(false)
   const [feedback, setFeedback] = useState(null)
-  const [timeLeft, setTimeLeft] = useState(ROUND_TIME)
+  const [timeLeft, setTimeLeft] = useState(roundTime)
   const [matchResult, setMatchResult] = useState(null)
   const [imageError, setImageError] = useState(false)
   const [voicesReady, setVoicesReady] = useState(false)
@@ -225,7 +226,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
 
   const startTimer = useCallback(() => {
     clearTimer()
-    setTimeLeft(ROUND_TIME)
+    setTimeLeft(roundTime)
     timerRef.current = setInterval(() => {
       setTimeLeft((current) => {
         if (current <= 1) {
@@ -236,7 +237,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
         return current - 1
       })
     }, 1000)
-  }, [clearTimer])
+  }, [clearTimer, roundTime])
 
   const showQuestion = useCallback((nextQuestion) => {
     if (!nextQuestion || nextQuestion.questionId === prevQuestionId.current) return
@@ -545,7 +546,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
           </div>
 
           <div className="spelling-timer">
-            <div style={{ width: `${(timeLeft / ROUND_TIME) * 100}%` }} />
+            <div style={{ width: `${(timeLeft / roundTime) * 100}%` }} />
           </div>
           <Typography.Text className={timeLeft <= 5 ? 'spelling-time is-urgent' : 'spelling-time'}>
             ⏱️ {timeLeft}s

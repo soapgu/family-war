@@ -346,7 +346,7 @@ class GameManager {
   }
 
   /**
-   * 机器人自动提交正确答案（20 秒后由 handler 调用）
+   * 机器人自动提交正确答案（超时后由 handler 调用）
    * @param {string} roomId
    * @param {string} questionId
    * @returns {ArithmeticAnswerResult|null}
@@ -550,7 +550,7 @@ class GameManager {
   }
 
   /**
-   * 机器人自动提交正确单词（20 秒后由 handler 调用）
+   * 机器人自动提交正确单词（超时后由 handler 调用，时长由难度决定）
    * @param {string} roomId
    * @param {string} questionId
    * @returns {SpellingAnswerResult|null}

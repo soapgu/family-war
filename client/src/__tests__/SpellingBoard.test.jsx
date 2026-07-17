@@ -73,9 +73,9 @@ it('StrictMode 下首题倒计时正常更新', () => {
         <SpellingBoard gameInfo={GAME_INFO} onFinish={vi.fn()} />
       </StrictMode>
     )
-    expect(screen.getByText(/20s/)).toBeInTheDocument()
+    expect(screen.getByText(/30s/)).toBeInTheDocument()
     act(() => vi.advanceTimersByTime(1000))
-    expect(screen.getByText(/19s/)).toBeInTheDocument()
+    expect(screen.getByText(/29s/)).toBeInTheDocument()
   } finally {
     vi.useRealTimers()
   }

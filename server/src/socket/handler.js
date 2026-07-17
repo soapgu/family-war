@@ -5,7 +5,7 @@ const ROBOT_ID = roomManager.ROBOT_ID
 const CHOICES = ['rock', 'paper', 'scissors']
 
 const ARITHMETIC_TIMEOUT = 20000
-const SPELLING_TIMEOUT = 20000
+const SPELLING_TIMEOUT_MAP = { easy: 40000, normal: 30000, hard: 20000 }
 
 function randomChoice() {
   return CHOICES[Math.floor(Math.random() * CHOICES.length)]
@@ -222,7 +222,7 @@ function registerHandlers(io) {
       return handleRpsChallenge(rid, room, socket, targetId)
     })
 
-    /** 算术挑战：全员参战 → 发题 → 启动 20s 机器人定时器 */
+    /** 算术挑战：全员参战 → 发题 → 启动机器人定时器（20s） */
     function handleArithmeticChallenge(rid, room, socket) {
       const playerIds = Object.values(room.roles).filter((id) => id !== null)
 
@@ -260,7 +260,7 @@ function registerHandlers(io) {
       roomManager.broadcastRoomState(rid, io)
     }
 
-    /** 默写挑战：全员参战 → 发题 → 启动 20s 机器人定时器 */
+    /** 默写挑战：全员参战 → 发题 → 启动机器人定时器（难度对应：简单 40s / 普通 30s / 困难 20s） */
     function handleSpellingChallenge(rid, room, socket) {
       const playerIds = Object.values(room.roles).filter((id) => id !== null)
 
@@ -473,13 +473,13 @@ function registerHandlers(io) {
       }
     }
 
-    /** 设置机器人定时器（20s 后自动作答）— 按游戏类型路由 */
+    /** 设置机器人定时器（按游戏类型/难度自动作答） */
     function scheduleRobotAnswer(rid, questionId) {
       clearRobotTimer(rid)
       const game = gameManager.getGame(rid)
       if (!game) return
 
-      const timeout = game.type === 'spelling' ? SPELLING_TIMEOUT : ARITHMETIC_TIMEOUT
+      const timeout = game.type === 'spelling' ? (SPELLING_TIMEOUT_MAP[game.difficulty] || SPELLING_TIMEOUT_MAP.easy) : ARITHMETIC_TIMEOUT
       const timer = setTimeout(() => {
         if (game.type === 'spelling') {
           const result = gameManager.handleRobotSpellingAnswer(rid, questionId)
