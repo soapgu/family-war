@@ -158,6 +158,11 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
     onBack()
   }
 
+  function handleReturnToRoom() {
+    setGameInfo(null)
+    onReturnToRoom?.()
+  }
+
   return (
     <div
       style={{
@@ -203,9 +208,9 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
 
         {gameInfo ? (
           gameInfo.gameType === 'spelling' ? (
-            <SpellingBoard gameInfo={gameInfo} onFinish={() => setGameInfo(null)} />
+            <SpellingBoard gameInfo={gameInfo} onFinish={handleReturnToRoom} />
           ) : gameInfo.gameType === 'arithmetic' ? (
-            <ArithmeticBoard gameInfo={gameInfo} onFinish={() => setGameInfo(null)} />
+            <ArithmeticBoard gameInfo={gameInfo} onFinish={handleReturnToRoom} />
           ) : (
             <GameBoard key={gameKey}
               nickname={nickname}

@@ -6,7 +6,20 @@ import Room from '../pages/Room'
 
 vi.mock('../hooks/useSocket')
 vi.mock('../components/SpellingBoard', () => ({
-  default: ({ gameInfo }) => <div>默写面板：{gameInfo.firstQuestion?.ttsText}</div>,
+  default: ({ gameInfo, onFinish }) => (
+    <div>
+      <div>默写面板：{gameInfo.firstQuestion?.ttsText}</div>
+      <button type="button" onClick={onFinish}>默写返回房间</button>
+    </div>
+  ),
+}))
+vi.mock('../components/ArithmeticBoard', () => ({
+  default: ({ onFinish }) => (
+    <div>
+      <div>算术面板</div>
+      <button type="button" onClick={onFinish}>算术返回房间</button>
+    </div>
+  ),
 }))
 
 const MOCK_ROOM_STATE = {
@@ -167,5 +180,51 @@ describe('Room', () => {
       })
     })
     expect(await screen.findByText('默写面板：classroom')).toBeInTheDocument()
+  })
+
+  it('默写返回房间时恢复房间 BGM', async () => {
+    const onReturnToRoom = vi.fn()
+    render(
+      <Room
+        nickname="小明"
+        roomState={{ ...MOCK_ROOM_STATE, gameMode: 'spelling', spellingDifficulty: 'easy' }}
+        onBack={vi.fn()}
+        onReturnToRoom={onReturnToRoom}
+      />
+    )
+    act(() => {
+      triggerSocketEvent('game:start', {
+        gameType: 'spelling',
+        players: MOCK_ROOM_STATE.players,
+        difficulty: 'easy',
+        firstQuestion: { questionId: 'q1', ttsText: 'classroom' },
+      })
+    })
+
+    await userEvent.click(await screen.findByText('默写返回房间'))
+    expect(onReturnToRoom).toHaveBeenCalledOnce()
+    expect(screen.queryByText('默写面板：classroom')).not.toBeInTheDocument()
+  })
+
+  it('算术返回房间时恢复房间 BGM', async () => {
+    const onReturnToRoom = vi.fn()
+    render(
+      <Room
+        nickname="小明"
+        roomState={{ ...MOCK_ROOM_STATE, gameMode: 'arithmetic' }}
+        onBack={vi.fn()}
+        onReturnToRoom={onReturnToRoom}
+      />
+    )
+    act(() => {
+      triggerSocketEvent('game:start', {
+        gameType: 'arithmetic',
+        players: MOCK_ROOM_STATE.players,
+      })
+    })
+
+    await userEvent.click(await screen.findByText('算术返回房间'))
+    expect(onReturnToRoom).toHaveBeenCalledOnce()
+    expect(screen.queryByText('算术面板')).not.toBeInTheDocument()
   })
 })
