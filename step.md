@@ -288,16 +288,16 @@ BaseGameMode
 | 1a | 完成 Phase 1 详细设计定稿：确定 class 继承结构、目录、核心接口、命名、返回结构、实施顺序和边界 | `V3.1-Phase 1-游戏服务端架构重构.md` | ✅ |
 | 1b | 新建 `games/` 目录与 `BaseGameMode`，提供 `createBaseGame`、`buildRanking`、`buildPlayerList`、胜利分数和默认抽象方法 | `server/src/socket/games/BaseGameMode.js` | ⬜ |
 | 1c | 拆分 RPS 为 `RpsGameMode`，保留 1v1 出拳、平局、三局两胜、机器人即时随机出拳和每人视角 payload | `server/src/socket/games/RpsGameMode.js`, `server/src/socket/gameManager.js` | ⬜ |
-| 1d | 新建 `gameRegistry`，先只注册 `rps`，用实例方式为后续模式注入 `config`、`roomManager` 等依赖 | `server/src/socket/games/gameRegistry.js` | ⬜ |
-| 1e | 先迁移 RPS 调用链：`gameManager.submitMove` 改为通过 `RpsGameMode`，保留旧 public API 兼容壳并保证 RPS 测试通过 | `server/src/socket/gameManager.js`, `server/__tests__/gameManager.test.js` | ⬜ |
+| 1d | 新建 `gameRegistry`，先只注册 `rps`，用实例方式为后续模式注入 `config`、`roomManager` 等依赖；`config.games` 缺失或配置不完整时使用内置默认值 | `server/src/socket/games/gameRegistry.js` | ⬜ |
+| 1e | 先迁移 RPS 调用链：`gameManager.submitMove` 改为通过 `RpsGameMode`；兼容壳把新嵌套结果转换为旧平铺格式，并确保历史记录不写 `ranking: undefined` | `server/src/socket/gameManager.js`, `server/__tests__/gameManager.test.js` | ⬜ |
 | 1f | 新建 `QuizGameMode` 中间基类，抽象算术/默写共用的出题抢答流程：每题一次、答错 waiting、答对加分、5 分结算、机器人提交正确答案 | `server/src/socket/games/QuizGameMode.js` | ⬜ |
 | 1g | 拆分算术为 `ArithmeticGameMode`，迁移题目生成、数字答案校验、轮结算、赛果和题目 payload 构建 | `server/src/socket/games/ArithmeticGameMode.js` | ⬜ |
-| 1h | 迁移算术调用链：`submitArithmeticAnswer` / `generateQuestion` 改为兼容壳，扩展 `gameRegistry` 注册 `arithmetic`，跑算术相关测试 | `server/src/socket/gameManager.js`, `server/src/socket/games/gameRegistry.js`, `server/__tests__/` | ⬜ |
+| 1h | 迁移算术调用链：`submitArithmeticAnswer` / `generateQuestion` 改为保持旧平铺返回格式的兼容壳，扩展 `gameRegistry` 注册 `arithmetic`，跑算术相关测试 | `server/src/socket/gameManager.js`, `server/src/socket/games/gameRegistry.js`, `server/__tests__/` | ⬜ |
 | 1i | 拆分默写为 `SpellingGameMode`，迁移词库取词、填空生成、图片 URL、难度、答案校验、轮结算、赛果和题目 payload 构建 | `server/src/socket/games/SpellingGameMode.js` | ⬜ |
-| 1j | 迁移默写调用链：`submitSpellingAnswer` / `generateSpellingQuestion` 改为兼容壳，扩展 `gameRegistry` 注册 `spelling`，跑默写相关测试 | `server/src/socket/gameManager.js`, `server/src/socket/games/gameRegistry.js`, `server/__tests__/` | ⬜ |
-| 1k | 抽出 `robotScheduler`，统一管理机器人定时器 `schedule` / `clear` / `getEndAt` / `clearAll`，通过回调把机器人结果交回 handler | `server/src/socket/robotScheduler.js`, `server/src/socket/handler.js` | ⬜ |
-| 1l | 精简 `handler`：保留 socket 事件注册、房间校验、调用 gameManager、广播 payload 和调度 robotScheduler，移出具体游戏规则 | `server/src/socket/handler.js` | ⬜ |
-| 1m | 补充/迁移 GameMode 单元测试，覆盖 RPS、算术、默写、机器人输入和调度器清理 | `server/__tests__/*GameMode.test.js`, `server/__tests__/robotScheduler.test.js` | ⬜ |
+| 1j | 迁移默写调用链：`submitSpellingAnswer` / `generateSpellingQuestion` 改为保持旧平铺返回格式的兼容壳，扩展 `gameRegistry` 注册 `spelling`，跑默写相关测试 | `server/src/socket/gameManager.js`, `server/src/socket/games/gameRegistry.js`, `server/__tests__/` | ⬜ |
+| 1k | 抽出 `robotScheduler`，统一管理 `schedule` / `clear` / `getEndAt` / `getRemainingMs` / `accelerate` / `clearAll`；保留默写全部人类答错后将机器人剩余等待缩短至 5 秒的规则 | `server/src/socket/robotScheduler.js`, `server/src/socket/handler.js` | ⬜ |
+| 1l | 精简 `handler`：保留事件注册、房间校验、调用、广播和调度；统一游戏取消、房间删除、赛果后的 scheduler 清理，且算术/默写仍继续时不因单人断线误清定时器 | `server/src/socket/handler.js` | ⬜ |
+| 1m | 补充/迁移 GameMode 单元测试，覆盖三种游戏、旧 API 返回格式、RPS 历史、配置兜底、机器人输入、默写 5 秒加速和调度器生命周期 | `server/__tests__/*GameMode.test.js`, `server/__tests__/gameManager.test.js`, `server/__tests__/robotScheduler.test.js` | ⬜ |
 | 1n | 回归测试三种游戏完整 Socket 流程，确保事件名和主要 payload 字段兼容 | `server/__tests__/gameManager.test.js`, `server/tests/integration.js` | ⬜ |
 
 **验收条件**
@@ -307,6 +307,11 @@ BaseGameMode
 - 新增游戏模式时不需要继续扩写一个巨大的 `gameManager.js`
 - 算术和默写共享 `QuizGameMode` 抢答类流程，减少重复逻辑
 - 机器人定时器在开局、下一题、答对、赛果、离房、断线时都能正确清理或重建
+- 默写所有人类答错后，机器人剩余等待大于 5 秒时会缩短到 5 秒
+- 旧 public API 保持平铺返回格式；统一入口使用 `{ action, result }`，两者边界有测试保护
+- RPS 对局历史不写入 `ranking: undefined`
+- `config.games` 不存在或只配置部分游戏时仍有安全默认值
+- `game:rematch` 在 Phase 1 仍仅支持 RPS；算术/默写继续通过 `game:challenge` 重赛
 - 客户端现有 socket 事件名和主要 payload 字段不被破坏
 - 现有服务端单元测试和集成测试通过
 
