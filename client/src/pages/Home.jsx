@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Typography, Input, Button, Space, App } from 'antd'
 import useSocket from '../hooks/useSocket'
 
-const APP_VERSION = '0.1.0'
+const APP_VERSION = '3.0.0'
 
 const QUOTES = [
   { role: '爸爸', emoji: '👨', text: '谁输谁洗碗' },

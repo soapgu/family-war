@@ -1,4 +1,4 @@
-# Family War 🎮 v3.0 开发中
+# Family War 🎮 v3.0
 
 一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）、**算术达人**（全员抢答）和 v3.0 **爱拼才会赢**（英文默写），并支持机器人对局。
 
@@ -487,14 +487,13 @@ MatchResult.jsx
 ├── Modal 壳（antd Modal）
 ├── 内部 switch:
 │   ├── gameType === 'arithmetic' → <ArithmeticMatchResult />
-│   ├── gameType === 'spelling'   → 暂时复用 <ArithmeticMatchResult />
+│   ├── gameType === 'spelling'   → <SpellingMatchResult />
 │   └── default (rps)            → <RpsMatchResult />
-└── SpellingMatchResult 尚待实现
 ```
 
-- `RpsMatchResult` — 现有逻辑搬入（历史回放 + 🏆/😢 + 比分）
+- `RpsMatchResult` — 历史回放 + 🏆/😢 + 比分
 - `ArithmeticMatchResult` — 终榜排名（🥇🥈🥉）+ 每题回放
-- `SpellingMatchResult` — 规划为终榜排名 + 每题单词回顾，目前未实现
+- `SpellingMatchResult` — 终榜排名 + 每题单词/填空/玩家答案回顾
 
 ## 后台管理
 
