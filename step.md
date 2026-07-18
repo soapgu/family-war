@@ -259,18 +259,68 @@ location /family-war/socket.io/ {
 | 3d | SpellingMatchResult.jsx（终榜排名 + 每题单词、填空提示和玩家答案回顾） | `SpellingMatchResult.jsx` | ✅ |
 | 3e | 验证：默写完整 5 分流程；覆盖重赛后仍为 spelling、沿用房间难度、重新读取参赛角色、比分与题目重置，以及旧结算页跨模式重赛保护 | `server/tests/integration.js`, `client/src/__tests__/SpellingMatchResult.test.jsx` | ✅ |
 
-### 后续 TODO：管理接口安全加固
+---
+
+## v3.1 升级计划
+
+### 概览
+
+v3.1 聚焦 v3.0 发布后的架构债、安全债和联机稳定性：在不新增大玩法的前提下，重构服务端游戏抽象，统一机器人自动回复时间配置，补齐管理接口安全边界，并改善客户端断线重连后的房间恢复体验。
+
+### Phase 1: 游戏服务端架构重构
+
+目标：将最初围绕石头剪子布设计的 `gameManager` / `handler` 整理为可承载多游戏模式的结构。`RoomManager` 当前职责仍较清晰，以检查和小幅整理为主，不作为本阶段大拆对象。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1a | 梳理现有 RPS / 算术 / 默写共性流程：开局、出题/出招、提交、轮结算、赛果、历史记录、机器人行为 | `server/src/socket/gameManager.js`, `server/src/socket/handler.js` | ⬜ |
+| 1b | 设计游戏模式抽象接口，明确每种游戏需要提供的创建游戏、处理输入、生成下一轮、构建广播数据等能力 | `server/src/socket/gameManager.js`, `server/src/socket/games/*` | ⬜ |
+| 1c | 拆分 RPS 游戏逻辑，保留现有三局两胜、平局重赛、机器人随机出拳行为 | `server/src/socket/games/rpsGame.js`, `server/src/socket/gameManager.js` | ⬜ |
+| 1d | 拆分算术游戏逻辑，保留题目生成、抢答、5 分结算、答错等待、机器人超时答题行为 | `server/src/socket/games/arithmeticGame.js`, `server/src/socket/gameManager.js` | ⬜ |
+| 1e | 拆分默写游戏逻辑，保留词库取词、填空生成、图片 URL、难度、5 分结算、机器人超时答题行为 | `server/src/socket/games/spellingGame.js`, `server/src/socket/gameManager.js` | ⬜ |
+| 1f | 抽出机器人自动作答调度，统一管理定时器创建、清理、房间离开、断线、赛果结束等场景 | `server/src/socket/robotScheduler.js`, `server/src/socket/handler.js` | ⬜ |
+| 1g | 精简 `handler`：保留 socket 事件注册、参数入口校验和广播编排，避免继续沉淀游戏规则细节 | `server/src/socket/handler.js` | ⬜ |
+| 1h | 回归测试三种游戏完整流程，确保现有 socket 事件协议和客户端行为不破坏 | `server/__tests__/gameManager.test.js`, `server/tests/integration.js` | ⬜ |
+
+**验收条件**
+
+- 三种游戏现有玩法行为保持兼容
+- `handler.js` 不再直接承载大量游戏规则分支
+- 新增游戏模式时不需要继续扩写一个巨大的 `gameManager.js`
+- 机器人定时器在开局、下一题、答对、赛果、离房、断线时都能正确清理或重建
+- 现有服务端单元测试和集成测试通过
+
+### Phase 2: 倒计时与机器人配置统一
+
+目标：服务端作为每题倒计时和机器人自动回复时间的权威来源，客户端只展示服务端下发的时间，不再为算术和默写各自写死倒计时。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 2a | 在配置中定义各游戏/难度的题目时间与机器人自动回复时间，支持本地覆盖且不提交私有配置 | `server/config.js`, `server/config.local.js` | ⬜ |
+| 2b | 服务端创建 `gameInfo` / `question` 时下发 `timeLimitMs`，必要时下发 `robotAnswerAt` 或等价的剩余时间信息 | `server/src/socket/handler.js`, `server/src/socket/games/*` | ⬜ |
+| 2c | 算术前端改为使用服务端下发的 `timeLimitMs` 初始化倒计时和进度条，移除写死的 `ROUND_TIME` 依赖 | `client/src/components/ArithmeticBoard.jsx` | ⬜ |
+| 2d | 默写前端改为使用服务端下发的 `timeLimitMs` 初始化倒计时和进度条，难度只影响服务端配置选择 | `client/src/components/SpellingBoard.jsx` | ⬜ |
+| 2e | 补充测试：算术/默写首题和下一题都携带时间配置，前端按下发时间展示倒计时 | `server/__tests__/`, `client/src/__tests__/` | ⬜ |
+
+**验收条件**
+
+- 算术和默写的倒计时时间只需改服务端配置即可生效
+- 前端显示时间和机器人实际自动回复时间一致
+- 不同默写难度仍可拥有不同时间配置
+- 没有配置时使用安全默认值，游戏仍可正常开始
+
+### Phase 3: 管理后台与图片接口安全加固
 
 当前管理接口面向家庭局域网使用，尚未设置身份认证，服务端 CORS 也允许任意来源。公网部署或开放给不可信设备前必须完成以下加固。
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| C1 | 客户端重连后自动重新加入房间（监听 `socket.on('connect', ...)` → 重发 `room:join`） | `client/src/App.jsx` | ⬜ |
-| S1 | 增加管理员认证机制，保护 `/api/admin/*` 和词库图片管理操作；密钥只从环境变量或本地配置读取，不提交仓库 | `server/src/routes/admin.js`, `server/config.js` | ⬜ |
-| S2 | 将 CORS 从全开放改为允许来源白名单，分别配置开发、预发布环境 | `server/src/index.js`, `server/config.js` | ⬜ |
-| S3 | 为修改词库、同步图片、确认换图等写操作增加权限校验、参数校验和统一错误响应 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
-| S4 | 限制候选图片确认接口只能处理词库内单词和可信图片地址，防止任意 URL 下载与非法文件名 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
-| S5 | 补充未认证、错误凭据、非法来源、越权写操作和合法管理员流程测试 | `server/__tests__/`, `server/tests/` | ⬜ |
+| 3a | 增加管理员认证机制，保护 `/api/admin/*` 和词库图片管理操作；密钥只从环境变量或本地配置读取，不提交仓库 | `server/src/routes/admin.js`, `server/config.js` | ⬜ |
+| 3b | 明确管理认证传递方式，例如 `Authorization: Bearer <token>` 或 `X-Admin-Token`，并在前端管理页统一附带凭据 | `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx`, `server/src/routes/admin.js` | ⬜ |
+| 3c | 将 CORS 从全开放改为允许来源白名单，分别配置开发、预发布环境，并同步 Socket.IO CORS 配置 | `server/src/index.js`, `server/config.js` | ⬜ |
+| 3d | 为修改词库、同步图片、确认换图等写操作增加权限校验、参数校验和统一错误响应 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
+| 3e | 限制候选图片确认接口只能处理词库内单词和可信图片地址，防止任意 URL 下载与非法文件名 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
+| 3f | 补充未认证、错误凭据、非法来源、越权写操作和合法管理员流程测试 | `server/__tests__/`, `server/tests/`, `client/src/__tests__/` | ⬜ |
 
 **验收条件**
 
@@ -279,6 +329,24 @@ location /family-war/socket.io/ {
 - 非词库单词、非法文件名和非可信图片 URL 被明确拒绝
 - 管理端凭据不出现在前端构建产物、日志或 Git 仓库中
 - 开发、预发布环境均能通过配置启用合法管理访问
+
+### Phase 4: 客户端重连恢复
+
+目标：处理 Socket.IO 短暂断线重连场景。页面刷新后的身份持久化暂不纳入本阶段，避免扩大范围。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 4a | 客户端保存当前昵称和房间 ID，在 `socket.on('connect', ...)` 后自动重发 `room:join` | `client/src/App.jsx` | ⬜ |
+| 4b | 避免首次进入和重连恢复重复触发 toast、BGM 重启或重复事件监听 | `client/src/App.jsx`, `client/src/pages/Room.jsx` | ⬜ |
+| 4c | 服务端确认重复加入同一房间的行为安全：不会残留旧角色、不会重复机器人、不会污染在线玩家列表 | `server/src/socket/roomManager.js`, `server/src/socket/handler.js` | ⬜ |
+| 4d | 补充客户端重连测试和必要的服务端房间状态测试 | `client/src/__tests__/App.test.jsx`, `server/__tests__/roomManager.test.js` | ⬜ |
+
+**验收条件**
+
+- 网络短暂断开并恢复后，客户端能自动重新获得房间状态
+- 重连不会自动恢复已刷新页面丢失的身份，除非后续单独设计本地持久化
+- 重连过程不会造成重复玩家、重复提示、重复 BGM 或重复 socket 监听
+- 断线发生在游戏中时，当前版本行为有明确测试覆盖或边界说明
 
 ### PM2 管理命令
 
