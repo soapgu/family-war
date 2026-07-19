@@ -1,3 +1,17 @@
+/**
+ * v3.1 Phase 1 重构 — SpellingGameMode 单元测试。
+ *
+ * 覆盖：
+ * - createGame（默认/自定义 difficulty）
+ * - createNextQuestion（词库取词 / 不重复 / 空词库错误）
+ * - generateBlanks（easy/normal/hard / 空格分隔 ·）
+ * - normalizeAnswer / validateAnswer（空字符串 / 非字符串类型拒绝）
+ * - isCorrectAnswer（大小写不敏感）
+ * - buildStartPayload / buildQuestionPayload / buildPlayerRoundResultPayload / buildMatchResultPayload
+ * - getRobotDelayMs（easy / hard 区分）
+ * - getRobotScheduleAfterWaiting（全部人类答完加速 / 未答完 null）
+ * - handleRobotInput 完整流程（正确 / 过期 / 5 分赛果）
+ */
 const SpellingGameMode = require('../src/socket/games/SpellingGameMode')
 
 const ROBOT_ID = '__robot__'

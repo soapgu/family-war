@@ -1,5 +1,18 @@
 const QuizGameMode = require('./QuizGameMode')
 
+/**
+ * v3.1 Phase 1 重构 — 从 gameManager 拆分的算术游戏模式。
+ *
+ * 继承 QuizGameMode，实现加减法抢答（all-vs-all）。
+ * - createNextQuestion：随机生成 +/- 题，结果 0-100
+ * - normalizeAnswer：字符串转 Number
+ * - validateAnswer：拒绝 NaN/Infinity
+ * - getRobotDelayMs：默认 20000ms（config.robotAnswerDelayMs 可覆盖）
+ * - buildStartPayload / buildQuestionPayload：含 expression 字段
+ * - buildMatchResultPayload：含 ranking 排行榜
+ * - 5 分制（config.winningScore 可配置）
+ */
+
 /** 生成算术题（+/-，结果 0-100） */
 function generateArithmeticQuestion() {
   const op = Math.random() < 0.5 ? '+' : '-'

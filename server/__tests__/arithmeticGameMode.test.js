@@ -1,3 +1,13 @@
+/**
+ * v3.1 Phase 1 重构 — ArithmeticGameMode 单元测试。
+ *
+ * 覆盖：
+ * - createNextQuestion（表达式格式 / 题目独立不重复）
+ * - normalizeAnswer / validateAnswer / isCorrectAnswer
+ * - buildStartPayload / buildQuestionPayload / buildPlayerRoundResultPayload / buildMatchResultPayload
+ * - getRobotDelayMs（config 存在/缺失兜底）
+ * - submitInput 完整流程（正确/错误/非本局/比赛结束/5 分赛果）
+ */
 const ArithmeticGameMode = require('../src/socket/games/ArithmeticGameMode')
 
 const ROBOT_ID = '__robot__'

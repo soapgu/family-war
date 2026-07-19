@@ -3,7 +3,15 @@ const BaseGameMode = require('./BaseGameMode')
 const CHOICES = ['rock', 'paper', 'scissors']
 
 /**
- * 石头剪子布游戏模式。
+ * v3.1 Phase 1 重构 — 从 gameManager 拆分的猜拳游戏模式。
+ *
+ * 继承 BaseGameMode，实现 1v1 石头剪子布对战。
+ * - submitInput：处理 player input { choice }，判胜负、结算 round/match
+ * - handleRobotInput：机器人自动出拳（随机选择）
+ * - 2 分制（config.winningScore 可配置），无 ranking
+ * - buildPlayerRoundResultPayload 每人视角含 yourMove/oppMove
+ * - buildMatchResultPayload 不含 ranking 字段
+ * - match_result 不包含 ranking（vs QuizGameMode 的 all-vs-all ranking）
  *
  * 特点：
  * - 1v1 对战。

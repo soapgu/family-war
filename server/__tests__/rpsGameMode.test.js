@@ -1,3 +1,14 @@
+/**
+ * v3.1 Phase 1 重构 — RpsGameMode 单元测试。
+ *
+ * 覆盖：
+ * - submitInput 完整流程（waiting / round_result / match_result / error / 平局 / 比赛结束）
+ * - buildStartPayload（每人视角 opponent）
+ * - buildPlayerRoundResultPayload（每人视角 yourMove/oppMove）
+ * - buildMatchResultPayload（不包含 ranking）
+ * - handleRobotInput（机器人出拳 + 双方都出拳后的结算）
+ * - getWinningScore（config 兜底）
+ */
 const RpsGameMode = require('../src/socket/games/RpsGameMode')
 
 const ROBOT_ID = '__robot__'

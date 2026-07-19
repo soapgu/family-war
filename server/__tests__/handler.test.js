@@ -1,3 +1,12 @@
+/**
+ * v3.1 Phase 1 重构 — handler.js 边界条件单元测试。
+ *
+ * 通过 mock roomManager / gameManager / robotScheduler 验证 handler 的 3 个审查修复：
+ * 1. room:leave → leaveRoom 返回 null 时调用 robotScheduler.clear
+ * 2. disconnect → handleDisconnect 返回 null 时调用 robotScheduler.clear
+ * 3. game:rematch → 非 RPS 模式拒绝 / RPS 允许 / game 不存在返回 error
+ * 4. game:answer → 数字/对象类型默写答案被拒绝
+ */
 const registerHandlers = require('../src/socket/handler')
 
 jest.mock('../src/socket/roomManager')

@@ -1,3 +1,14 @@
+/**
+ * v3.1 Phase 1 重构 — robotScheduler 单元测试。
+ *
+ * 覆盖：
+ * - schedule（正常调度 / shouldScheduleRobot 返回 false 时跳过 / delay ≤ 0 跳过 / 重复 schedule 先 clear）
+ * - clear（移除定时器回调不被执行 / getEndAt 返回 undefined）
+ * - clearAll（清除所有房间定时器）
+ * - getEndAt / getRemainingMs（已调度取正数 / 未调度取 0 / 清除后取 0）
+ * - accelerate（正常加速 / onlyIfRemainingGreaterThanMs 满足时执行 / 不满足时跳过）
+ * - handleRobotInput 返回 null 时不调 onRobotResult
+ */
 const { createRobotScheduler } = require('../src/socket/robotScheduler')
 
 jest.useFakeTimers()
