@@ -294,7 +294,7 @@ BaseGameMode
 | 1g | 拆分算术为 `ArithmeticGameMode`，迁移题目生成、数字答案校验、轮结算、赛果和题目 payload 构建 | `server/src/socket/games/ArithmeticGameMode.js` | ✅ |
 | 1h | 迁移算术调用链：`submitArithmeticAnswer` / `generateQuestion` / `handleRobotArithmeticAnswer` 改为保持旧平铺返回格式的兼容壳 | `server/src/socket/gameManager.js` | ✅ |
 | 1i | 拆分默写为 `SpellingGameMode`，迁移词库取词、填空生成、图片 URL、难度、答案校验、轮结算、赛果和题目 payload 构建 | `server/src/socket/games/SpellingGameMode.js` | ✅ |
-| 1j | 迁移默写调用链：`submitSpellingAnswer` / `generateSpellingQuestion` / `handleRobotSpellingAnswer` 改为兼容壳，gameManager 接入 gameRegistry | `server/src/socket/gameManager.js`, `server/src/socket/games/gameRegistry.js` | ⬜ |
+| 1j | 迁移默写调用链：`submitSpellingAnswer` / `generateSpellingQuestion` / `handleRobotSpellingAnswer` 改为兼容壳，gameManager 接入 gameRegistry | `server/src/socket/gameManager.js`, `server/src/socket/games/gameRegistry.js` | ✅ |
 | 1k | 抽出 `robotScheduler`，统一管理 `schedule` / `clear` / `getEndAt` / `getRemainingMs` / `accelerate` / `clearAll`；保留默写全部人类答错后将机器人剩余等待缩短至 5 秒的规则 | `server/src/socket/robotScheduler.js`, `server/src/socket/handler.js` | ⬜ |
 | 1l | 精简 `handler`：保留事件注册、房间校验、调用、广播和调度；统一游戏取消、房间删除、赛果后的 scheduler 清理，且算术/默写仍继续时不因单人断线误清定时器 | `server/src/socket/handler.js` | ⬜ |
 | 1m | 补充/迁移 GameMode 单元测试，覆盖三种游戏、旧 API 返回格式、RPS 历史、配置兜底、机器人输入、默写 5 秒加速和调度器生命周期 | `server/__tests__/*GameMode.test.js`, `server/__tests__/gameManager.test.js`, `server/__tests__/robotScheduler.test.js` | ⬜ |
