@@ -1,14 +1,17 @@
 const roomManager = require('./roomManager')
 const gameManager = require('./gameManager')
+const { createRobotScheduler } = require('./robotScheduler')
 const ROBOT_ID = roomManager.ROBOT_ID
 
 const CHOICES = ['rock', 'paper', 'scissors']
 
-const ARITHMETIC_TIMEOUT = 20000
-const SPELLING_TIMEOUT_MAP = { easy: 40000, normal: 30000, hard: 20000 }
-
 function randomChoice() {
   return CHOICES[Math.floor(Math.random() * CHOICES.length)]
+}
+
+/** 当前时间戳 */
+function ts() {
+  return new Date().toLocaleTimeString()
 }
 
 /**
@@ -16,9 +19,159 @@ function randomChoice() {
  * @param {import('socket.io').Server} io
  */
 function registerHandlers(io) {
-  /** @type {Map<string, ReturnType<typeof setTimeout>>} */
-  const robotTimers = new Map()
-  const robotTimerEndAt = new Map()
+  // ==================== 算术/默写共用的结果处理函数 ====================
+
+  /** 算术轮结果广播（含 yourAnswer 每人视角） */
+  function emitArithmeticRoundResult(rid, result) {
+    const room = roomManager.getRoom(rid)
+    const winnerNick = room?.players[result.winner]?.nickname || result.winner
+
+    console.log(`[${ts()}] [round] 算术第${result.round}题 — ${winnerNick} 答对`)
+
+    gameManager.getGame(rid)?.players.forEach((id) => {
+      io.to(id).emit('game:roundResult', {
+        gameType: 'arithmetic',
+        round: result.round,
+        questionId: result.questionId,
+        expression: result.expression,
+        correctAnswer: result.correctAnswer,
+        yourAnswer: result.answeredBy?.[id],
+        winner: result.winner,
+        scores: result.scores,
+      })
+    })
+  }
+
+  /** 算术赛果广播 */
+  function emitArithmeticMatchResult(rid, result) {
+    const room = roomManager.getRoom(rid)
+    const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
+
+    console.log(`[${ts()}] [match] 算术比赛结束 — 胜者: ${winnerNick}`)
+
+    gameManager.getGame(rid)?.players.forEach((id) => {
+      io.to(id).emit('game:matchResult', {
+        gameType: 'arithmetic',
+        matchWinner: result.matchWinner,
+        scores: result.scores,
+        ranking: result.ranking,
+        history: result.history,
+      })
+    })
+
+    roomManager.broadcastRoomState(rid, io)
+  }
+
+  /** 统一处理算术答题结果（轮结果 / 赛果） */
+  function handleArithmeticAnswerResult(rid, result) {
+    if (result.action === 'round_result') {
+      emitArithmeticRoundResult(rid, result)
+      const game = gameManager.getGame(rid)
+      if (game && game.status === 'playing') {
+        emitNextArithmeticQuestion(rid, game)
+      }
+    } else if (result.action === 'match_result') {
+      emitArithmeticMatchResult(rid, result)
+    }
+  }
+
+  /** 默写轮结果广播（含 yourAnswer 每人视角） */
+  function emitSpellingRoundResult(rid, result) {
+    const room = roomManager.getRoom(rid)
+    const winnerNick = room?.players[result.winner]?.nickname || result.winner
+
+    console.log(`[${ts()}] [round] 默写第${result.round}题 — ${winnerNick} 答对`)
+
+    gameManager.getGame(rid)?.players.forEach((id) => {
+      io.to(id).emit('game:roundResult', {
+        gameType: 'spelling',
+        round: result.round,
+        questionId: result.questionId,
+        word: result.word,
+        blanks: result.blanks,
+        correctAnswer: result.correctAnswer,
+        yourAnswer: result.answeredBy?.[id],
+        winner: result.winner,
+        scores: result.scores,
+      })
+    })
+  }
+
+  /** 默写赛果广播 */
+  function emitSpellingMatchResult(rid, result) {
+    const room = roomManager.getRoom(rid)
+    const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
+
+    console.log(`[${ts()}] [match] 默写比赛结束 — 胜者: ${winnerNick}`)
+
+    gameManager.getGame(rid)?.players.forEach((id) => {
+      io.to(id).emit('game:matchResult', {
+        gameType: 'spelling',
+        matchWinner: result.matchWinner,
+        scores: result.scores,
+        ranking: result.ranking,
+        history: result.history,
+      })
+    })
+
+    roomManager.broadcastRoomState(rid, io)
+  }
+
+  /** 统一处理默写答题结果（轮结果 / 赛果） */
+  function handleSpellingAnswerResult(rid, result) {
+    if (result.action === 'round_result') {
+      emitSpellingRoundResult(rid, result)
+      const game = gameManager.getGame(rid)
+      if (game && game.status === 'playing') {
+        emitNextSpellingQuestion(rid, game)
+      }
+    } else if (result.action === 'match_result') {
+      emitSpellingMatchResult(rid, result)
+    }
+  }
+
+  // 创建 Robot Scheduler
+  const robotScheduler = createRobotScheduler({
+    gameManager,
+    onRobotResult(rid, result) {
+      const game = gameManager.getGame(rid)
+      if (game?.type === 'spelling') handleSpellingAnswerResult(rid, result)
+      else handleArithmeticAnswerResult(rid, result)
+    },
+  })
+
+  /** 生成下一道算术题并广播，设置机器人定时器 */
+  function emitNextArithmeticQuestion(rid, game) {
+    const question = gameManager.generateQuestion(game)
+
+    game.players.forEach((id) => {
+      io.to(id).emit('game:question', {
+        questionId: question.questionId,
+        expression: question.expression,
+        round: question.round,
+      })
+    })
+
+    robotScheduler.schedule(rid, question.questionId)
+  }
+
+  /** 生成下一道默写题并广播，设置机器人定时器 */
+  function emitNextSpellingQuestion(rid, game) {
+    const question = gameManager.generateSpellingQuestion(game)
+
+    game.players.forEach((id) => {
+      io.to(id).emit('game:question', {
+        questionId: question.questionId,
+        ttsText: question.word,
+        wordLength: question.wordLength,
+        blanks: question.blanks,
+        unsplashImageUrl: question.unsplashImageUrl,
+        round: question.round,
+      })
+    })
+
+    robotScheduler.schedule(rid, question.questionId)
+  }
 
   io.on('connection', (socket) => {
     console.log(`[${ts()}] [connect] ${socket.id}`)
@@ -32,13 +185,6 @@ function registerHandlers(io) {
     function getNickname() {
       const room = currentRoom && roomManager.getRoom(currentRoom)
       return room?.players[socket.id]?.nickname || '?'
-    }
-
-    /**
-     * 当前时间戳
-     */
-    function ts() {
-      return new Date().toLocaleTimeString()
     }
 
     // ==================== 房间 ====================
@@ -256,7 +402,7 @@ function registerHandlers(io) {
         })
       })
 
-      scheduleRobotAnswer(rid, firstQuestion.questionId)
+      robotScheduler.schedule(rid, firstQuestion.questionId)
 
       roomManager.broadcastRoomState(rid, io)
     }
@@ -306,7 +452,7 @@ function registerHandlers(io) {
         })
       })
 
-      scheduleRobotAnswer(rid, firstQuestion.questionId)
+      robotScheduler.schedule(rid, firstQuestion.questionId)
 
       roomManager.broadcastRoomState(rid, io)
     }
@@ -346,179 +492,6 @@ function registerHandlers(io) {
       })
 
       roomManager.broadcastRoomState(rid, io)
-    }
-
-    /** 生成下一道算术题并广播，设置机器人定时器 */
-    function emitNextArithmeticQuestion(rid, game) {
-      const question = gameManager.generateQuestion(game)
-
-      game.players.forEach((id) => {
-        io.to(id).emit('game:question', {
-          questionId: question.questionId,
-          expression: question.expression,
-          round: question.round,
-        })
-      })
-
-      scheduleRobotAnswer(rid, question.questionId)
-    }
-
-    /** 算术轮结果广播（含 yourAnswer 每人视角） */
-    function emitArithmeticRoundResult(rid, result) {
-      const room = roomManager.getRoom(rid)
-      const winnerNick = room?.players[result.winner]?.nickname || result.winner
-
-      console.log(`[${ts()}] [round] 算术第${result.round}题 — ${winnerNick} 答对`)
-
-      gameManager.getGame(rid)?.players.forEach((id) => {
-        io.to(id).emit('game:roundResult', {
-          gameType: 'arithmetic',
-          round: result.round,
-          questionId: result.questionId,
-          expression: result.expression,
-          correctAnswer: result.correctAnswer,
-          yourAnswer: result.answeredBy?.[id],
-          winner: result.winner,
-          scores: result.scores,
-        })
-      })
-    }
-
-    /** 算术赛果广播 */
-    function emitArithmeticMatchResult(rid, result) {
-      const room = roomManager.getRoom(rid)
-      const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
-
-      console.log(`[${ts()}] [match] 算术比赛结束 — 胜者: ${winnerNick}`)
-
-      gameManager.getGame(rid)?.players.forEach((id) => {
-        io.to(id).emit('game:matchResult', {
-          gameType: 'arithmetic',
-          matchWinner: result.matchWinner,
-          scores: result.scores,
-          ranking: result.ranking,
-          history: result.history,
-        })
-      })
-
-      roomManager.broadcastRoomState(rid, io)
-    }
-
-    // ==================== 默写广播 ====================
-
-    /** 生成下一道默写题并广播，设置机器人定时器 */
-    function emitNextSpellingQuestion(rid, game) {
-      const question = gameManager.generateSpellingQuestion(game)
-
-      game.players.forEach((id) => {
-        io.to(id).emit('game:question', {
-          questionId: question.questionId,
-          ttsText: question.word,
-          wordLength: question.wordLength,
-          blanks: question.blanks,
-          unsplashImageUrl: question.unsplashImageUrl,
-          round: question.round,
-        })
-      })
-
-      scheduleRobotAnswer(rid, question.questionId)
-    }
-
-    /** 默写轮结果广播（含 yourAnswer 每人视角） */
-    function emitSpellingRoundResult(rid, result) {
-      const room = roomManager.getRoom(rid)
-      const winnerNick = room?.players[result.winner]?.nickname || result.winner
-
-      console.log(`[${ts()}] [round] 默写第${result.round}题 — ${winnerNick} 答对`)
-
-      gameManager.getGame(rid)?.players.forEach((id) => {
-        io.to(id).emit('game:roundResult', {
-          gameType: 'spelling',
-          round: result.round,
-          questionId: result.questionId,
-          word: result.word,
-          blanks: result.blanks,
-          correctAnswer: result.correctAnswer,
-          yourAnswer: result.answeredBy?.[id],
-          winner: result.winner,
-          scores: result.scores,
-        })
-      })
-    }
-
-    /** 默写赛果广播 */
-    function emitSpellingMatchResult(rid, result) {
-      const room = roomManager.getRoom(rid)
-      const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
-
-      console.log(`[${ts()}] [match] 默写比赛结束 — 胜者: ${winnerNick}`)
-
-      gameManager.getGame(rid)?.players.forEach((id) => {
-        io.to(id).emit('game:matchResult', {
-          gameType: 'spelling',
-          matchWinner: result.matchWinner,
-          scores: result.scores,
-          ranking: result.ranking,
-          history: result.history,
-        })
-      })
-
-      roomManager.broadcastRoomState(rid, io)
-    }
-
-    /** 清除房间的机器人定时器 */
-    function clearRobotTimer(rid) {
-      if (robotTimers.has(rid)) {
-        clearTimeout(robotTimers.get(rid))
-        robotTimers.delete(rid)
-      }
-      robotTimerEndAt.delete(rid)
-    }
-
-    /** 设置机器人定时器（按游戏类型/难度自动作答） */
-    function scheduleRobotAnswer(rid, questionId) {
-      clearRobotTimer(rid)
-      const game = gameManager.getGame(rid)
-      if (!game) return
-
-      const timeout = game.type === 'spelling' ? (SPELLING_TIMEOUT_MAP[game.difficulty] || SPELLING_TIMEOUT_MAP.easy) : ARITHMETIC_TIMEOUT
-      robotTimerEndAt.set(rid, Date.now() + timeout)
-      const timer = setTimeout(() => {
-        if (game.type === 'spelling') {
-          const result = gameManager.handleRobotSpellingAnswer(rid, questionId)
-          if (result) handleSpellingAnswerResult(rid, result)
-        } else {
-          const result = gameManager.handleRobotArithmeticAnswer(rid, questionId)
-          if (result) handleArithmeticAnswerResult(rid, result)
-        }
-      }, timeout)
-      robotTimers.set(rid, timer)
-    }
-
-    /** 统一处理算术答题结果（轮结果 / 赛果） */
-    function handleArithmeticAnswerResult(rid, result) {
-      if (result.action === 'round_result') {
-        emitArithmeticRoundResult(rid, result)
-        const game = gameManager.getGame(rid)
-        if (game && game.status === 'playing') {
-          emitNextArithmeticQuestion(rid, game)
-        }
-      } else if (result.action === 'match_result') {
-        emitArithmeticMatchResult(rid, result)
-      }
-    }
-
-    /** 统一处理默写答题结果（轮结果 / 赛果） */
-    function handleSpellingAnswerResult(rid, result) {
-      if (result.action === 'round_result') {
-        emitSpellingRoundResult(rid, result)
-        const game = gameManager.getGame(rid)
-        if (game && game.status === 'playing') {
-          emitNextSpellingQuestion(rid, game)
-        }
-      } else if (result.action === 'match_result') {
-        emitSpellingMatchResult(rid, result)
-      }
     }
 
     /** 出拳 → 等待/本局结果/赛果分别广播给双方 */
@@ -612,7 +585,7 @@ function registerHandlers(io) {
         return
       }
 
-      clearRobotTimer(rid)
+      robotScheduler.clear(rid)
       handleArithmeticAnswerResult(rid, result)
     }
 
@@ -637,22 +610,15 @@ function registerHandlers(io) {
         })
 
         if (gameManager.areAllHumansAnswered(rid)) {
-          const endAt = robotTimerEndAt.get(rid)
-          const remaining = endAt ? Math.max(0, endAt - Date.now()) : 0
+          const remaining = robotScheduler.getRemainingMs(rid)
           if (remaining > 5000) {
-            clearRobotTimer(rid)
-            robotTimerEndAt.set(rid, Date.now() + 5000)
-            const timer = setTimeout(() => {
-              const robotResult = gameManager.handleRobotSpellingAnswer(rid, questionId)
-              if (robotResult) handleSpellingAnswerResult(rid, robotResult)
-            }, 5000)
-            robotTimers.set(rid, timer)
+            robotScheduler.accelerate(rid, questionId, 5000, { onlyIfRemainingGreaterThanMs: 5000 })
           }
         }
         return
       }
 
-      clearRobotTimer(rid)
+      robotScheduler.clear(rid)
       handleSpellingAnswerResult(rid, result)
     }
 

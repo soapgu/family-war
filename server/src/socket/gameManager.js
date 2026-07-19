@@ -359,6 +359,74 @@ class GameManager {
     return this.toLegacyResult(outcome)
   }
 
+  // ==================== 机器人调度 API ====================
+
+  /**
+   * 当前房间游戏是否需要启动机器人定时器。
+   * 委托给对应 GameMode。
+   * @param {string} roomId
+   * @returns {boolean}
+   */
+  shouldScheduleRobot(roomId) {
+    const room = roomManager.getRoom(roomId)
+    const game = room?.game
+    if (!room || !game) return false
+    return this.registry.get(game.type).shouldScheduleRobot({ game, robotId: roomManager.ROBOT_ID })
+  }
+
+  /**
+   * 获取机器人自动作答延迟毫秒数。
+   * 委托给对应 GameMode。
+   * @param {string} roomId
+   * @returns {number}
+   */
+  getRobotDelayMs(roomId) {
+    const room = roomManager.getRoom(roomId)
+    const game = room?.game
+    if (!room || !game) return 0
+    return this.registry.get(game.type).getRobotDelayMs({ game })
+  }
+
+  /**
+   * 机器人自动提交答案（统一入口）。
+   * 委托给对应 GameMode.handleRobotInput。
+   * @param {string} roomId
+   * @param {string} questionId
+   * @returns {Object|null}
+   */
+  handleRobotInput(roomId, questionId) {
+    const room = roomManager.getRoom(roomId)
+    const game = room?.game
+    if (!room || !game) return null
+    const outcome = this.registry.get(game.type).handleRobotInput({
+      roomId,
+      room,
+      game,
+      robotId: roomManager.ROBOT_ID,
+      questionId,
+    })
+    if (!outcome) return null
+    if (outcome.action === 'match_result') {
+      this.recordMatchHistory({ room, game, result: outcome.result })
+    }
+    return this.toLegacyResult(outcome)
+  }
+
+  /**
+   * 获取答错 waiting 后的机器人调度意图。
+   * 委托给对应 GameMode（SpellingGameMode 会覆盖：所有人类答错后缩短到 5s）。
+   * @param {string} roomId
+   * @returns {{ action: 'accelerate', delayMs: number, onlyIfRemainingGreaterThanMs: number }|null}
+   */
+  getRobotScheduleAfterWaiting(roomId) {
+    const room = roomManager.getRoom(roomId)
+    const game = room?.game
+    if (!room || !game) return null
+    return this.registry.get(game.type).getRobotScheduleAfterWaiting({ game, allHumansAnswered: this.areAllHumansAnswered(roomId) })
+  }
+
+  // ==================== 答题辅助 ====================
+
   /**
    * 检查游戏中的所有人类玩家是否都已作答
    * @param {string} roomId

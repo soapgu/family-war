@@ -59,6 +59,10 @@ class ArithmeticGameMode extends QuizGameMode {
     return question
   }
 
+  getRobotDelayMs({ game }) {
+    return this.config.robotAnswerDelayMs || 20000
+  }
+
   getRobotAnswer(question) {
     return question.correctAnswer
   }
