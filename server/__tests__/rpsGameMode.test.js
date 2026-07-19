@@ -137,6 +137,30 @@ describe('submitInput', () => {
     const result = mode.submitInput({ game, playerId: P2, input: { choice: 'scissors' } })
     expect(result.result.ranking).toBeUndefined()
   })
+
+  it('2-1 反转获胜', () => {
+    const mode = createMode()
+    const game = makeGame(mode, [P1, P2])
+    mode.submitInput({ game, playerId: P1, input: { choice: 'rock' } })
+    mode.submitInput({ game, playerId: P2, input: { choice: 'scissors' } })
+    mode.submitInput({ game, playerId: P1, input: { choice: 'rock' } })
+    mode.submitInput({ game, playerId: P2, input: { choice: 'paper' } })
+    mode.submitInput({ game, playerId: P1, input: { choice: 'scissors' } })
+    const result = mode.submitInput({ game, playerId: P2, input: { choice: 'rock' } })
+    expect(result.action).toBe('match_result')
+    expect(result.result.matchWinner).toBe(P2)
+    expect(result.result.scores[P2]).toBe(2)
+  })
+
+  it('历史记录正确累积', () => {
+    const mode = createMode()
+    const game = makeGame(mode, [P1, P2])
+    mode.submitInput({ game, playerId: P1, input: { choice: 'rock' } })
+    mode.submitInput({ game, playerId: P2, input: { choice: 'scissors' } })
+    expect(game.history).toHaveLength(1)
+    expect(game.history[0].winner).toBe(P1)
+    expect(game.history[0].round).toBe(1)
+  })
 })
 
 describe('buildStartPayload', () => {

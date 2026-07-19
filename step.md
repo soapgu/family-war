@@ -301,6 +301,7 @@ BaseGameMode
 | 1n | 回归测试三种游戏完整 Socket 流程，确保事件名和主要 payload 字段兼容 | `server/tests/integration.js` | ✅ |
 | 1o | 代码审查修复：last-man 离房/断线定时器清理、算术/默写 `game:rematch` 拦截、SpellingGameMode 非字符串答案类型收紧；补齐边界测试（集成 + handler 单测） | `server/src/socket/handler.js`, `server/src/socket/games/SpellingGameMode.js`, `server/__tests__/handler.test.js`, `server/tests/integration.js` | ✅ |
 | 1p | 所有 Phase 1 新建/重构文件补全注释：GameMode 头注释、robotScheduler 全文 JSDoc 类型标注、测试文件 Phase 1 标注；更新 `step.md` | `server/src/socket/games/*.js`, `server/src/socket/robotScheduler.js`, `server/__tests__/*.js`, `step.md` | ✅ |
+| 1q | 删除已迁移的旧兼容壳：`submitMove` / `toLegacyResult` / `handleDisconnect` / `generateQuestion` / `submitArithmeticAnswer` / `handleRobotArithmeticAnswer` / `getHumanPlayerIds` 及废弃 `@typedef`；全量 220 测试通过，gameManager.js 从 463 → 284 行 | `server/src/socket/gameManager.js`, `server/__tests__/gameManager.test.js` | ✅ |
 
 **验收条件**
 

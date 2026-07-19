@@ -219,4 +219,111 @@ describe('submitInput（完整流程）', () => {
     }
     expect(true).toBe(false)
   })
+
+  it('重复回答返回 error', () => {
+    const mode = createMode()
+    const ctx = makeCtx(mode)
+    const q = mode.createNextQuestion({ game: ctx.game })
+    mode.submitInput({ ...ctx, playerId: P1, input: { questionId: q.questionId, answer: 999 } })
+    const result = mode.submitInput({ ...ctx, playerId: P1, input: { questionId: q.questionId, answer: q.correctAnswer } })
+    expect(result.action).toBe('error')
+  })
+
+  it('过期的 questionId 返回 error', () => {
+    const mode = createMode()
+    const ctx = makeCtx(mode)
+    const q = mode.createNextQuestion({ game: ctx.game })
+    mode.submitInput({ ...ctx, playerId: P1, input: { questionId: q.questionId, answer: q.correctAnswer } })
+    const result = mode.submitInput({ ...ctx, playerId: P2, input: { questionId: q.questionId, answer: q.correctAnswer } })
+    expect(result.action).toBe('error')
+  })
+
+  it('正确答案后清除 currentQuestion', () => {
+    const mode = createMode()
+    const ctx = makeCtx(mode)
+    const q = mode.createNextQuestion({ game: ctx.game })
+    mode.submitInput({ ...ctx, playerId: P1, input: { questionId: q.questionId, answer: q.correctAnswer } })
+    expect(ctx.game.currentQuestion).toBeNull()
+  })
+
+  it('首位答对者得分，其余不得分', () => {
+    const mode = createMode()
+    const ctx = makeCtx(mode)
+    const q = mode.createNextQuestion({ game: ctx.game })
+    mode.submitInput({ ...ctx, playerId: P1, input: { questionId: q.questionId, answer: q.correctAnswer + 1 } })
+    const result = mode.submitInput({ ...ctx, playerId: P2, input: { questionId: q.questionId, answer: q.correctAnswer } })
+    expect(result.action).toBe('round_result')
+    expect(result.result.winner).toBe(P2)
+    expect(result.result.scores[P2]).toBe(1)
+    expect(result.result.scores[P1]).toBe(0)
+    expect(ctx.game.history).toHaveLength(1)
+    expect(ctx.game.history[0].winner).toBe(P2)
+  })
+
+  it('answeredBy 记录所有已答玩家', () => {
+    const mode = createMode()
+    const ctx = makeCtx(mode)
+    const q = mode.createNextQuestion({ game: ctx.game })
+    const wrongAnswer = q.correctAnswer + 1
+    mode.submitInput({ ...ctx, playerId: P1, input: { questionId: q.questionId, answer: wrongAnswer } })
+    const result = mode.submitInput({ ...ctx, playerId: P2, input: { questionId: q.questionId, answer: q.correctAnswer } })
+    expect(result.result.answeredBy).toMatchObject({
+      [P1]: wrongAnswer,
+      [P2]: q.correctAnswer,
+    })
+  })
+
+  it('4 分时仍为 playing（未到赛点）', () => {
+    const mode = createMode()
+    const ctx = makeCtx(mode)
+    for (let i = 0; i < 4; i++) {
+      const q = mode.createNextQuestion({ game: ctx.game })
+      const r = mode.submitInput({ ...ctx, playerId: P1, input: { questionId: q.questionId, answer: q.correctAnswer } })
+      if (r.action === 'match_result') {
+        expect(true).toBe(false)
+      }
+    }
+    expect(ctx.game.status).toBe('playing')
+  })
+})
+
+describe('handleRobotInput', () => {
+  function makeRobotCtx(mode) {
+    const game = makeGame(mode, [P1, ROBOT_ID])
+    const room = { id: 'r1', players: { [P1]: { nickname: '小明' }, [ROBOT_ID]: { nickname: '机器人' } } }
+    return { game, room, roomId: 'r1' }
+  }
+
+  it('机器人提交正确答案返回 round_result', () => {
+    const mode = createMode()
+    const ctx = makeRobotCtx(mode)
+    const q = mode.createNextQuestion({ game: ctx.game })
+    const result = mode.handleRobotInput({ ...ctx, robotId: ROBOT_ID, questionId: q.questionId })
+    expect(result.action).toBe('round_result')
+    expect(result.result.winner).toBe(ROBOT_ID)
+  })
+
+  it('过期题目返回 null', () => {
+    const mode = createMode()
+    const ctx = makeRobotCtx(mode)
+    const q = mode.createNextQuestion({ game: ctx.game })
+    ctx.game.currentQuestion = null
+    const result = mode.handleRobotInput({ ...ctx, robotId: ROBOT_ID, questionId: q.questionId })
+    expect(result).toBeNull()
+  })
+
+  it('机器人先到 5 分触发 match_result', () => {
+    const mode = createMode()
+    const ctx = makeRobotCtx(mode)
+    for (let i = 0; i < 5; i++) {
+      const q = mode.createNextQuestion({ game: ctx.game })
+      const r = mode.handleRobotInput({ ...ctx, robotId: ROBOT_ID, questionId: q.questionId })
+      if (r.action === 'match_result') {
+        expect(r.result.matchWinner).toBe(ROBOT_ID)
+        expect(r.result.scores[ROBOT_ID]).toBe(5)
+        return
+      }
+    }
+    expect(true).toBe(false)
+  })
 })
