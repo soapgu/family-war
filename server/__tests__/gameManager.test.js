@@ -1039,3 +1039,242 @@ describe('handleRobotSpellingAnswer', () => {
     expect(true).toBe(false)
   })
 })
+
+// ==================== shouldScheduleRobot ====================
+
+describe('shouldScheduleRobot', () => {
+  it('RPS 游戏返回 false', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    expect(gameManager.shouldScheduleRobot(ROOM_ID)).toBe(false)
+  })
+
+  it('算术游戏 currentQuestion 存在时返回 true', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2, ROBOT], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2, ROBOT]))
+    gameManager.generateQuestion(game)
+    expect(gameManager.shouldScheduleRobot(ROOM_ID)).toBe(true)
+  })
+
+  it('算术游戏无 currentQuestion 返回 false', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2, ROBOT], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2, ROBOT]))
+    expect(gameManager.shouldScheduleRobot(ROOM_ID)).toBe(false)
+  })
+
+  it('不存在的房间返回 false', () => {
+    roomManager.getRoom.mockReturnValue(null)
+    expect(gameManager.shouldScheduleRobot('no_such_room')).toBe(false)
+  })
+})
+
+// ==================== getRobotDelayMs ====================
+
+describe('getRobotDelayMs', () => {
+  it('算术返回 20000', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    expect(gameManager.getRobotDelayMs(ROOM_ID)).toBe(20000)
+  })
+
+  it('默写 easy 返回 40000', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    expect(gameManager.getRobotDelayMs(ROOM_ID)).toBe(40000)
+  })
+
+  it('不存在的房间返回 0', () => {
+    roomManager.getRoom.mockReturnValue(null)
+    expect(gameManager.getRobotDelayMs('no_such_room')).toBe(0)
+  })
+})
+
+// ==================== handleRobotInput（统一） ====================
+
+describe('handleRobotInput（统一）', () => {
+  it('算术返回嵌套格式', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, ROBOT]))
+    const q = gameManager.generateQuestion(game)
+    const result = gameManager.handleRobotInput(ROOM_ID, q.questionId)
+    expect(result.action).toBe('round_result')
+    expect(result.result).toBeTruthy()
+    expect(result.result.winner).toBe(ROBOT)
+  })
+
+  it('过期题目返回 null', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, ROBOT]))
+    const q = gameManager.generateQuestion(game)
+    game.currentQuestion = null
+    const result = gameManager.handleRobotInput(ROOM_ID, q.questionId)
+    expect(result).toBeNull()
+  })
+})
+
+// ==================== getRobotScheduleAfterWaiting ====================
+
+describe('getRobotScheduleAfterWaiting', () => {
+  it('全部人类答完返回加速意图', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, ROBOT]))
+    const q = gameManager.generateSpellingQuestion(game)
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, q.questionId, 'wrong')
+    const intent = gameManager.getRobotScheduleAfterWaiting(ROOM_ID)
+    expect(intent).toEqual({ action: 'accelerate', delayMs: 5000, onlyIfRemainingGreaterThanMs: 5000 })
+  })
+
+  it('有人类未答返回 null', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2, ROBOT], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2, ROBOT]))
+    const q = gameManager.generateSpellingQuestion(game)
+    gameManager.submitSpellingAnswer(ROOM_ID, P1, q.questionId, 'wrong')
+    const intent = gameManager.getRobotScheduleAfterWaiting(ROOM_ID)
+    expect(intent).toBeNull()
+  })
+
+  it('算术游戏返回 null', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, ROBOT], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, ROBOT]))
+    gameManager.generateQuestion(game)
+    const intent = gameManager.getRobotScheduleAfterWaiting(ROOM_ID)
+    expect(intent).toBeNull()
+  })
+})
+
+// ==================== submitInput（统一） ====================
+
+describe('submitInput（统一）', () => {
+  it('RPS 出拳返回嵌套格式', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    const result = gameManager.submitInput(ROOM_ID, P1, { choice: 'rock' })
+    expect(result.action).toBe('waiting')
+    expect(result.reason).toBe('waiting_opponent')
+  })
+
+  it('算术答题返回嵌套格式', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    const q = gameManager.generateQuestion(game)
+    const result = gameManager.submitInput(ROOM_ID, P1, { questionId: q.questionId, answer: q.correctAnswer })
+    expect(result.action).toBe('round_result')
+    expect(result.result.winner).toBe(P1)
+  })
+
+  it('默写答题返回嵌套格式', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+    const q = gameManager.generateSpellingQuestion(game)
+    const result = gameManager.submitInput(ROOM_ID, P1, { questionId: q.questionId, answer: q.word })
+    expect(result.action).toBe('round_result')
+    expect(result.result.winner).toBe(P1)
+  })
+
+  it('不存在的游戏返回 error', () => {
+    roomManager.getRoom.mockReturnValue(null)
+    const result = gameManager.submitInput('no_such_room', P1, { choice: 'rock' })
+    expect(result.action).toBe('error')
+  })
+})
+
+// ==================== buildStartPayload ====================
+
+describe('buildStartPayload', () => {
+  it('RPS 每人视角含 opponent', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
+    const room = { id: ROOM_ID, players: { [P1]: { nickname: '小明', role: '爸爸' }, [P2]: { nickname: '小红', role: '妈妈' } }, game }
+    roomManager.getRoom.mockReturnValue(room)
+    const p = gameManager.buildStartPayload(ROOM_ID, P1)
+    expect(p.gameType).toBe('rps')
+    expect(p.opponent.nickname).toBe('小红')
+  })
+
+  it('算术含 players/firstQuestion', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+    const q = gameManager.generateQuestion(game)
+    const p = gameManager.buildStartPayload(ROOM_ID, P1, q)
+    expect(p.gameType).toBe('arithmetic')
+    expect(p.players).toHaveLength(2)
+    expect(p.firstQuestion.expression).toBeTruthy()
+  })
+})
+
+// ==================== buildQuestionPayload ====================
+
+describe('buildQuestionPayload', () => {
+  it('算术含 expression', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    const q = gameManager.generateQuestion(game)
+    const p = gameManager.buildQuestionPayload(ROOM_ID, q)
+    expect(p.expression).toBeTruthy()
+    expect(p.questionId).toBe(q.questionId)
+  })
+
+  it('默写含 ttsText/blanks', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', 'easy')
+    roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
+    const q = gameManager.generateSpellingQuestion(game)
+    const p = gameManager.buildQuestionPayload(ROOM_ID, q)
+    expect(p.ttsText).toBeTruthy()
+    expect(p.blanks).toBeTruthy()
+  })
+})
+
+// ==================== buildPlayerRoundResultPayload ====================
+
+describe('buildPlayerRoundResultPayload', () => {
+  it('RPS 含 yourMove/oppMove', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    gameManager.submitInput(ROOM_ID, P1, { choice: 'rock' })
+    const result = gameManager.submitInput(ROOM_ID, P2, { choice: 'scissors' })
+    const p = gameManager.buildPlayerRoundResultPayload(ROOM_ID, P1, result.result)
+    expect(p.yourMove).toBe('rock')
+    expect(p.oppMove).toBe('scissors')
+  })
+})
+
+// ==================== buildMatchResultPayload ====================
+
+describe('buildMatchResultPayload', () => {
+  it('RPS matchResult 不包含 ranking', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    gameManager.submitInput(ROOM_ID, P1, { choice: 'rock' })
+    gameManager.submitInput(ROOM_ID, P2, { choice: 'scissors' })
+    gameManager.submitInput(ROOM_ID, P1, { choice: 'rock' })
+    const result = gameManager.submitInput(ROOM_ID, P2, { choice: 'scissors' })
+    const p = gameManager.buildMatchResultPayload(ROOM_ID, result.result)
+    expect(p.ranking).toBeUndefined()
+  })
+})
+
+// ==================== createNextQuestion ====================
+
+describe('createNextQuestion', () => {
+  it('RPS 返回 null', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'rps')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    expect(gameManager.createNextQuestion(ROOM_ID)).toBeNull()
+  })
+
+  it('算术返回新题目', () => {
+    const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
+    roomManager.getRoom.mockReturnValue(mockRoom(game))
+    const q = gameManager.createNextQuestion(ROOM_ID)
+    expect(q.questionId).toBeTruthy()
+    expect(q.expression).toBeTruthy()
+  })
+})
+
+// ==================== getHumanPlayerIds ====================
+
+describe('getHumanPlayerIds', () => {
+  it('不存在的房间返回空数组', () => {
+    roomManager.getRoom.mockReturnValue(null)
+    expect(gameManager.getHumanPlayerIds('no_such_room')).toEqual([])
+  })
+})

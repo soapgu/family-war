@@ -32,6 +32,8 @@ class GameManager {
   }
 
   /**
+   * Phase 2 待清理 — 被 submitInput 替代。
+   *
    * 玩家出拳（兼容壳）
    *
    * 内部委托给 RpsGameMode.submitInput。
@@ -122,6 +124,8 @@ class GameManager {
   }
 
   /**
+   * Phase 2 待清理 — handler 改用 roomManager.handleDisconnect + 内联 cancelGameIfActive。
+   *
    * 断线处理：取消进行中的比赛
    * @param {string} roomId
    * @param {string} socketId
@@ -161,6 +165,8 @@ class GameManager {
   // ==================== 算术引擎 ====================
 
   /**
+   * Phase 2 待清理 — 被 createNextQuestion(roomId) 替代。
+   *
    * 为指定算术游戏生成一道新题（兼容壳）
    *
    * 委托给 registry 中的 ArithmeticGameMode。
@@ -173,6 +179,8 @@ class GameManager {
   }
 
   /**
+   * Phase 2 待清理 — 被 submitInput 替代。
+   *
    * 提交算术题答案（兼容壳）
    *
    * 委托给 registry 中的 ArithmeticGameMode。
@@ -206,6 +214,8 @@ class GameManager {
   }
 
   /**
+   * Phase 2 待清理 — 被 handleRobotInput(roomId, questionId) 替代。
+   *
    * 机器人自动提交正确答案（兼容壳）
    *
    * 委托给 registry 中的 ArithmeticGameMode。
@@ -239,6 +249,8 @@ class GameManager {
   // ==================== 默写引擎 ====================
 
   /**
+   * Phase 2 待清理 — SpellingGameMode.generateBlanks 已有完整实现。
+   *
    * 根据单词和难度生成填空字符串
    * easy: 暴露 ceil(50%) 个字母
    * normal: 暴露 1-2 个字母
@@ -274,6 +286,8 @@ class GameManager {
   }
 
   /**
+   * Phase 2 待清理 — 被 createNextQuestion(roomId) 替代。
+   *
    * 为指定默写游戏生成一道新题（兼容壳）
    *
    * 委托给 registry 中的 SpellingGameMode。
@@ -286,6 +300,8 @@ class GameManager {
   }
 
   /**
+   * Phase 2 待清理 — 被 submitInput 替代。
+   *
    * 提交默写答案（兼容壳）
    *
    * 先校验 questionId 类型长度（spelling 特有，不在 QuizGameMode 中），
@@ -329,6 +345,8 @@ class GameManager {
   }
 
   /**
+   * Phase 2 待清理 — 被 handleRobotInput(roomId, questionId) 替代。
+   *
    * 机器人自动提交正确单词（兼容壳）
    *
    * 委托给 registry 中的 SpellingGameMode。
@@ -500,6 +518,8 @@ class GameManager {
   }
 
   /**
+   * Phase 2 待清理 — 无调用方，预期替换 handler 中类似的逻辑。
+   *
    * 获取已选角色的玩家 ID 列表（不含机器人）。
    */
   getHumanPlayerIds(roomId) {
