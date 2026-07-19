@@ -1,8 +1,7 @@
 const roomManager = require('./roomManager')
+const RpsGameMode = require('./games/RpsGameMode')
 const unsplashClient = require('../unsplashClient')
 const wordBank = require('../data/wordBank')
-
-const CHOICES = ['rock', 'paper', 'scissors']
 
 /** 生成算术题（+/-，结果 0-100） */
 function generateArithmeticQuestion() {
@@ -22,21 +21,15 @@ function generateArithmeticQuestion() {
   return { expression: `${a} ${op} ${b}`, correctAnswer }
 }
 
-/** 猜拳判定，返回 'player1' | 'player2' | 'draw' */
-function getChoiceResult(move1, move2) {
-  if (move1 === move2) return 'draw'
-  if (
-    (move1 === 'rock' && move2 === 'scissors') ||
-    (move1 === 'scissors' && move2 === 'paper') ||
-    (move1 === 'paper' && move2 === 'rock')
-  ) return 'player1'
-  return 'player2'
-}
-
 class GameManager {
   constructor() {
     /** @type {MatchRecord[]} */
     this.matchHistory = []
+
+    this.rpsGame = new RpsGameMode({
+      config: { winningScore: 2 },
+      roomManager,
+    })
   }
 
   /**
@@ -76,7 +69,12 @@ class GameManager {
   }
 
   /**
-   * 玩家出拳
+   * 玩家出拳（兼容壳）
+   *
+   * 内部委托给 RpsGameMode.submitInput。
+   * GameMode 内部统一使用嵌套格式 { action, result }，
+   * 兼容壳通过 toLegacyResult 转换为旧调用方期望的平铺格式。
+   *
    * @param {string} roomId
    * @param {string} socketId
    * @param {string} choice - 'rock' | 'paper' | 'scissors'
@@ -84,96 +82,71 @@ class GameManager {
    */
   submitMove(roomId, socketId, choice) {
     const room = roomManager.getRoom(roomId)
-    if (!room || !room.game) {
+    const game = room?.game
+    if (!room || !game) {
       return { action: 'error', message: '游戏不存在' }
     }
 
-    const game = room.game
-
-    if (game.status === 'match_end') {
-      return { action: 'error', message: '比赛已结束' }
-    }
-
-    if (!game.players.includes(socketId)) {
-      return { action: 'error', message: '你不是本局玩家' }
-    }
-
-    if (!CHOICES.includes(choice)) {
-      return { action: 'error', message: '无效的出拳' }
-    }
-
-    if (game.moves[socketId]) {
-      return { action: 'error', message: '你已经出过拳了' }
-    }
-
-    game.moves[socketId] = choice
-
-    const p1 = game.players[0]
-    const p2 = game.players[1]
-
-    // 对方还没出拳，等待
-    if (!game.moves[p1] || !game.moves[p2]) {
-      return { action: 'waiting' }
-    }
-
-    // 双方都已出拳，判定本局
-    const currentRound = game.round
-    const result = getChoiceResult(game.moves[p1], game.moves[p2])
-    let roundWinner = null
-
-    if (result === 'player1') {
-      game.scores[p1]++
-      roundWinner = p1
-    } else if (result === 'player2') {
-      game.scores[p2]++
-      roundWinner = p2
-    } else {
-      roundWinner = 'draw'
-    }
-
-    game.history.push({
-      round: currentRound,
-      moves: { ...game.moves },
-      winner: roundWinner,
+    const outcome = this.rpsGame.submitInput({
+      room,
+      game,
+      playerId: socketId,
+      input: { choice },
     })
 
-    game.moves = {}
-
-    // 检查是否有人先到 2 胜
-    if (game.scores[p1] >= 2 || game.scores[p2] >= 2) {
-      const matchWinner = game.scores[p1] >= 2 ? p1 : p2
-      game.status = 'match_end'
-
-      this.matchHistory.push({
-        id: game.id,
-        roomId,
-        players: [...game.players],
-        playerNames: Object.fromEntries(game.players.map((id) => [id, room?.players[id]?.nickname || id])),
-        scores: { ...game.scores },
-        matchWinner,
-        matchWinnerName: room?.players[matchWinner]?.nickname || matchWinner,
-        history: [...game.history],
-        endedAt: Date.now(),
-      })
-
-      return {
-        action: 'match_result',
-        matchWinner,
-        scores: { ...game.scores },
-        history: [...game.history],
-      }
+    if (outcome.action === 'match_result') {
+      this.recordMatchHistory({ room, game, result: outcome.result })
     }
 
-    // 进入下一局
-    game.round++
+    return this.toLegacyResult(outcome)
+  }
+
+  /**
+   * 将新 GameMode 的嵌套返回结构转换为旧 public API 的平铺结构。
+   *
+   * 新结构：{ action: 'round_result', result: { winner, scores } }
+   * 旧结构：{ action: 'round_result', winner, scores }
+   *
+   * 旧单元测试、旧 handler 在迁移完成前都依赖平铺字段。
+   */
+  toLegacyResult(outcome) {
+    if (!outcome || !outcome.result) {
+      return outcome
+    }
 
     return {
-      action: 'round_result',
-      round: currentRound,
-      winner: roundWinner,
-      moves: { ...game.history[game.history.length - 1].moves },
-      scores: { ...game.scores },
+      action: outcome.action,
+      ...outcome.result,
     }
+  }
+
+  /**
+   * 记录比赛历史。
+   *
+   * 可以保留当前 history 字段结构，避免管理后台破坏。
+   * RPS 没有 ranking，因此 ranking 只能在 result.ranking 存在时写入。
+   */
+  recordMatchHistory({ room, game, result }) {
+    const record = {
+      id: game.id,
+      roomId: game.roomId,
+      type: game.type,
+      players: [...game.players],
+      playerNames: Object.fromEntries(
+        game.players.map((id) => [id, room?.players[id]?.nickname || id])
+      ),
+      scores: { ...result.scores },
+      matchWinner: result.matchWinner,
+      matchWinnerName: room?.players[result.matchWinner]?.nickname || result.matchWinner,
+      history: [...result.history],
+      endedAt: Date.now(),
+    }
+
+    if (result.ranking) {
+      record.ranking = result.ranking
+    }
+
+    this.matchHistory.push(record)
   }
 
   /**
