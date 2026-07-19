@@ -1,25 +1,8 @@
 const roomManager = require('./roomManager')
 const RpsGameMode = require('./games/RpsGameMode')
+const ArithmeticGameMode = require('./games/ArithmeticGameMode')
 const unsplashClient = require('../unsplashClient')
 const wordBank = require('../data/wordBank')
-
-/** 生成算术题（+/-，结果 0-100） */
-function generateArithmeticQuestion() {
-  const op = Math.random() < 0.5 ? '+' : '-'
-  let a, b, correctAnswer
-
-  if (op === '+') {
-    a = Math.floor(Math.random() * 101)
-    b = Math.floor(Math.random() * (100 - a + 1))
-    correctAnswer = a + b
-  } else {
-    a = Math.floor(Math.random() * 101)
-    b = Math.floor(Math.random() * (a + 1))
-    correctAnswer = a - b
-  }
-
-  return { expression: `${a} ${op} ${b}`, correctAnswer }
-}
 
 class GameManager {
   constructor() {
@@ -28,6 +11,11 @@ class GameManager {
 
     this.rpsGame = new RpsGameMode({
       config: { winningScore: 2 },
+      roomManager,
+    })
+
+    this.arithmeticGame = new ArithmeticGameMode({
+      config: { winningScore: 5 },
       roomManager,
     })
   }
@@ -110,14 +98,23 @@ class GameManager {
    * 旧单元测试、旧 handler 在迁移完成前都依赖平铺字段。
    */
   toLegacyResult(outcome) {
-    if (!outcome || !outcome.result) {
-      return outcome
+    if (!outcome) return outcome
+
+    if (outcome.result) {
+      return {
+        action: outcome.action,
+        ...outcome.result,
+      }
     }
 
-    return {
-      action: outcome.action,
-      ...outcome.result,
+    if (outcome.ack) {
+      return {
+        action: outcome.action,
+        ...outcome.ack,
+      }
     }
+
+    return outcome
   }
 
   /**
@@ -189,25 +186,22 @@ class GameManager {
   // ==================== 算术引擎 ====================
 
   /**
-   * 为指定游戏生成一道新题
+   * 为指定游戏生成一道新题（兼容壳）
+   *
+   * 委托给 ArithmeticGameMode.createNextQuestion。
+   *
    * @param {ArithmeticGame} game - 从 getGame 获取的游戏对象
    * @returns {{ questionId: string, expression: string, correctAnswer: number, round: number }}
    */
   generateQuestion(game) {
-    const { expression, correctAnswer } = generateArithmeticQuestion()
-    const question = {
-      questionId: `q_${Date.now()}`,
-      expression,
-      correctAnswer,
-      round: game.round,
-    }
-    game.currentQuestion = question
-    game.answeredThisRound = {}
-    return question
+    return this.arithmeticGame.createNextQuestion({ game })
   }
 
   /**
-   * 提交算术题答案
+   * 提交算术题答案（兼容壳）
+   *
+   * 委托给 ArithmeticGameMode.submitInput。
+   *
    * @param {string} roomId
    * @param {string} socketId
    * @param {string} questionId
@@ -216,119 +210,55 @@ class GameManager {
    */
   submitArithmeticAnswer(roomId, socketId, questionId, answer) {
     const room = roomManager.getRoom(roomId)
-    if (!room || !room.game || room.game.type !== 'arithmetic') {
+    const game = room?.game
+    if (!room || !game || game.type !== 'arithmetic') {
       return { action: 'error', message: '算术游戏不存在' }
     }
 
-    const game = room.game
-
-    if (game.status !== 'playing') {
-      return { action: 'error', message: '比赛已结束' }
-    }
-
-    if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) {
-      return { action: 'error', message: '题目已过期' }
-    }
-
-    if (!game.players.includes(socketId)) {
-      return { action: 'error', message: '你不是本局玩家' }
-    }
-
-    if (game.answeredThisRound[socketId] !== undefined) {
-      return { action: 'error', message: '你已经回答过本题' }
-    }
-
-    game.answeredThisRound[socketId] = answer
-
-    if (answer !== game.currentQuestion.correctAnswer) {
-      return {
-        action: 'waiting',
-        correctAnswer: game.currentQuestion.correctAnswer,
-        expression: game.currentQuestion.expression,
-        yourAnswer: answer,
-      }
-    }
-
-    // 答对了
-    game.scores[socketId]++
-    const round = game.currentQuestion.round
-    const expression = game.currentQuestion.expression
-    const correctAnswer = game.currentQuestion.correctAnswer
-
-    game.history.push({
-      round,
-      questionId,
-      expression,
-      correctAnswer,
-      winner: socketId,
-      answeredBy: { ...game.answeredThisRound },
+    const outcome = this.arithmeticGame.submitInput({
+      roomId,
+      room,
+      game,
+      playerId: socketId,
+      input: { questionId, answer },
     })
 
-    game.currentQuestion = null
-    game.round++
-
-    // 检查是否有人先得 5 分
-    if (game.scores[socketId] >= 5) {
-      game.status = 'match_end'
-
-      const ranking = [...game.players]
-        .map((id) => ({
-          playerId: id,
-          nickname: room.players[id]?.nickname || id,
-          score: game.scores[id] || 0,
-        }))
-        .sort((a, b) => b.score - a.score || a.playerId.localeCompare(b.playerId))
-        .map((entry, idx) => ({ rank: idx + 1, ...entry }))
-
-      this.matchHistory.push({
-        id: game.id,
-        roomId,
-        type: 'arithmetic',
-        players: [...game.players],
-        playerNames: Object.fromEntries(
-          game.players.map((id) => [id, room?.players[id]?.nickname || id])
-        ),
-        scores: { ...game.scores },
-        matchWinner: socketId,
-        matchWinnerName: room?.players[socketId]?.nickname || socketId,
-        ranking,
-        history: [...game.history],
-        endedAt: Date.now(),
-      })
-
-      return {
-        action: 'match_result',
-        matchWinner: socketId,
-        scores: { ...game.scores },
-        ranking,
-        history: [...game.history],
-        answeredBy: { ...game.answeredThisRound },
-      }
+    if (outcome.action === 'match_result') {
+      this.recordMatchHistory({ room, game, result: outcome.result })
     }
 
-    return {
-      action: 'round_result',
-      round,
-      questionId,
-      expression,
-      correctAnswer,
-      winner: socketId,
-      scores: { ...game.scores },
-      answeredBy: { ...game.answeredThisRound },
-    }
+    return this.toLegacyResult(outcome)
   }
 
   /**
-   * 机器人自动提交正确答案（超时后由 handler 调用）
+   * 机器人自动提交正确答案（兼容壳）
+   *
+   * 委托给 ArithmeticGameMode.handleRobotInput。
+   *
    * @param {string} roomId
    * @param {string} questionId
    * @returns {ArithmeticAnswerResult|null}
    */
   handleRobotArithmeticAnswer(roomId, questionId) {
-    const game = this.getGame(roomId)
-    if (!game || game.type !== 'arithmetic') return null
-    if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) return null
-    return this.submitArithmeticAnswer(roomId, roomManager.ROBOT_ID, questionId, game.currentQuestion.correctAnswer)
+    const outcome = this.arithmeticGame.handleRobotInput({
+      roomId,
+      room: roomManager.getRoom(roomId),
+      game: this.getGame(roomId),
+      robotId: roomManager.ROBOT_ID,
+      questionId,
+    })
+
+    if (!outcome) return null
+
+    if (outcome.action === 'match_result') {
+      this.recordMatchHistory({
+        room: roomManager.getRoom(roomId),
+        game: this.getGame(roomId),
+        result: outcome.result,
+      })
+    }
+
+    return this.toLegacyResult(outcome)
   }
 
   // ==================== 默写引擎 ====================
