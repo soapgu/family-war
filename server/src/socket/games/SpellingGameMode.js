@@ -73,11 +73,11 @@ class SpellingGameMode extends QuizGameMode {
   }
 
   normalizeAnswer(answer) {
-    return String(answer || '').trim()
+    return typeof answer === 'string' ? answer.trim() : answer
   }
 
   validateAnswer(answer) {
-    if (!answer) {
+    if (typeof answer !== 'string' || !answer) {
       return { action: 'error', message: '答案必须是非空字符串' }
     }
     return null

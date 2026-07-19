@@ -198,6 +198,8 @@ function registerHandlers(io) {
       if (state) {
         socket.to(`room:${roomId}`).emit('player:left', { socketId: socket.id })
         roomManager.broadcastRoomState(roomId, io)
+      } else {
+        robotScheduler.clear(roomId)
       }
       currentRoom = null
     })
@@ -376,11 +378,15 @@ function registerHandlers(io) {
       if (existingGame.status !== 'match_end') {
         return
       }
+      if (existingGame.type !== 'rps') {
+        socket.emit('game:error', { message: '当前游戏不支持该重赛方式' })
+        return
+      }
 
       const p1 = existingGame.players[0]
       const p2 = existingGame.players[1]
 
-      roomManager.clearGame(rid)
+      clearGameAndRobotSchedule(rid)
       const game = gameManager.createGame(rid, [p1, p2], 'rps')
 
       console.log(`[${ts()}] [rematch] ${getNickname()}`)
@@ -432,6 +438,8 @@ function registerHandlers(io) {
       if (state) {
         socket.to(`room:${roomId}`).emit('player:left', { socketId: socket.id })
         roomManager.broadcastRoomState(roomId, io)
+      } else {
+        robotScheduler.clear(roomId)
       }
       currentRoom = null
     })

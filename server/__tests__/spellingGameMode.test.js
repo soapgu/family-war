@@ -99,10 +99,10 @@ describe('normalizeAnswer', () => {
     expect(mode.normalizeAnswer('  Hello  ')).toBe('Hello')
   })
 
-  it('null/undefined 转为空字符串', () => {
+  it('null/undefined 保持原类型不转字符串', () => {
     const mode = createMode()
-    expect(mode.normalizeAnswer(null)).toBe('')
-    expect(mode.normalizeAnswer(undefined)).toBe('')
+    expect(mode.normalizeAnswer(null)).toBeNull()
+    expect(mode.normalizeAnswer(undefined)).toBeUndefined()
   })
 })
 
@@ -116,6 +116,13 @@ describe('validateAnswer', () => {
   it('非空返回 null', () => {
     const mode = createMode()
     expect(mode.validateAnswer('hello')).toBeNull()
+  })
+
+  it('非字符串返回 error', () => {
+    const mode = createMode()
+    const r = mode.validateAnswer(123)
+    expect(r.action).toBe('error')
+    expect(r.message).toBe('答案必须是非空字符串')
   })
 })
 
