@@ -267,6 +267,18 @@ async function run() {
   const invalidAnswerError = await invalidAnswerPromise
   assert(invalidAnswerError.message === '答案必须是非空字符串', '默写拒绝非字符串答案')
 
+  // 数字答案也应被拒绝
+  const numErrorPromise = waitFor(s2, 'game:error')
+  s2.emit('game:answer', { questionId: sq1.questionId, answer: 123 })
+  const numError = await numErrorPromise
+  assert(numError.message === '答案必须是非空字符串', '默写拒绝数字答案')
+
+  // 对象答案也应被拒绝
+  const objErrorPromise = waitFor(s2, 'game:error')
+  s2.emit('game:answer', { questionId: sq1.questionId, answer: {} })
+  const objError = await objErrorPromise
+  assert(objError.message === '答案必须是非空字符串', '默写拒绝对象答案')
+
   // s2 故意答错 → 捕获正确单词
   const spellingAckPromise = waitFor(s2, 'game:answerAck')
   s2.emit('game:answer', { questionId: sq1.questionId, answer: 'wrongguess' })
@@ -356,6 +368,73 @@ async function run() {
   s1.emit('game:challenge', { mode: 'spelling' })
   const oldResultError = await oldResultErrorPromise
   assert(oldResultError.message === '游戏模式已变更，请返回房间重试', '旧默写结算页不能跨模式重赛')
+
+  console.log('')
+
+  // ========== 9. 算术结算后 game:rematch 被拒绝 ==========
+
+  s2.emit('role:select', { role: '妈妈' })
+  await waitForRoomState(s1, (s) => s.roles['妈妈']?.nickname === '小红')
+
+  s1.emit('game:challenge', { mode: 'arithmetic' })
+  const [aras1] = await Promise.all([
+    waitFor(s1, 'game:start'),
+    waitFor(s2, 'game:start'),
+  ])
+  assert(aras1.gameType === 'arithmetic', '算术 rematch 测试 game:start')
+
+  let aq = aras1.firstQuestion
+  for (let i = 0; i < 5; i++) {
+    const isLast = i === 4
+    const resultPromise = waitFor(s1, isLast ? 'game:matchResult' : 'game:roundResult')
+    const nextPromise = isLast ? null : waitFor(s1, 'game:question')
+
+    s1.emit('game:answer', { questionId: aq.questionId, answer: eval(aq.expression) })
+
+    const result = await resultPromise
+    assert(result.scores[s1.id] === i + 1, `算术小明 ${i + 1} 分`)
+
+    if (isLast) {
+      assert(result.matchWinner === s1.id, '算术赛果小明胜')
+    } else {
+      aq = await nextPromise
+    }
+  }
+
+  const rematchRejectPromise = waitFor(s1, 'game:error')
+  s1.emit('game:rematch')
+  const rematchReject = await rematchRejectPromise
+  assert(rematchReject.message === '当前游戏不支持该重赛方式', '算术 rematch 被拒绝')
+
+  console.log('')
+
+  // ========== 10. 离开房间后定时器清理 ==========
+
+  s1.emit('game:setMode', { mode: 'spelling', difficulty: 'easy' })
+  await waitForRoomState(s1, (s) => s.gameMode === 'spelling')
+
+  s1.emit('game:challenge', { mode: 'spelling' })
+  const [tss1] = await Promise.all([
+    waitFor(s1, 'game:start'),
+    waitFor(s2, 'game:start'),
+  ])
+  assert(tss1.gameType === 'spelling', '定时器清理测试 game:start')
+
+  assert(tss1.firstQuestion.questionId, '定时器已启动（robotScheduler.schedule 在 game:challenge 中已调用）')
+
+  // s1 离开（非最后一人）
+  s1.emit('room:leave')
+  await sleep(200)
+
+  // s2 离开（最后一人 → 房间删除 → 定时器清理）
+  s2.emit('room:leave')
+  await sleep(500)
+
+  // s1 重新加入 → 验证干净房间
+  s1.emit('room:join', { nickname: '小明' })
+  const cleanState = await waitFor(s1, 'room:state')
+  assert(cleanState.id === 'default', '重新加入默认房间')
+  assert(!cleanState.game, '新房间不含游戏残留')
 
   console.log('')
 
