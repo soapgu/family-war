@@ -3,12 +3,6 @@ const gameManager = require('./gameManager')
 const { createRobotScheduler } = require('./robotScheduler')
 const ROBOT_ID = roomManager.ROBOT_ID
 
-const CHOICES = ['rock', 'paper', 'scissors']
-
-function randomChoice() {
-  return CHOICES[Math.floor(Math.random() * CHOICES.length)]
-}
-
 /** 当前时间戳 */
 function ts() {
   return new Date().toLocaleTimeString()
@@ -19,159 +13,90 @@ function ts() {
  * @param {import('socket.io').Server} io
  */
 function registerHandlers(io) {
-  // ==================== 算术/默写共用的结果处理函数 ====================
+  // ==================== 统一的结果处理函数 ====================
 
-  /** 算术轮结果广播（含 yourAnswer 每人视角） */
-  function emitArithmeticRoundResult(rid, result) {
-    const room = roomManager.getRoom(rid)
+  /** 广播轮结果到所有玩家（每人视角由 GameMode.buildPlayerRoundResultPayload 提供） */
+  function broadcastRoundResult(roomId, result) {
+    const game = gameManager.getGame(roomId)
+    if (!game) return
+    const room = roomManager.getRoom(roomId)
     const winnerNick = room?.players[result.winner]?.nickname || result.winner
 
-    console.log(`[${ts()}] [round] 算术第${result.round}题 — ${winnerNick} 答对`)
+    console.log(`[${ts()}] [round] 第${result.round}题 — ${winnerNick} 答对`)
 
-    gameManager.getGame(rid)?.players.forEach((id) => {
-      io.to(id).emit('game:roundResult', {
-        gameType: 'arithmetic',
-        round: result.round,
-        questionId: result.questionId,
-        expression: result.expression,
-        correctAnswer: result.correctAnswer,
-        yourAnswer: result.answeredBy?.[id],
-        winner: result.winner,
-        scores: result.scores,
-      })
+    game.players.forEach((playerId) => {
+      io.to(playerId).emit(
+        'game:roundResult',
+        gameManager.buildPlayerRoundResultPayload(roomId, playerId, result)
+      )
     })
   }
 
-  /** 算术赛果广播 */
-  function emitArithmeticMatchResult(rid, result) {
-    const room = roomManager.getRoom(rid)
+  /** 广播赛果到所有玩家并更新房间状态 */
+  function broadcastMatchResult(roomId, result) {
+    const game = gameManager.getGame(roomId)
+    if (!game) return
+    const room = roomManager.getRoom(roomId)
     const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
 
-    console.log(`[${ts()}] [match] 算术比赛结束 — 胜者: ${winnerNick}`)
+    console.log(`[${ts()}] [match] 比赛结束 — 胜者: ${winnerNick}`)
 
-    gameManager.getGame(rid)?.players.forEach((id) => {
-      io.to(id).emit('game:matchResult', {
-        gameType: 'arithmetic',
-        matchWinner: result.matchWinner,
-        scores: result.scores,
-        ranking: result.ranking,
-        history: result.history,
-      })
+    game.players.forEach((playerId) => {
+      io.to(playerId).emit(
+        'game:matchResult',
+        gameManager.buildMatchResultPayload(roomId, result)
+      )
     })
 
-    roomManager.broadcastRoomState(rid, io)
+    roomManager.broadcastRoomState(roomId, io)
   }
 
-  /** 统一处理算术答题结果（轮结果 / 赛果） */
-  function handleArithmeticAnswerResult(rid, result) {
-    if (result.action === 'round_result') {
-      emitArithmeticRoundResult(rid, result)
-      const game = gameManager.getGame(rid)
-      if (game && game.status === 'playing') {
-        emitNextArithmeticQuestion(rid, game)
+  /** 广播下一题并启动机器人定时器 */
+  function broadcastQuestion(roomId, question) {
+    const game = gameManager.getGame(roomId)
+    if (!game) return
+
+    game.players.forEach((playerId) => {
+      io.to(playerId).emit(
+        'game:question',
+        gameManager.buildQuestionPayload(roomId, question)
+      )
+    })
+
+    robotScheduler.schedule(roomId, question.questionId)
+  }
+
+  /** 统一处理游戏结果（轮结果 / 赛果） */
+  function handleGameResult(roomId, outcome) {
+    if (outcome.action === 'round_result') {
+      broadcastRoundResult(roomId, outcome.result)
+
+      const nextQuestion = gameManager.createNextQuestion(roomId)
+      if (nextQuestion) {
+        broadcastQuestion(roomId, nextQuestion)
       }
-    } else if (result.action === 'match_result') {
-      emitArithmeticMatchResult(rid, result)
+      return
+    }
+
+    if (outcome.action === 'match_result') {
+      robotScheduler.clear(roomId)
+      broadcastMatchResult(roomId, outcome.result)
     }
   }
 
-  /** 默写轮结果广播（含 yourAnswer 每人视角） */
-  function emitSpellingRoundResult(rid, result) {
-    const room = roomManager.getRoom(rid)
-    const winnerNick = room?.players[result.winner]?.nickname || result.winner
-
-    console.log(`[${ts()}] [round] 默写第${result.round}题 — ${winnerNick} 答对`)
-
-    gameManager.getGame(rid)?.players.forEach((id) => {
-      io.to(id).emit('game:roundResult', {
-        gameType: 'spelling',
-        round: result.round,
-        questionId: result.questionId,
-        word: result.word,
-        blanks: result.blanks,
-        correctAnswer: result.correctAnswer,
-        yourAnswer: result.answeredBy?.[id],
-        winner: result.winner,
-        scores: result.scores,
-      })
-    })
-  }
-
-  /** 默写赛果广播 */
-  function emitSpellingMatchResult(rid, result) {
-    const room = roomManager.getRoom(rid)
-    const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
-
-    console.log(`[${ts()}] [match] 默写比赛结束 — 胜者: ${winnerNick}`)
-
-    gameManager.getGame(rid)?.players.forEach((id) => {
-      io.to(id).emit('game:matchResult', {
-        gameType: 'spelling',
-        matchWinner: result.matchWinner,
-        scores: result.scores,
-        ranking: result.ranking,
-        history: result.history,
-      })
-    })
-
-    roomManager.broadcastRoomState(rid, io)
-  }
-
-  /** 统一处理默写答题结果（轮结果 / 赛果） */
-  function handleSpellingAnswerResult(rid, result) {
-    if (result.action === 'round_result') {
-      emitSpellingRoundResult(rid, result)
-      const game = gameManager.getGame(rid)
-      if (game && game.status === 'playing') {
-        emitNextSpellingQuestion(rid, game)
-      }
-    } else if (result.action === 'match_result') {
-      emitSpellingMatchResult(rid, result)
-    }
+  /** 清除房间游戏及其绑定的机器人定时器 */
+  function clearGameAndRobotSchedule(roomId) {
+    robotScheduler.clear(roomId)
+    roomManager.clearGame(roomId)
   }
 
   // 创建 Robot Scheduler
   const robotScheduler = createRobotScheduler({
     gameManager,
     onRobotResult(rid, result) {
-      const game = gameManager.getGame(rid)
-      if (game?.type === 'spelling') handleSpellingAnswerResult(rid, result)
-      else handleArithmeticAnswerResult(rid, result)
+      handleGameResult(rid, result)
     },
   })
-
-  /** 生成下一道算术题并广播，设置机器人定时器 */
-  function emitNextArithmeticQuestion(rid, game) {
-    const question = gameManager.generateQuestion(game)
-
-    game.players.forEach((id) => {
-      io.to(id).emit('game:question', {
-        questionId: question.questionId,
-        expression: question.expression,
-        round: question.round,
-      })
-    })
-
-    robotScheduler.schedule(rid, question.questionId)
-  }
-
-  /** 生成下一道默写题并广播，设置机器人定时器 */
-  function emitNextSpellingQuestion(rid, game) {
-    const question = gameManager.generateSpellingQuestion(game)
-
-    game.players.forEach((id) => {
-      io.to(id).emit('game:question', {
-        questionId: question.questionId,
-        ttsText: question.word,
-        wordLength: question.wordLength,
-        blanks: question.blanks,
-        unsplashImageUrl: question.unsplashImageUrl,
-        round: question.round,
-      })
-    })
-
-    robotScheduler.schedule(rid, question.questionId)
-  }
 
   io.on('connection', (socket) => {
     console.log(`[${ts()}] [connect] ${socket.id}`)
@@ -179,17 +104,70 @@ function registerHandlers(io) {
     /** @type {string|null} */
     let currentRoom = null
 
-    /**
-     * 获取当前 socket 的昵称
-     */
     function getNickname() {
       const room = currentRoom && roomManager.getRoom(currentRoom)
       return room?.players[socket.id]?.nickname || '?'
     }
 
+    /** 统一处理玩家输入 */
+    function handleGameInput(socket, input) {
+      const rid = currentRoom
+      if (!rid) {
+        socket.emit('game:error', { message: '请先加入房间' })
+        return
+      }
+
+      const game = gameManager.getGame(rid)
+      if (!game) {
+        socket.emit('game:error', { message: '没有进行中的比赛' })
+        return
+      }
+
+      const outcome = gameManager.submitInput(rid, socket.id, input)
+
+      if (outcome.action === 'error') {
+        socket.emit('game:error', { message: outcome.message })
+        return
+      }
+
+      if (outcome.action === 'waiting') {
+        if (game.type === 'rps' && game.players.includes(ROBOT_ID)) {
+          console.log(`[${ts()}] [move] ${getNickname()} → ${input.choice} | 机器人出拳`)
+          const robotResult = gameManager.handleRobotInput(rid)
+          if (robotResult) handleGameResult(rid, robotResult)
+          return
+        }
+
+        console.log(`[${ts()}] [answer] ${getNickname()} 答错 — ${outcome.ack?.correctAnswer}`)
+
+        if (outcome.ack) {
+          socket.emit('game:answerAck', {
+            questionId: input.questionId,
+            correct: false,
+            ...outcome.ack,
+          })
+        } else {
+          socket.emit('game:waiting')
+        }
+
+        const scheduleIntent = gameManager.getRobotScheduleAfterWaiting(rid)
+        if (scheduleIntent?.action === 'accelerate') {
+          robotScheduler.accelerate(
+            rid,
+            input.questionId,
+            scheduleIntent.delayMs,
+            { onlyIfRemainingGreaterThanMs: scheduleIntent.onlyIfRemainingGreaterThanMs }
+          )
+        }
+        return
+      }
+
+      robotScheduler.clear(rid)
+      handleGameResult(rid, outcome)
+    }
+
     // ==================== 房间 ====================
 
-    /** 玩家加入房间 → 创建/加入 socket.io room → 广播房间状态 */
     socket.on('room:join', ({ nickname, roomId = 'default' }) => {
       if (!nickname || !nickname.trim()) {
         socket.emit('game:error', { message: '昵称不能为空' })
@@ -208,7 +186,6 @@ function registerHandlers(io) {
       })
     })
 
-    /** 玩家离开房间 → 取消进行中的比赛 → 释放角色 → 广播状态 */
     socket.on('room:leave', () => {
       if (!currentRoom) return
       const roomId = currentRoom
@@ -227,7 +204,6 @@ function registerHandlers(io) {
 
     // ==================== 角色 ====================
 
-    /** 选择角色 → 广播最新房间状态 */
     socket.on('role:select', ({ role, roomId } = {}) => {
       const rid = roomId || currentRoom
       if (!rid) {
@@ -245,7 +221,6 @@ function registerHandlers(io) {
       roomManager.broadcastRoomState(rid, io)
     })
 
-    /** 放弃当前角色 → 广播最新房间状态 */
     socket.on('role:deselect', ({ roomId } = {}) => {
       const rid = roomId || currentRoom
       if (!rid) {
@@ -265,7 +240,6 @@ function registerHandlers(io) {
 
     // ==================== 游戏模式切换 ====================
 
-    /** 切换房间游戏模式 → 广播房间状态 */
     socket.on('game:setMode', ({ mode, difficulty } = {}) => {
       const rid = currentRoom
       if (!rid) {
@@ -283,57 +257,8 @@ function registerHandlers(io) {
       roomManager.broadcastRoomState(rid, io)
     })
 
-    // ==================== 游戏 ====================
+    // ==================== 统一挑战 ====================
 
-    /**
-     * 向双方广播本轮结果（带各自视角）
-     */
-    function emitRoundResult(game, result) {
-      const [a, b] = game.players
-      const room = roomManager.getRoom(game.roomId)
-      const nameA = room?.players[a]?.nickname || a
-      const nameB = room?.players[b]?.nickname || b
-      const moveA = result.moves[a]
-      const moveB = result.moves[b]
-      const winnerName = result.winner === 'draw' ? '平局' : room?.players[result.winner]?.nickname || result.winner
-
-      console.log(`[${ts()}] [round] 第${result.round}局 — ${nameA}(${moveA}) vs ${nameB}(${moveB}) → ${winnerName} 胜`)
-
-      for (const id of [a, b]) {
-        io.to(id).emit('game:roundResult', {
-          round: result.round,
-          winner: result.winner,
-          yourMove: result.moves[id],
-          oppMove: result.moves[id === a ? b : a],
-          scores: result.scores,
-        })
-      }
-    }
-
-    /**
-     * 向双方广播赛果，并更新房间状态
-     */
-    function emitMatchResult(game, result, roomId) {
-      const room = roomManager.getRoom(roomId)
-      const winnerNick = room?.players[result.matchWinner]?.nickname || result.matchWinner
-      const scoresStr = Object.entries(result.scores)
-        .map(([id, s]) => `${room?.players[id]?.nickname || id} ${s}分`)
-        .join(' ')
-
-      console.log(`[${ts()}] [match] 比赛结束 → 胜者: ${winnerNick} (${scoresStr})`)
-      console.log(`[${ts()}] [match] 历史: ${result.history.length}局`)
-
-      const data = {
-        gameType: 'rps',
-        matchWinner: result.matchWinner,
-        scores: result.scores,
-        history: result.history,
-      }
-      game.players.forEach((id) => io.to(id).emit('game:matchResult', data))
-      roomManager.broadcastRoomState(roomId, io)
-    }
-
-    /** 发起挑战 → 按 mode 分流 RPS / 算术 */
     socket.on('game:challenge', ({ mode = 'rps', targetId, roomId } = {}) => {
       const rid = roomId || currentRoom
       if (!rid) {
@@ -356,273 +281,74 @@ function registerHandlers(io) {
         socket.emit('game:error', { message: '当前房间已有进行中的比赛' })
         return
       }
-      if (room.game) roomManager.clearGame(rid)
+      if (room.game) clearGameAndRobotSchedule(rid)
 
-      if (mode === 'arithmetic') {
-        return handleArithmeticChallenge(rid, room, socket)
-      }
-
-      if (mode === 'spelling') {
-        return handleSpellingChallenge(rid, room, socket)
-      }
-
-      return handleRpsChallenge(rid, room, socket, targetId)
-    })
-
-    /** 算术挑战：全员参战 → 发题 → 启动机器人定时器（20s） */
-    function handleArithmeticChallenge(rid, room, socket) {
-      const playerIds = Object.values(room.roles).filter((id) => id !== null)
-
-      if (playerIds.length < 1) {
-        socket.emit('game:error', { message: '至少需要 1 名玩家选择角色' })
-        return
-      }
-
-      const game = gameManager.createGame(rid, playerIds, 'arithmetic')
-      const firstQuestion = gameManager.generateQuestion(game)
-
-      const playerList = playerIds.map((id) => ({
-        id,
-        nickname: room.players[id]?.nickname || id,
-        role: room.players[id]?.role || null,
-      }))
-
-      console.log(`[${ts()}] [challenge] 算术模式 — ${playerList.map((p) => p.nickname).join(', ')}`)
-
-      playerIds.forEach((id) => {
-        io.to(id).emit('game:start', {
-          gameType: 'arithmetic',
-          players: playerList,
-          round: game.round,
-          firstQuestion: {
-            questionId: firstQuestion.questionId,
-            expression: firstQuestion.expression,
-            round: firstQuestion.round,
-          },
-        })
-      })
-
-      robotScheduler.schedule(rid, firstQuestion.questionId)
-
-      roomManager.broadcastRoomState(rid, io)
-    }
-
-    /** 默写挑战：全员参战 → 发题 → 启动机器人定时器（难度对应：简单 40s / 普通 30s / 困难 20s） */
-    function handleSpellingChallenge(rid, room, socket) {
-      const playerIds = Object.values(room.roles).filter((id) => id !== null)
-
-      if (playerIds.length < 1) {
-        socket.emit('game:error', { message: '至少需要 1 名玩家选择角色' })
-        return
-      }
-
-      const difficulty = room.spellingDifficulty || 'easy'
-      const game = gameManager.createGame(rid, playerIds, 'spelling', difficulty)
-      let firstQuestion
-      try {
-        firstQuestion = gameManager.generateSpellingQuestion(game)
-      } catch (error) {
-        roomManager.clearGame(rid)
-        socket.emit('game:error', { message: error.message })
-        return
-      }
-
-      const playerList = playerIds.map((id) => ({
-        id,
-        nickname: room.players[id]?.nickname || id,
-        role: room.players[id]?.role || null,
-      }))
-
-      console.log(`[${ts()}] [challenge] 默写模式 (${difficulty}) — ${playerList.map((p) => p.nickname).join(', ')}`)
-
-      playerIds.forEach((id) => {
-        io.to(id).emit('game:start', {
-          gameType: 'spelling',
-          players: playerList,
-          round: game.round,
-          difficulty,
-          firstQuestion: {
-            questionId: firstQuestion.questionId,
-            ttsText: firstQuestion.word,
-            wordLength: firstQuestion.wordLength,
-            blanks: firstQuestion.blanks,
-            unsplashImageUrl: firstQuestion.unsplashImageUrl,
-            round: firstQuestion.round,
-          },
-        })
-      })
-
-      robotScheduler.schedule(rid, firstQuestion.questionId)
-
-      roomManager.broadcastRoomState(rid, io)
-    }
-
-    /** RPS 挑战：1v1 对战 */
-    function handleRpsChallenge(rid, room, socket, targetId) {
-      const challenger = room.players[socket.id]
-      const target = room.players[targetId]
-      if (!challenger || !target) {
-        socket.emit('game:error', { message: '玩家不存在' })
-        return
-      }
-
-      if (!challenger.role || !target.role) {
-        socket.emit('game:error', { message: '双方都需选择角色后才能开始' })
-        return
-      }
-
-      if (challenger.role === target.role) {
-        socket.emit('game:error', { message: '不能挑战自己' })
-        return
-      }
-
-      const game = gameManager.createGame(rid, [socket.id, targetId], 'rps')
-
-      console.log(`[${ts()}] [challenge] ${getNickname()} → ${target.nickname}`)
-
-      io.to(socket.id).emit('game:start', {
-        gameType: 'rps',
-        opponent: { id: targetId, nickname: target.nickname, role: target.role },
-        round: game.round,
-      })
-      io.to(targetId).emit('game:start', {
-        gameType: 'rps',
-        opponent: { id: socket.id, nickname: challenger.nickname, role: challenger.role },
-        round: game.round,
-      })
-
-      roomManager.broadcastRoomState(rid, io)
-    }
-
-    /** 出拳 → 等待/本局结果/赛果分别广播给双方 */
-    socket.on('game:move', ({ choice, roomId } = {}) => {
-      const rid = roomId || currentRoom
-      if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
-        return
-      }
-
-      const game = gameManager.getGame(rid)
-      if (!game) {
-        socket.emit('game:error', { message: '没有进行中的比赛' })
-        return
-      }
-
-      const result = gameManager.submitMove(rid, socket.id, choice)
-
-      if (result.action === 'error') {
-        socket.emit('game:error', { message: result.message })
-        return
-      }
-
-      if (result.action === 'waiting') {
-        // 对手是机器人 → 立即为机器人出随机拳并结算
-        if (game.players.includes(ROBOT_ID)) {
-          const robotChoice = randomChoice()
-          console.log(`[${ts()}] [move] ${getNickname()} → ${choice} | 机器人 → ${robotChoice}`)
-
-          const robotResult = gameManager.submitMove(rid, ROBOT_ID, robotChoice)
-          if (robotResult.action === 'round_result') emitRoundResult(game, robotResult)
-          if (robotResult.action === 'match_result') emitMatchResult(game, robotResult, rid)
+      if (mode === 'rps') {
+        const challenger = room.players[socket.id]
+        const target = room.players[targetId]
+        if (!challenger || !target) {
+          socket.emit('game:error', { message: '玩家不存在' })
+          return
+        }
+        if (!challenger.role || !target.role) {
+          socket.emit('game:error', { message: '双方都需选择角色后才能开始' })
+          return
+        }
+        if (challenger.role === target.role) {
+          socket.emit('game:error', { message: '不能挑战自己' })
           return
         }
 
-        console.log(`[${ts()}] [move] ${getNickname()} → ${choice} (等待对手)`)
-        socket.emit('game:waiting')
-        return
-      }
+        const game = gameManager.createGame(rid, [socket.id, targetId], 'rps')
 
-      console.log(`[${ts()}] [move] ${getNickname()} → ${choice}`)
+        console.log(`[${ts()}] [challenge] ${getNickname()} → ${target.nickname}`)
 
-      if (result.action === 'round_result') emitRoundResult(game, result)
-      if (result.action === 'match_result') {
-        const room = roomManager.getRoom(rid)
-        console.log(`[${ts()}] [result] 比赛结束 → 胜者: ${room?.players[result.matchWinner]?.nickname || result.matchWinner}`)
-        emitMatchResult(game, result, rid)
-      }
-    })
-
-    /** 提交答案 → 按游戏类型路由 */
-    socket.on('game:answer', ({ questionId, answer } = {}) => {
-      const rid = currentRoom
-      if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
-        return
-      }
-
-      const game = gameManager.getGame(rid)
-      if (!game) {
-        socket.emit('game:error', { message: '没有进行中的比赛' })
-        return
-      }
-
-      if (game.type === 'spelling') {
-        return handleSpellingAnswer(rid, socket, questionId, answer)
-      }
-
-      return handleArithmeticAnswer(rid, socket, questionId, answer)
-    })
-
-    /** 算术答题处理 */
-    function handleArithmeticAnswer(rid, socket, questionId, answer) {
-      const result = gameManager.submitArithmeticAnswer(rid, socket.id, questionId, answer)
-
-      if (result.action === 'error') {
-        socket.emit('game:error', { message: result.message })
-        return
-      }
-
-      if (result.action === 'waiting') {
-        console.log(`[${ts()}] [answer] ${getNickname()} 答错 — ${result.expression} = ${result.correctAnswer}，提交: ${result.yourAnswer}`)
-
-        socket.emit('game:answerAck', {
-          questionId,
-          correct: false,
-          correctAnswer: result.correctAnswer,
-          expression: result.expression,
-          yourAnswer: result.yourAnswer,
+        ;[socket.id, targetId].forEach((id) => {
+          io.to(id).emit('game:start', gameManager.buildStartPayload(rid, id))
         })
-        return
-      }
+      } else {
+        const playerIds = Object.values(room.roles).filter((id) => id !== null)
 
-      robotScheduler.clear(rid)
-      handleArithmeticAnswerResult(rid, result)
-    }
-
-    /** 默写答题处理 */
-    function handleSpellingAnswer(rid, socket, questionId, answer) {
-      const result = gameManager.submitSpellingAnswer(rid, socket.id, questionId, answer)
-
-      if (result.action === 'error') {
-        socket.emit('game:error', { message: result.message })
-        return
-      }
-
-      if (result.action === 'waiting') {
-        console.log(`[${ts()}] [answer] ${getNickname()} 答错 — 正确: ${result.correctAnswer}，提交: ${result.yourAnswer}`)
-
-        socket.emit('game:answerAck', {
-          questionId,
-          correct: false,
-          correctAnswer: result.correctAnswer,
-          word: result.word,
-          yourAnswer: result.yourAnswer,
-        })
-
-        if (gameManager.areAllHumansAnswered(rid)) {
-          const remaining = robotScheduler.getRemainingMs(rid)
-          if (remaining > 5000) {
-            robotScheduler.accelerate(rid, questionId, 5000, { onlyIfRemainingGreaterThanMs: 5000 })
-          }
+        if (playerIds.length < 1) {
+          socket.emit('game:error', { message: '至少需要 1 名玩家选择角色' })
+          return
         }
-        return
+
+        const game = gameManager.createGame(rid, playerIds, mode, room.spellingDifficulty || 'easy')
+
+        let firstQuestion
+        try {
+          firstQuestion = gameManager.createNextQuestion(rid)
+        } catch (error) {
+          clearGameAndRobotSchedule(rid)
+          socket.emit('game:error', { message: error.message })
+          return
+        }
+
+        console.log(`[${ts()}] [challenge] ${mode}模式 — ${playerIds.map((id) => room.players[id]?.nickname || id).join(', ')}`)
+
+        playerIds.forEach((id) => {
+          io.to(id).emit('game:start', gameManager.buildStartPayload(rid, id, firstQuestion))
+        })
+
+        robotScheduler.schedule(rid, firstQuestion.questionId)
       }
 
-      robotScheduler.clear(rid)
-      handleSpellingAnswerResult(rid, result)
-    }
+      roomManager.broadcastRoomState(rid, io)
+    })
 
-    /** 请求重赛 → 用同一对玩家重新开局 */
+    // ==================== 出拳 / 答题 ====================
+
+    socket.on('game:move', ({ choice, roomId } = {}) => {
+      handleGameInput(socket, { choice })
+    })
+
+    socket.on('game:answer', ({ questionId, answer } = {}) => {
+      handleGameInput(socket, { questionId, answer })
+    })
+
+    // ==================== 重赛 ====================
+
     socket.on('game:rematch', ({ roomId } = {}) => {
       const rid = roomId || currentRoom
       if (!rid) {
@@ -648,7 +374,6 @@ function registerHandlers(io) {
         return
       }
       if (existingGame.status !== 'match_end') {
-        // 对方已先行发起重赛，游戏已重新开始，静默忽略
         return
       }
 
@@ -660,21 +385,15 @@ function registerHandlers(io) {
 
       console.log(`[${ts()}] [rematch] ${getNickname()}`)
 
-      io.to(p1).emit('game:start', {
-        gameType: 'rps',
-        opponent: { id: p2, nickname: room.players[p2]?.nickname, role: room.players[p2]?.role },
-        round: game.round,
-      })
-      io.to(p2).emit('game:start', {
-        gameType: 'rps',
-        opponent: { id: p1, nickname: room.players[p1]?.nickname, role: room.players[p1]?.role },
-        round: game.round,
+      ;[p1, p2].forEach((id) => {
+        io.to(id).emit('game:start', gameManager.buildStartPayload(rid, id))
       })
 
       roomManager.broadcastRoomState(rid, io)
     })
 
-    /** 认输 → 通知对手 → 清理游戏状态 */
+    // ==================== 认输 ====================
+
     socket.on('game:forfeit', ({ roomId } = {}) => {
       const rid = roomId || currentRoom
       if (!rid) return
@@ -682,7 +401,7 @@ function registerHandlers(io) {
       const game = gameManager.getGame(rid)
       if (!game || game.status !== 'playing') return
 
-      roomManager.clearGame(rid)
+      clearGameAndRobotSchedule(rid)
 
       console.log(`[${ts()}] [forfeit] ${getNickname()}`)
 
@@ -698,7 +417,6 @@ function registerHandlers(io) {
 
     // ==================== 断线 ====================
 
-    /** 断线 → 取消比赛 → 清理玩家 → 通知房间 */
     socket.on('disconnect', () => {
       if (!currentRoom) {
         console.log(`[${ts()}] [disconnect] ${socket.id} (未加入房间)`)
@@ -718,23 +436,16 @@ function registerHandlers(io) {
       currentRoom = null
     })
 
-    /**
-     * 处理玩家断线时的比赛取消
-     * RPS：取消并通知对手；算术：不影响比赛继续
-     * @param {string} roomId
-     * @param {string} socketId
-     */
     function cancelGameIfActive(roomId, socketId) {
       const game = gameManager.getGame(roomId)
       if (!game || game.status !== 'playing') return
       if (!game.players.includes(socketId)) return
 
-      // 算术/默写比赛不受断线影响
       if (game.type === 'arithmetic' || game.type === 'spelling') return
 
       const room = roomManager.getRoom(roomId)
 
-      gameManager.handleDisconnect(roomId, socketId)
+      clearGameAndRobotSchedule(roomId)
 
       const otherPlayer = game.players.find((id) => id !== socketId)
       if (otherPlayer) {

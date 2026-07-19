@@ -67,7 +67,7 @@ class QuizGameMode extends BaseGameMode {
 
     // 交给子类做合法性校验
     const validation = this.validateAnswer(normalizedAnswer)
-    if (validation?.error) {
+    if (validation) {
       return validation
     }
 

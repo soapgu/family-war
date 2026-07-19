@@ -388,7 +388,7 @@ class GameManager {
   }
 
   /**
-   * 机器人自动提交答案（统一入口）。
+   * 机器人自动提交答案（统一入口，返回嵌套格式）。
    * 委托给对应 GameMode.handleRobotInput。
    * @param {string} roomId
    * @param {string} questionId
@@ -409,7 +409,7 @@ class GameManager {
     if (outcome.action === 'match_result') {
       this.recordMatchHistory({ room, game, result: outcome.result })
     }
-    return this.toLegacyResult(outcome)
+    return outcome
   }
 
   /**
@@ -423,6 +423,89 @@ class GameManager {
     const game = room?.game
     if (!room || !game) return null
     return this.registry.get(game.type).getRobotScheduleAfterWaiting({ game, allHumansAnswered: this.areAllHumansAnswered(roomId) })
+  }
+
+  // ==================== 统一 dispatch API（供 handler 1l 使用） ====================
+
+  /**
+   * 统一处理玩家输入。返回嵌套格式 { action, result }。
+   * RPS input: { choice }
+   * Quiz input: { questionId, answer }
+   */
+  submitInput(roomId, playerId, input) {
+    const room = roomManager.getRoom(roomId)
+    const game = room?.game
+    if (!room || !game) {
+      return { action: 'error', message: '游戏不存在' }
+    }
+    const outcome = this.registry.get(game.type).submitInput({
+      roomId, room, game, playerId, input,
+    })
+    if (outcome?.action === 'match_result') {
+      this.recordMatchHistory({ room, game, result: outcome.result })
+    }
+    return outcome
+  }
+
+  /**
+   * 构建 game:start 事件 payload。
+   * 委托给对应 GameMode.buildStartPayload。
+   */
+  buildStartPayload(roomId, playerId, firstQuestion) {
+    const room = roomManager.getRoom(roomId)
+    const game = room?.game
+    if (!room || !game) return {}
+    return this.registry.get(game.type).buildStartPayload({ game, room, playerId, firstQuestion })
+  }
+
+  /**
+   * 构建 game:question payload。
+   * 委托给对应 GameMode.buildQuestionPayload。
+   */
+  buildQuestionPayload(roomId, question) {
+    const game = this.getGame(roomId)
+    if (!game) return {}
+    return this.registry.get(game.type).buildQuestionPayload({ question })
+  }
+
+  /**
+   * 构建 game:roundResult 的单玩家视角 payload。
+   * 委托给对应 GameMode.buildPlayerRoundResultPayload。
+   */
+  buildPlayerRoundResultPayload(roomId, playerId, result) {
+    const game = this.getGame(roomId)
+    if (!game) return {}
+    return this.registry.get(game.type).buildPlayerRoundResultPayload({ game, result, playerId })
+  }
+
+  /**
+   * 构建 game:matchResult payload。
+   * 委托给对应 GameMode.buildMatchResultPayload。
+   */
+  buildMatchResultPayload(roomId, result) {
+    const game = this.getGame(roomId)
+    if (!game) return {}
+    return this.registry.get(game.type).buildMatchResultPayload({ result })
+  }
+
+  /**
+   * 为当前游戏生成下一道题并附加到 game 对象。
+   * 委托给对应 GameMode.createNextQuestion。
+   * 答题类模式返回 question object，RPS 返回 null。
+   */
+  createNextQuestion(roomId) {
+    const game = this.getGame(roomId)
+    if (!game) return null
+    return this.registry.get(game.type).createNextQuestion({ game })
+  }
+
+  /**
+   * 获取已选角色的玩家 ID 列表（不含机器人）。
+   */
+  getHumanPlayerIds(roomId) {
+    const room = roomManager.getRoom(roomId)
+    if (!room) return []
+    return Object.values(room.roles).filter((id) => id !== null && id !== roomManager.ROBOT_ID)
   }
 
   // ==================== 答题辅助 ====================

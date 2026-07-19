@@ -59,6 +59,23 @@ class ArithmeticGameMode extends QuizGameMode {
     return question
   }
 
+  buildStartPayload({ game, room, firstQuestion }) {
+    return {
+      gameType: this.type,
+      players: this.buildPlayerList({ game, room }),
+      round: game.round,
+      firstQuestion: this.buildQuestionPayload({ question: firstQuestion }),
+    }
+  }
+
+  buildQuestionPayload({ question }) {
+    return {
+      questionId: question.questionId,
+      expression: question.expression,
+      round: question.round,
+    }
+  }
+
   getRobotDelayMs({ game }) {
     return this.config.robotAnswerDelayMs || 20000
   }
