@@ -1,6 +1,5 @@
 const roomManager = require('./roomManager')
-const RpsGameMode = require('./games/RpsGameMode')
-const ArithmeticGameMode = require('./games/ArithmeticGameMode')
+const createGameRegistry = require('./games/gameRegistry')
 const unsplashClient = require('../unsplashClient')
 const wordBank = require('../data/wordBank')
 
@@ -9,14 +8,11 @@ class GameManager {
     /** @type {MatchRecord[]} */
     this.matchHistory = []
 
-    this.rpsGame = new RpsGameMode({
-      config: { winningScore: 2 },
+    this.registry = createGameRegistry({
+      config: {},
       roomManager,
-    })
-
-    this.arithmeticGame = new ArithmeticGameMode({
-      config: { winningScore: 5 },
-      roomManager,
+      wordBank,
+      unsplashClient,
     })
   }
 
@@ -29,29 +25,8 @@ class GameManager {
    * @returns {Game|ArithmeticGame|SpellingGame}
    */
   createGame(roomId, playerIds, type = 'rps', difficulty) {
-    /** @type {Game|ArithmeticGame|SpellingGame} */
-    const game = {
-      id: `game_${Date.now()}_${roomId}`,
-      roomId,
-      type,
-      players: [...playerIds],
-      round: 1,
-      scores: Object.fromEntries(playerIds.map((id) => [id, 0])),
-      history: [],
-      status: 'playing',
-    }
-
-    if (type === 'arithmetic' || type === 'spelling') {
-      game.currentQuestion = null
-      game.answeredThisRound = {}
-      if (type === 'spelling') {
-        game.difficulty = difficulty || 'easy'
-        game.usedWords = []
-      }
-    } else {
-      game.moves = {}
-    }
-
+    const mode = this.registry.get(type)
+    const game = mode.createGame({ roomId, playerIds, difficulty })
     roomManager.setGame(roomId, game)
     return game
   }
@@ -75,7 +50,7 @@ class GameManager {
       return { action: 'error', message: '游戏不存在' }
     }
 
-    const outcome = this.rpsGame.submitInput({
+    const outcome = this.registry.get('rps').submitInput({
       room,
       game,
       playerId: socketId,
@@ -186,21 +161,21 @@ class GameManager {
   // ==================== 算术引擎 ====================
 
   /**
-   * 为指定游戏生成一道新题（兼容壳）
+   * 为指定算术游戏生成一道新题（兼容壳）
    *
-   * 委托给 ArithmeticGameMode.createNextQuestion。
+   * 委托给 registry 中的 ArithmeticGameMode。
    *
-   * @param {ArithmeticGame} game - 从 getGame 获取的游戏对象
+   * @param {ArithmeticGame} game
    * @returns {{ questionId: string, expression: string, correctAnswer: number, round: number }}
    */
   generateQuestion(game) {
-    return this.arithmeticGame.createNextQuestion({ game })
+    return this.registry.get('arithmetic').createNextQuestion({ game })
   }
 
   /**
    * 提交算术题答案（兼容壳）
    *
-   * 委托给 ArithmeticGameMode.submitInput。
+   * 委托给 registry 中的 ArithmeticGameMode。
    *
    * @param {string} roomId
    * @param {string} socketId
@@ -215,7 +190,7 @@ class GameManager {
       return { action: 'error', message: '算术游戏不存在' }
     }
 
-    const outcome = this.arithmeticGame.submitInput({
+    const outcome = this.registry.get('arithmetic').submitInput({
       roomId,
       room,
       game,
@@ -233,14 +208,14 @@ class GameManager {
   /**
    * 机器人自动提交正确答案（兼容壳）
    *
-   * 委托给 ArithmeticGameMode.handleRobotInput。
+   * 委托给 registry 中的 ArithmeticGameMode。
    *
    * @param {string} roomId
    * @param {string} questionId
    * @returns {ArithmeticAnswerResult|null}
    */
   handleRobotArithmeticAnswer(roomId, questionId) {
-    const outcome = this.arithmeticGame.handleRobotInput({
+    const outcome = this.registry.get('arithmetic').handleRobotInput({
       roomId,
       room: roomManager.getRoom(roomId),
       game: this.getGame(roomId),
@@ -299,40 +274,23 @@ class GameManager {
   }
 
   /**
-   * 为指定默写游戏生成一道新题
+   * 为指定默写游戏生成一道新题（兼容壳）
+   *
+   * 委托给 registry 中的 SpellingGameMode。
+   *
    * @param {SpellingGame} game
    * @returns {SpellingQuestion}
    */
   generateSpellingQuestion(game) {
-    const activeWords = wordBank.getActiveWords()
-      .filter((word) => typeof word === 'string' && word.length > 0)
-    if (activeWords.length === 0) {
-      throw new Error('当前没有可用的默写单词，请先配置词库')
-    }
-
-    let available = activeWords.filter((w) => !game.usedWords.includes(w))
-    if (available.length === 0) {
-      game.usedWords = []
-      available = activeWords
-    }
-    const word = available[Math.floor(Math.random() * available.length)]
-    game.usedWords.push(word)
-    const blanks = this.generateBlanks(word, game.difficulty)
-    const question = {
-      questionId: `q_${Date.now()}`,
-      word,
-      wordLength: word.length,
-      blanks,
-      unsplashImageUrl: unsplashClient.getImageUrl(word),
-      round: game.round,
-    }
-    game.currentQuestion = question
-    game.answeredThisRound = {}
-    return question
+    return this.registry.get('spelling').createNextQuestion({ game })
   }
 
   /**
-   * 提交默写答案
+   * 提交默写答案（兼容壳）
+   *
+   * 先校验 questionId 类型长度（spelling 特有，不在 QuizGameMode 中），
+   * 再委托给 registry 中的 SpellingGameMode。
+   *
    * @param {string} roomId
    * @param {string} socketId
    * @param {string} questionId
@@ -347,122 +305,58 @@ class GameManager {
 
     const game = room.game
 
-    if (game.status !== 'playing') {
-      return { action: 'error', message: '比赛已结束' }
-    }
-
     if (typeof questionId !== 'string' || questionId.length === 0) {
       return { action: 'error', message: '题目编号无效' }
-    }
-
-    if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) {
-      return { action: 'error', message: '题目已过期' }
-    }
-
-    if (!game.players.includes(socketId)) {
-      return { action: 'error', message: '你不是本局玩家' }
-    }
-
-    if (game.answeredThisRound[socketId] !== undefined) {
-      return { action: 'error', message: '你已经回答过本题' }
     }
 
     if (typeof answer !== 'string' || answer.trim().length === 0) {
       return { action: 'error', message: '答案必须是非空字符串' }
     }
 
-    const normalizedAnswer = answer.trim()
-    game.answeredThisRound[socketId] = normalizedAnswer
-
-    if (normalizedAnswer.toLowerCase() !== game.currentQuestion.word.toLowerCase()) {
-      return {
-        action: 'waiting',
-        correctAnswer: game.currentQuestion.word,
-        word: game.currentQuestion.word,
-        yourAnswer: normalizedAnswer,
-      }
-    }
-
-    game.scores[socketId]++
-    const round = game.currentQuestion.round
-    const word = game.currentQuestion.word
-    const blanks = game.currentQuestion.blanks
-
-    game.history.push({
-      round,
-      questionId,
-      word,
-      blanks,
-      correctAnswer: word,
-      winner: socketId,
-      answeredBy: { ...game.answeredThisRound },
+    const outcome = this.registry.get('spelling').submitInput({
+      roomId,
+      room,
+      game,
+      playerId: socketId,
+      input: { questionId, answer },
     })
 
-    game.currentQuestion = null
-    game.round++
-
-    if (game.scores[socketId] >= 5) {
-      game.status = 'match_end'
-
-      const ranking = [...game.players]
-        .map((id) => ({
-          playerId: id,
-          nickname: room.players[id]?.nickname || id,
-          score: game.scores[id] || 0,
-        }))
-        .sort((a, b) => b.score - a.score || a.playerId.localeCompare(b.playerId))
-        .map((entry, idx) => ({ rank: idx + 1, ...entry }))
-
-      this.matchHistory.push({
-        id: game.id,
-        roomId,
-        type: 'spelling',
-        players: [...game.players],
-        playerNames: Object.fromEntries(
-          game.players.map((id) => [id, room?.players[id]?.nickname || id])
-        ),
-        scores: { ...game.scores },
-        matchWinner: socketId,
-        matchWinnerName: room?.players[socketId]?.nickname || socketId,
-        ranking,
-        history: [...game.history],
-        endedAt: Date.now(),
-      })
-
-      return {
-        action: 'match_result',
-        matchWinner: socketId,
-        scores: { ...game.scores },
-        ranking,
-        history: [...game.history],
-        answeredBy: { ...game.answeredThisRound },
-      }
+    if (outcome.action === 'match_result') {
+      this.recordMatchHistory({ room, game, result: outcome.result })
     }
 
-    return {
-      action: 'round_result',
-      round,
-      questionId,
-      word,
-      blanks,
-      correctAnswer: word,
-      winner: socketId,
-      scores: { ...game.scores },
-      answeredBy: { ...game.answeredThisRound },
-    }
+    return this.toLegacyResult(outcome)
   }
 
   /**
-   * 机器人自动提交正确单词（超时后由 handler 调用，时长由难度决定）
+   * 机器人自动提交正确单词（兼容壳）
+   *
+   * 委托给 registry 中的 SpellingGameMode。
+   *
    * @param {string} roomId
    * @param {string} questionId
    * @returns {SpellingAnswerResult|null}
    */
   handleRobotSpellingAnswer(roomId, questionId) {
-    const game = this.getGame(roomId)
-    if (!game || game.type !== 'spelling') return null
-    if (!game.currentQuestion || game.currentQuestion.questionId !== questionId) return null
-    return this.submitSpellingAnswer(roomId, roomManager.ROBOT_ID, questionId, game.currentQuestion.word)
+    const outcome = this.registry.get('spelling').handleRobotInput({
+      roomId,
+      room: roomManager.getRoom(roomId),
+      game: this.getGame(roomId),
+      robotId: roomManager.ROBOT_ID,
+      questionId,
+    })
+
+    if (!outcome) return null
+
+    if (outcome.action === 'match_result') {
+      this.recordMatchHistory({
+        room: roomManager.getRoom(roomId),
+        game: this.getGame(roomId),
+        result: outcome.result,
+      })
+    }
+
+    return this.toLegacyResult(outcome)
   }
 
   /**
