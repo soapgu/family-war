@@ -4,8 +4,6 @@ import useSocket from '../hooks/useSocket'
 import MatchResult from './MatchResult'
 import ScoreboardPanel from './ScoreboardPanel'
 
-const ROUND_TIME = 20
-
 function getAudioCtx(audioCtxRef) {
   if (!audioCtxRef.current) {
     audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
@@ -94,11 +92,12 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
   const [submitting, setSubmitting] = useState(false)
   const [answered, setAnswered] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const [timeLeft, setTimeLeft] = useState(ROUND_TIME)
+  const [timeLeft, setTimeLeft] = useState(20)
   const [matchResult, setMatchResult] = useState(null)
   const [wrongThisRound, setWrongThisRound] = useState(false)
   const inputRef = useRef(null)
   const timerRef = useRef(null)
+  const roundTimeRef = useRef(20)
   const prevQuestionId = useRef(null)
   const onFinishRef = useRef(onFinish)
   const audioCtxRef = useRef(null)
@@ -114,9 +113,10 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
     }
   }, [])
 
-  const startTimer = useCallback(() => {
+  const startTimer = useCallback((timeLimitSec) => {
+    roundTimeRef.current = timeLimitSec
     clearTimer()
-    setTimeLeft(ROUND_TIME)
+    setTimeLeft(timeLimitSec)
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -134,7 +134,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       const fq = gameInfo.firstQuestion
       prevQuestionId.current = fq.questionId
       playQuestionSfx(audioCtxRef)
-      startTimer()
+      startTimer((gameInfo.timeLimitMs || 20000) / 1000)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
   }, [])
@@ -152,7 +152,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
         setInputValue('')
         setSubmitting(false)
         setAnswered(false)
-        startTimer()
+        startTimer((data.timeLimitMs || 20000) / 1000)
         setTimeout(() => inputRef.current?.focus(), 100)
       } else {
         setQuestion(null)
@@ -171,7 +171,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
       setSubmitting(false)
       setAnswered(false)
       setInputValue('')
-      startTimer()
+      startTimer((data.timeLimitMs || 20000) / 1000)
       setTimeout(() => inputRef.current?.focus(), 100)
     }
 
@@ -338,7 +338,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
             marginBottom: 4,
           }}>
             <div style={{
-              width: `${(timeLeft / ROUND_TIME) * 100}%`,
+              width: `${(timeLeft / (roundTimeRef.current || 20)) * 100}%`,
               height: '100%',
               background: timeLeft > 5 ? '#1677ff' : '#ff4d4f',
               borderRadius: 3,
