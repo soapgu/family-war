@@ -20,6 +20,7 @@ function registerAdminRoutes(router) {
     const { adminPassword } = config.auth
 
     if (adminPassword && password !== adminPassword) {
+      console.log(`[${ts()}] [auth] login FAIL — wrong password`)
       ctx.status = 401
       ctx.body = { error: '密码错误' }
       return
@@ -32,11 +33,19 @@ function registerAdminRoutes(router) {
       maxAge: 86400000,
       path: '/',
     })
+    console.log(`[${ts()}] [auth] login OK — token issued (adminPassword=${adminPassword ? 'set' : 'empty'})`)
     ctx.body = { success: true }
   })
 
   router.post('/api/admin/logout', (ctx) => {
-    ctx.cookies.set('admin_token', null, { maxAge: -1 })
+    const hadCookie = !!ctx.cookies.get('admin_token')
+    ctx.cookies.set('admin_token', null, {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: -1,
+      path: '/',
+    })
+    console.log(`[${ts()}] [auth] logout — cookie ${hadCookie ? 'cleared' : 'already empty'}, set-cookie: admin_token=; path=/; expires=Thu, 01 Jan 1970`)
     ctx.body = { success: true }
   })
 

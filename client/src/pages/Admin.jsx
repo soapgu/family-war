@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Typography, Button, Tag, Card, Space } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
+import { ReloadOutlined, LogoutOutlined } from '@ant-design/icons'
+import { useAuth } from '../components/RequireAuth'
 
 const ROLE_EMOJI = {
   '爸爸': '👨',
@@ -12,19 +13,21 @@ const ROLE_EMOJI = {
 
 function Admin() {
   const navigate = useNavigate()
+  const { logout } = useAuth()
   const [data, setData] = useState({ rooms: [], matchHistory: [] })
 
   const fetchStatus = useCallback(async () => {
     try {
       const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
       const res = await fetch(BASE + '/api/admin/status')
+      if (res.status === 401) { logout(); return }
       if (res.ok) {
         setData(await res.json())
       }
     } catch {
       // ignore
     }
-  }, [])
+  }, [logout])
 
   useEffect(() => {
     fetchStatus()
@@ -34,6 +37,16 @@ function Admin() {
 
   const { rooms, matchHistory } = data
 
+  async function handleLogout() {
+    try {
+      const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
+      await fetch(BASE + '/api/admin/logout', { method: 'POST' })
+    } catch {
+      // ignore
+    }
+    logout()
+  }
+
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -41,6 +54,7 @@ function Admin() {
         <Space>
           <Button onClick={() => navigate('/admin/word-config')}>词库管理</Button>
           <Button icon={<ReloadOutlined />} onClick={fetchStatus}>刷新</Button>
+          <Button icon={<LogoutOutlined />} onClick={handleLogout} danger>登出</Button>
         </Space>
       </div>
 

@@ -35,7 +35,7 @@ function loginRateLimitMiddleware(ctx, next) {
 function originCheckMiddleware(ctx, next) {
   if (ctx.method === 'POST' && ctx.path.startsWith('/api/admin') && ctx.path !== '/api/admin/login') {
     const origin = ctx.get('Origin')
-    if (origin) {
+    if (origin && process.env.NODE_ENV === 'production') {
       try {
         const originHost = new URL(origin).host
         if (originHost !== ctx.get('Host')) {

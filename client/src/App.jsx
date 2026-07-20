@@ -6,6 +6,7 @@ import Home from './pages/Home'
 import Room from './pages/Room'
 import Admin from './pages/Admin'
 import WordConfig from './pages/WordConfig'
+import RequireAuth from './components/RequireAuth'
 
 const BASE_URL = import.meta.env.BASE_URL || ''
 const BGM_LOBBY = BASE_URL + '/bgm.mp3'
@@ -98,8 +99,8 @@ function App() {
     <BrowserRouter basename="/family-war">
       <AntApp>
         <Routes>
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/word-config" element={<WordConfig />} />
+          <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+          <Route path="/admin/word-config" element={<RequireAuth><WordConfig /></RequireAuth>} />
           <Route path="*" element={<GameApp />} />
         </Routes>
       </AntApp>

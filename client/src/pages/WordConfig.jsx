@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App, Modal, Alert, Progress } from 'antd'
 import { ReloadOutlined, SyncOutlined, SoundOutlined } from '@ant-design/icons'
+import { useAuth } from '../components/RequireAuth'
 
 const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
 const EMPTY_WORD_BANK_MESSAGE = '至少需要保留一个可用的默写单词'
@@ -17,6 +18,7 @@ function getActiveWordCount(config) {
 }
 
 function WordConfig() {
+  const { logout } = useAuth()
   const { message } = App.useApp()
   const voiceRef = useRef(null)
   const utteranceRef = useRef(null)
@@ -62,6 +64,7 @@ function WordConfig() {
     setLoading(true)
     try {
       const res = await fetch(BASE + '/api/admin/word-config')
+      if (res.status === 401) { logout(); return }
       if (res.ok) {
         setData(await res.json())
         setHasUnsavedChanges(false)
@@ -71,7 +74,7 @@ function WordConfig() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [logout])
 
   useEffect(() => { fetchConfig() }, [fetchConfig])
 
@@ -139,6 +142,7 @@ function WordConfig() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
+      if (res.status === 401) { logout(); return }
       if (res.ok) {
         setHasUnsavedChanges(false)
         setSavedNotify(true)
@@ -158,6 +162,7 @@ function WordConfig() {
     setSyncing(true)
     try {
       const res = await fetch(BASE + '/api/admin/word-images/sync', { method: 'POST' })
+      if (res.status === 401) { logout(); return }
       if (res.ok) {
         const status = await res.json()
         updateImageStatuses(status.words || [])
@@ -177,6 +182,7 @@ function WordConfig() {
     setSyncing(true)
     try {
       const res = await fetch(BASE + '/api/admin/word-images/sync-missing', { method: 'POST' })
+      if (res.status === 401) { logout(); return }
       if (res.ok) {
         const status = await res.json()
         updateImageStatuses(status.words || [])
@@ -198,6 +204,7 @@ function WordConfig() {
     setCandidatesLoading(true)
     try {
       const res = await fetch(BASE + `/api/admin/word-images/candidates/${encodeURIComponent(word)}?page=${pageNum}&perPage=15`)
+      if (res.status === 401) { logout(); return }
       if (res.ok) {
         const data = await res.json()
         setCandidates(data.candidates)
@@ -229,6 +236,7 @@ function WordConfig() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageUrl: photo.url }),
       })
+      if (res.status === 401) { logout(); return }
       if (res.ok) {
         message.success(`${selectingWord} 图片已更换`)
         setSelectingWord(null)
