@@ -12,15 +12,17 @@
     "unsplash:sync": "node tests/unsplash-integration.js --keep"
   },
   "dependencies": {
-    "@koa/cors": "^5.0.0",
     "@koa/router": "^12.0.1",
+    "jsonwebtoken": "^9.0.3",
     "koa": "^2.15.3",
     "koa-bodyparser": "^4.4.1",
     "socket.io": "^4.7.5",
     "unsplash-js": "^6.3.0"
   },
   "nodemonConfig": {
-    "ignore": ["src/data/"]
+    "ignore": [
+      "src/data/"
+    ]
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

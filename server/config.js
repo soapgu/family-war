@@ -45,6 +45,10 @@ const config = {
   unsplashAccessKey: '',
   unsplashPerPage: 10,
   games: defaultGameConfig,
+  auth: {
+    adminPassword: '',
+    jwtSecret: '',
+  },
 }
 
 const localPath = path.join(__dirname, 'config.local.js')
@@ -53,6 +57,8 @@ if (fs.existsSync(localPath)) {
   Object.keys(local).forEach((key) => {
     if (key === 'games') {
       config.games = deepMerge(defaultGameConfig, local.games)
+    } else if (key === 'auth') {
+      config.auth = deepMerge(config.auth, local.auth)
     } else {
       config[key] = local[key]
     }

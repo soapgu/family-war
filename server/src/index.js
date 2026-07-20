@@ -1,19 +1,27 @@
 const Koa = require('koa')
 const Router = require('@koa/router')
 const bodyParser = require('koa-bodyparser')
-const cors = require('@koa/cors')
 const { Server } = require('socket.io')
 const http = require('http')
 const path = require('path')
 const fs = require('fs')
 const registerHandlers = require('./socket/handler')
 const registerAdminRoutes = require('./routes/admin')
+const {
+  authMiddleware,
+  originCheckMiddleware,
+  loginRateLimitMiddleware,
+  startCleanup,
+} = require('./middleware/auth')
 
 const app = new Koa()
+app.proxy = true
 const router = new Router()
 
-app.use(cors())
 app.use(bodyParser())
+app.use(loginRateLimitMiddleware)
+app.use(originCheckMiddleware)
+app.use(authMiddleware)
 app.use(router.routes())
 app.use(router.allowedMethods())
 
@@ -58,5 +66,6 @@ router.get('/api/images/:name', (ctx) => {
 
 const PORT = process.env.PORT || 4000
 server.listen(PORT, () => {
+  startCleanup()
   console.log(`Server running on http://localhost:${PORT}`)
 })
