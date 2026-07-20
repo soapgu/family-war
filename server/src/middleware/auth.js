@@ -95,10 +95,15 @@ function startCleanup() {
   }, 5 * 60 * 1000)
 }
 
+function resetLoginAttempts() {
+  loginAttempts.clear()
+}
+
 module.exports = {
   loginRateLimitMiddleware,
   originCheckMiddleware,
   authMiddleware,
   getJwtSecret,
   startCleanup,
+  resetLoginAttempts,
 }

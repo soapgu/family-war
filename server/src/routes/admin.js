@@ -187,8 +187,10 @@ function registerAdminRoutes(router) {
       ctx.body = { error: '无效的单词' }
       return
     }
-    const page = Math.max(1, parseInt(ctx.query.page, 10) || 1)
-    const perPage = Math.max(1, Math.min(30, parseInt(ctx.query.perPage, 10) || 15))
+    const rawPage = parseInt(ctx.query.page, 10)
+    const rawPerPage = parseInt(ctx.query.perPage, 10)
+    const page = Math.max(1, Number.isFinite(rawPage) ? rawPage : 1)
+    const perPage = Math.max(1, Math.min(30, Number.isFinite(rawPerPage) ? rawPerPage : 15))
     try {
       const result = await unsplashClient.searchCandidates(word, page, perPage)
       ctx.body = { word, ...result }
