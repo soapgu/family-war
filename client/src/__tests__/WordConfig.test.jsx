@@ -185,7 +185,7 @@ describe('WordConfig', () => {
     fetch.mockResolvedValueOnce(response({
       candidates: [{
         id: 'photo-1',
-        url: 'https://example.com/full.jpg',
+        candidateId: 'candidate-uuid-1',
         thumb: 'https://example.com/thumb.jpg',
         alt: '候选教室图片',
         author: 'Tester',

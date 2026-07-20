@@ -228,13 +228,13 @@ function WordConfig() {
 
   const handleConfirmSelect = async () => {
     if (!selectingWord || !selectedPhotoId) return
-    const photo = candidates.find(c => c.id === selectedPhotoId)
+    const photo = candidates.find(c => c.candidateId === selectedPhotoId)
     if (!photo) return
     try {
       const res = await fetch(BASE + `/api/admin/word-images/confirm/${encodeURIComponent(selectingWord)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: photo.url }),
+        body: JSON.stringify({ candidateId: photo.candidateId }),
       })
       if (res.status === 401) { logout(); return }
       if (res.ok) {
@@ -548,7 +548,7 @@ function WordConfig() {
             {candidates.map(p => (
               <div
                 key={p.id}
-                onClick={() => setSelectedPhotoId(p.id)}
+                onClick={() => setSelectedPhotoId(p.candidateId)}
                 style={{
                   cursor: 'pointer',
                   border: selectedPhotoId === p.id ? '3px solid #1677ff' : '3px solid transparent',

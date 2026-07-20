@@ -363,7 +363,7 @@ BaseGameMode
 | 3b | 前端登录弹窗：RequireAuth 组件包裹 Admin/WordConfig 路由，挂载时请求 status 接口检测认证状态；登录弹窗提交密码获取 cookie；遇 401 触发重新登录 | `client/src/components/RequireAuth.jsx`（新建）, `client/src/App.jsx`, `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx` | ✅ |
 | 3c | **跳过** | — | ✅ |
 | 3d | 参数校验补齐 + 错误格式统一：`page`/`perPage` 钳位；所有 admin 端点统一返回 `{ error }` | `server/src/routes/admin.js` | ✅ |
-| 3e | candidateId 机制 | `server/src/unsplashClient.js`, `server/src/routes/admin.js` | ⬜ |
+| 3e | candidateId 机制：searchCandidates 存入 `Map<word, Map<candidateId, { url, createdAt }>>`（TTL 10 分钟），返回值替换 url 为 `crypto.randomUUID()`；confirm 收 candidateId 查表下载，成功即删除；word 须在词库 + 文件名正则白名单 | `server/src/unsplashClient.js`, `server/src/routes/admin.js`, `client/src/pages/WordConfig.jsx` | ✅ |
 | 3f | Phase 3 测试 | `server/__tests__/adminAuth.test.js`, `client/src/__tests__/RequireAuth.test.jsx` | ⬜ |
 
 **验收条件**

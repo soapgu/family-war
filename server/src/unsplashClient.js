@@ -1,11 +1,14 @@
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 const config = require('../config')
 const wordBank = require('./data/wordBank')
 const words = wordBank.getAllWords()
 const Unsplash = require('unsplash-js').default
 
 const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images')
+const CANDIDATE_TTL_MS = 10 * 60 * 1000
+const CANDIDATE_CLEANUP_MS = 5 * 60 * 1000
 
 function ts() {
   return new Date().toLocaleTimeString('zh-CN', { hour12: false })
@@ -15,6 +18,8 @@ class UnsplashClient {
   constructor() {
     this.api = null
     this._syncing = false
+    this._candidateCache = new Map()
+    this._cleanupTimer = setInterval(() => this._cleanupCandidates(), CANDIDATE_CLEANUP_MS)
     this._init()
   }
 
@@ -24,6 +29,30 @@ class UnsplashClient {
     if (config.unsplashAccessKey) {
       this.api = new Unsplash({ accessKey: config.unsplashAccessKey })
     }
+  }
+
+  _cleanupCandidates() {
+    const now = Date.now()
+    for (const [word, wordCache] of this._candidateCache) {
+      for (const [candidateId, entry] of wordCache) {
+        if (now - entry.createdAt > CANDIDATE_TTL_MS) {
+          wordCache.delete(candidateId)
+        }
+      }
+      if (wordCache.size === 0) {
+        this._candidateCache.delete(word)
+      }
+    }
+  }
+
+  consumeCandidate(word, candidateId) {
+    const wordCache = this._candidateCache.get(word)
+    if (!wordCache) return null
+    const entry = wordCache.get(candidateId)
+    if (!entry) return null
+    wordCache.delete(candidateId)
+    if (wordCache.size === 0) this._candidateCache.delete(word)
+    return entry.url
   }
 
   _filePath(word) {
@@ -145,18 +174,31 @@ class UnsplashClient {
       throw new Error('UNSPLASH_ACCESS_KEY 未配置')
     }
     const { results, total } = await this._searchPhotos(word, perPage, page)
-    return {
-      candidates: results.map(p => ({
-        id: p.id,
+
+    if (!this._candidateCache.has(word)) {
+      this._candidateCache.set(word, new Map())
+    }
+    const wordCache = this._candidateCache.get(word)
+
+    const candidates = results.map(p => {
+      const candidateId = crypto.randomUUID()
+      wordCache.set(candidateId, {
         url: p.urls.small,
         thumb: p.urls.thumb,
         author: p.user.name,
         alt: p.alt_description || '',
-      })),
-      total,
-      page,
-      perPage,
-    }
+        createdAt: Date.now(),
+      })
+      return {
+        id: p.id,
+        candidateId,
+        thumb: p.urls.thumb,
+        author: p.user.name,
+        alt: p.alt_description || '',
+      }
+    })
+
+    return { candidates, total, page, perPage }
   }
 
   async _downloadImage(imageUrl, word) {

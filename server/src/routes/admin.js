@@ -182,6 +182,11 @@ function registerAdminRoutes(router) {
       ctx.body = { error: `"${word}" 不在词库中` }
       return
     }
+    if (!/^[\w\s-]+$/.test(word)) {
+      ctx.status = 400
+      ctx.body = { error: '无效的单词' }
+      return
+    }
     const page = Math.max(1, parseInt(ctx.query.page, 10) || 1)
     const perPage = Math.max(1, Math.min(30, parseInt(ctx.query.perPage, 10) || 15))
     try {
@@ -195,10 +200,26 @@ function registerAdminRoutes(router) {
 
   router.post('/api/admin/word-images/confirm/:word', async (ctx) => {
     const { word } = ctx.params
-    const { imageUrl } = ctx.request.body || {}
+    const { candidateId } = ctx.request.body || {}
+    if (!candidateId) {
+      ctx.status = 400
+      ctx.body = { error: '缺少 candidateId' }
+      return
+    }
+    if (!wordBank.getAllWords().includes(word)) {
+      ctx.status = 400
+      ctx.body = { error: `"${word}" 不在词库中` }
+      return
+    }
+    if (!/^[\w\s-]+$/.test(word)) {
+      ctx.status = 400
+      ctx.body = { error: '无效的单词' }
+      return
+    }
+    const imageUrl = unsplashClient.consumeCandidate(word, candidateId)
     if (!imageUrl) {
       ctx.status = 400
-      ctx.body = { error: '缺少 imageUrl' }
+      ctx.body = { error: '无效或已过期的 candidateId' }
       return
     }
     try {
