@@ -2,6 +2,7 @@ const roomManager = require('./roomManager')
 const createGameRegistry = require('./games/gameRegistry')
 const unsplashClient = require('../unsplashClient')
 const wordBank = require('../data/wordBank')
+const config = require('../../config')
 
 class GameManager {
   constructor() {
@@ -9,7 +10,7 @@ class GameManager {
     this.matchHistory = []
 
     this.registry = createGameRegistry({
-      config: {},
+      config,
       roomManager,
       wordBank,
       unsplashClient,
