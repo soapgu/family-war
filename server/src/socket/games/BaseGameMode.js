@@ -104,6 +104,11 @@ class BaseGameMode {
     return false
   }
 
+  /** 获取题目时间限制毫秒数。RPS 无时间限制，默认 0。 */
+  getTimeLimitMs() {
+    return 0
+  }
+
   /** 获取机器人自动作答延迟毫秒数。RPS 默认 0。 */
   getRobotDelayMs() {
     return 0

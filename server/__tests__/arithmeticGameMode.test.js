@@ -93,7 +93,7 @@ describe('buildWrongAnswerAck', () => {
 })
 
 describe('buildStartPayload', () => {
-  it('含 gameType/players/round/firstQuestion', () => {
+  it('含 gameType/players/round/timeLimitMs/firstQuestion', () => {
     const mode = createMode()
     const game = makeGame(mode, [P1, P2])
     const room = { players: { [P1]: { nickname: '小明' }, [P2]: { nickname: '小红' } } }
@@ -102,19 +102,21 @@ describe('buildStartPayload', () => {
     expect(p.gameType).toBe('arithmetic')
     expect(p.players).toHaveLength(2)
     expect(p.round).toBe(1)
+    expect(p.timeLimitMs).toBe(20000)
     expect(p.firstQuestion.questionId).toBe(firstQuestion.questionId)
     expect(p.firstQuestion.expression).toBeTruthy()
   })
 })
 
 describe('buildQuestionPayload', () => {
-  it('含 questionId/expression/round', () => {
+  it('含 questionId/expression/round/timeLimitMs', () => {
     const mode = createMode()
-    const q = { questionId: 'q1', expression: '1 + 2', round: 1 }
+    const q = { questionId: 'q1', expression: '1 + 2', round: 1, timeLimitMs: 20000 }
     const p = mode.buildQuestionPayload({ question: q })
     expect(p.questionId).toBe('q1')
     expect(p.expression).toBe('1 + 2')
     expect(p.round).toBe(1)
+    expect(p.timeLimitMs).toBe(20000)
   })
 })
 

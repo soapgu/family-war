@@ -177,7 +177,7 @@ describe('buildWrongAnswerAck', () => {
 })
 
 describe('buildStartPayload', () => {
-  it('含 gameType/players/round/difficulty/firstQuestion', () => {
+  it('含 gameType/players/round/difficulty/timeLimitMs/firstQuestion', () => {
     const mode = createMode()
     const game = makeGame(mode, [P1, P2])
     const room = { players: { [P1]: { nickname: '小明' }, [P2]: { nickname: '小红' } } }
@@ -186,19 +186,21 @@ describe('buildStartPayload', () => {
     expect(p.gameType).toBe('spelling')
     expect(p.players).toHaveLength(2)
     expect(p.difficulty).toBe('easy')
+    expect(p.timeLimitMs).toBe(40000)
     expect(p.firstQuestion.ttsText).toBe(firstQuestion.word)
   })
 })
 
 describe('buildQuestionPayload', () => {
-  it('含 questionId/ttsText/wordLength/blanks/unsplashImageUrl/round', () => {
+  it('含 questionId/ttsText/wordLength/blanks/unsplashImageUrl/round/timeLimitMs', () => {
     const mode = createMode()
-    const q = { questionId: 'q1', word: 'library', wordLength: 7, blanks: 'l _ b r _ r y', unsplashImageUrl: 'https://img.com/1', round: 1 }
+    const q = { questionId: 'q1', word: 'library', wordLength: 7, blanks: 'l _ b r _ r y', unsplashImageUrl: 'https://img.com/1', round: 1, timeLimitMs: 40000 }
     const p = mode.buildQuestionPayload({ question: q })
     expect(p.ttsText).toBe('library')
     expect(p.wordLength).toBe(7)
     expect(p.blanks).toBe('l _ b r _ r y')
     expect(p.unsplashImageUrl).toBe('https://img.com/1')
+    expect(p.timeLimitMs).toBe(40000)
   })
 })
 

@@ -43,6 +43,7 @@ class SpellingGameMode extends QuizGameMode {
       blanks,
       unsplashImageUrl: this.unsplashClient.getImageUrl(word),
       round: game.round,
+      timeLimitMs: this.getTimeLimitMs({ game }),
     }
 
     game.currentQuestion = question
@@ -57,6 +58,7 @@ class SpellingGameMode extends QuizGameMode {
       players: this.buildPlayerList({ game, room }),
       round: game.round,
       difficulty: game.difficulty,
+      timeLimitMs: this.getTimeLimitMs({ game }),
       firstQuestion: this.buildQuestionPayload({ question: firstQuestion }),
     }
   }
@@ -69,6 +71,7 @@ class SpellingGameMode extends QuizGameMode {
       blanks: question.blanks,
       unsplashImageUrl: question.unsplashImageUrl,
       round: question.round,
+      timeLimitMs: question.timeLimitMs,
     }
   }
 

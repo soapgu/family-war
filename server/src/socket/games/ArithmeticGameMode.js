@@ -59,6 +59,10 @@ class ArithmeticGameMode extends QuizGameMode {
     }
   }
 
+  getTimeLimitMs() {
+    return this.config.questionTimeLimitMs || 20000
+  }
+
   createNextQuestion({ game }) {
     const { expression, correctAnswer } = generateArithmeticQuestion()
     const question = {
@@ -66,6 +70,7 @@ class ArithmeticGameMode extends QuizGameMode {
       expression,
       correctAnswer,
       round: game.round,
+      timeLimitMs: this.getTimeLimitMs(),
     }
     game.currentQuestion = question
     game.answeredThisRound = {}
@@ -77,6 +82,7 @@ class ArithmeticGameMode extends QuizGameMode {
       gameType: this.type,
       players: this.buildPlayerList({ game, room }),
       round: game.round,
+      timeLimitMs: this.getTimeLimitMs(),
       firstQuestion: this.buildQuestionPayload({ question: firstQuestion }),
     }
   }
@@ -86,6 +92,7 @@ class ArithmeticGameMode extends QuizGameMode {
       questionId: question.questionId,
       expression: question.expression,
       round: question.round,
+      timeLimitMs: question.timeLimitMs,
     }
   }
 

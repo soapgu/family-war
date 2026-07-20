@@ -369,13 +369,14 @@ describe('buildStartPayload', () => {
     expect(p.opponent.nickname).toBe('小红')
   })
 
-  it('算术含 players/firstQuestion', () => {
+  it('算术含 players/firstQuestion/timeLimitMs', () => {
     const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
     roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
     const q = gameManager.createNextQuestion(ROOM_ID)
     const p = gameManager.buildStartPayload(ROOM_ID, P1, q)
     expect(p.gameType).toBe('arithmetic')
     expect(p.players).toHaveLength(2)
+    expect(p.timeLimitMs).toBe(20000)
     expect(p.firstQuestion.expression).toBeTruthy()
   })
 })
@@ -383,22 +384,24 @@ describe('buildStartPayload', () => {
 // ==================== buildQuestionPayload ====================
 
 describe('buildQuestionPayload', () => {
-  it('算术含 expression', () => {
+  it('算术含 expression/timeLimitMs', () => {
     const game = gameManager.createGame(ROOM_ID, [P1, P2], 'arithmetic')
     roomManager.getRoom.mockReturnValue(mockRoom(game))
     const q = gameManager.createNextQuestion(ROOM_ID)
     const p = gameManager.buildQuestionPayload(ROOM_ID, q)
     expect(p.expression).toBeTruthy()
     expect(p.questionId).toBe(q.questionId)
+    expect(p.timeLimitMs).toBe(20000)
   })
 
-  it('默写含 ttsText/blanks', () => {
+  it('默写含 ttsText/blanks/timeLimitMs', () => {
     const game = gameManager.createGame(ROOM_ID, [P1, P2], 'spelling', 'easy')
     roomManager.getRoom.mockReturnValue(mockRoomWithPlayers(game, [P1, P2]))
     const q = gameManager.createNextQuestion(ROOM_ID)
     const p = gameManager.buildQuestionPayload(ROOM_ID, q)
     expect(p.ttsText).toBeTruthy()
     expect(p.blanks).toBeTruthy()
+    expect(p.timeLimitMs).toBe(40000)
   })
 })
 
