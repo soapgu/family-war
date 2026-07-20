@@ -28,6 +28,7 @@ const GAME_INFO = {
   gameType: 'spelling',
   players: PLAYERS,
   difficulty: 'normal',
+  timeLimitMs: 30000,
   firstQuestion: FIRST_QUESTION,
 }
 

@@ -5,7 +5,6 @@ import useSocket from '../hooks/useSocket'
 import MatchResult from './MatchResult'
 import ScoreboardPanel from './ScoreboardPanel'
 
-const ROUND_TIME_MAP = { easy: 40, normal: 30, hard: 20 }
 const SPEECH_RESTART_DELAY = 50
 const AUTO_SPEECH_REPEAT_COUNT = 3
 const AUTO_SPEECH_REPEAT_PAUSE = 450
@@ -110,6 +109,10 @@ function playFeedbackTone(audioRef, correct) {
   })
 }
 
+function initRoundSec(gameInfo) {
+  return (gameInfo?.timeLimitMs || 20000) / 1000
+}
+
 function SpellingBoard({ gameInfo, onFinish }) {
   const socket = useSocket()
   const [players, setPlayers] = useState(gameInfo?.players || [])
@@ -117,17 +120,17 @@ function SpellingBoard({ gameInfo, onFinish }) {
     (gameInfo?.players || []).map((player) => [player.id, 0])
   ))
   const [difficulty, setDifficulty] = useState(gameInfo?.difficulty || 'easy')
-  const roundTime = ROUND_TIME_MAP[difficulty] || 20
   const [question, setQuestion] = useState(gameInfo?.firstQuestion || null)
   const [letterValues, setLetterValues] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [answered, setAnswered] = useState(false)
   const [feedback, setFeedback] = useState(null)
-  const [timeLeft, setTimeLeft] = useState(roundTime)
+  const [timeLeft, setTimeLeft] = useState(initRoundSec(gameInfo))
   const [matchResult, setMatchResult] = useState(null)
   const [imageError, setImageError] = useState(false)
   const [voicesReady, setVoicesReady] = useState(false)
   const timerRef = useRef(null)
+  const roundTimeRef = useRef(initRoundSec(gameInfo))
   const letterRefs = useRef([])
   const prevQuestionId = useRef(null)
   const onFinishRef = useRef(onFinish)
@@ -226,7 +229,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
 
   const startTimer = useCallback(() => {
     clearTimer()
-    setTimeLeft(roundTime)
+    setTimeLeft(roundTimeRef.current)
     timerRef.current = setInterval(() => {
       setTimeLeft((current) => {
         if (current <= 1) {
@@ -237,11 +240,12 @@ function SpellingBoard({ gameInfo, onFinish }) {
         return current - 1
       })
     }, 1000)
-  }, [clearTimer, roundTime])
+  }, [clearTimer])
 
-  const showQuestion = useCallback((nextQuestion) => {
+  const showQuestion = useCallback((nextQuestion, timeLimitMs) => {
     if (!nextQuestion || nextQuestion.questionId === prevQuestionId.current) return
     prevQuestionId.current = nextQuestion.questionId
+    roundTimeRef.current = (timeLimitMs || 20000) / 1000
     setQuestion(nextQuestion)
     setLetterValues(Array(getBlankCount(nextQuestion.blanks)).fill(''))
     setSubmitting(false)
@@ -251,7 +255,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
   }, [])
 
   useEffect(() => {
-    showQuestion(gameInfo?.firstQuestion)
+    showQuestion(gameInfo?.firstQuestion, gameInfo?.timeLimitMs)
   }, [])
 
   useEffect(() => {
@@ -280,11 +284,11 @@ function SpellingBoard({ gameInfo, onFinish }) {
       setDifficulty(data.difficulty || 'easy')
       setMatchResult(null)
       prevQuestionId.current = null
-      showQuestion(data.firstQuestion)
+      showQuestion(data.firstQuestion, data.timeLimitMs)
     }
 
     function onQuestion(data) {
-      showQuestion(data)
+      showQuestion(data, data.timeLimitMs)
     }
 
     function onAnswerAck(data) {
@@ -546,7 +550,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
           </div>
 
           <div className="spelling-timer">
-            <div style={{ width: `${(timeLeft / roundTime) * 100}%` }} />
+            <div style={{ width: `${(timeLeft / (roundTimeRef.current || 20)) * 100}%` }} />
           </div>
           <Typography.Text className={timeLeft <= 5 ? 'spelling-time is-urgent' : 'spelling-time'}>
             ⏱️ {timeLeft}s
