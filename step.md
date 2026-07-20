@@ -339,24 +339,36 @@ BaseGameMode
 
 ### Phase 3: 管理后台与图片接口安全加固
 
-当前管理接口面向家庭局域网使用，尚未设置身份认证，服务端 CORS 也允许任意来源。公网部署或开放给不可信设备前必须完成以下加固。
+当前管理接口面向家庭局域网使用，尚未设置身份认证。公网部署或开放给不可信设备前必须完成以下加固。
+
+**设计决策**
+
+- 认证方案：JWT（payload `{ role: 'admin', iat, exp }`），存于 httpOnly cookie（`admin_token`），sameSite=lax，24 小时过期
+- Cookie secure: false（LAN 环境，不要求 HTTPS）
+- JWT secret：`config.auth.jwtSecret` 配置，空则启动时 `crypto.randomBytes(32).toString('hex')` 自动生成（重启后所有已签发 token 失效；设固定值可持久化）
+- 开发模式：`config.auth.adminPassword` 为空 → 登录页正常显示，任意密码都签发合法 JWT，后续完整走校验流程
+- 正式模式：`config.auth.adminPassword` 已配置 → 必须输入正确密码
+- 不引入 CORS 白名单（前后端同域，无跨域问题）
+- 不加 Rate Limiting
+- 错误格式统一：`ctx.status = N; ctx.body = { error: '描述' }`，拒绝 `ctx.throw()`
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | 增加管理员认证机制，保护 `/api/admin/*` 和词库图片管理操作；密钥只从环境变量或本地配置读取，不提交仓库 | `server/src/routes/admin.js`, `server/config.js` | ⬜ |
-| 3b | 明确管理认证传递方式，例如 `Authorization: Bearer <token>` 或 `X-Admin-Token`，并在前端管理页统一附带凭据 | `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx`, `server/src/routes/admin.js` | ⬜ |
-| 3c | 将 CORS 从全开放改为允许来源白名单，分别配置开发、预发布环境，并同步 Socket.IO CORS 配置 | `server/src/index.js`, `server/config.js` | ⬜ |
-| 3d | 为修改词库、同步图片、确认换图等写操作增加权限校验、参数校验和统一错误响应 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
-| 3e | 限制候选图片确认接口只能处理词库内单词和可信图片地址，防止任意 URL 下载与非法文件名 | `server/src/routes/admin.js`, `server/src/unsplashClient.js` | ⬜ |
-| 3f | 补充未认证、错误凭据、非法来源、越权写操作和合法管理员流程测试 | `server/__tests__/`, `server/tests/`, `client/src/__tests__/` | ⬜ |
+| 3a | 后端认证：config 增加 `auth` 段；新建 auth 中间件拦截 `/api/admin/*`（跳过 `/api/admin/login`）；admin.js 新增 login handler；index.js 挂载中间件 | `server/config.js`, `server/src/middleware/auth.js`（新建）, `server/src/routes/admin.js`, `server/src/index.js` | ⬜ |
+| 3b | 前端登录弹窗：RequireAuth 组件包裹 Admin/WordConfig 路由，挂载时请求 status 接口检测认证状态；登录弹窗提交密码获取 cookie；遇 401 触发重新登录 | `client/src/components/RequireAuth.jsx`（新建）, `client/src/App.jsx`, `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx` | ⬜ |
+| 3c | **跳过**（无 CORS 问题） | — | ⬜ |
+| 3d | 参数校验补齐 + 错误格式统一：confirm 端点增加 word 词库校验和 imageUrl 合法性；所有 admin 端点统一返回 `{ error }` | `server/src/routes/admin.js` | ⬜ |
+| 3e | 候选图片地址白名单：searchCandidates 将图片 URL 按 word 缓存入内存 Map（TTL 10 分钟）；confirm 校验 imageUrl 在缓存中 + word 在词库 + 文件名正则白名单 | `server/src/unsplashClient.js`, `server/src/routes/admin.js` | ⬜ |
+| 3f | 测试：未认证 401、错误密码、登录成功、confirm 非法 URL/非法 word、正常管理流程 | `server/__tests__/adminAuth.test.js`（新建）, `client/src/__tests__/RequireAuth.test.jsx`（新建） | ⬜ |
 
 **验收条件**
 
-- 未认证请求不能读取管理状态或执行任何管理操作
-- 非白名单来源无法跨域调用 API 或建立 Socket.IO 连接
-- 非词库单词、非法文件名和非可信图片 URL 被明确拒绝
-- 管理端凭据不出现在前端构建产物、日志或 Git 仓库中
-- 开发、预发布环境均能通过配置启用合法管理访问
+- 未登录时所有 `/api/admin/*` 返回 401（login 端点除外）
+- 正确密码登录后 24 小时内免登录（cookie 自动附带）
+- `config.auth.adminPassword` 为空时任意密码登录成功
+- 非词库单词、候选列表外的图片 URL、非法文件名被明确拒绝
+- 管理端密钥不出现在前端构建产物、日志或 Git 仓库中
+- 重启服务端后（auto jwtSecret 场景）旧 token 失效需重新登录
 
 ### Phase 4: 客户端重连恢复
 
