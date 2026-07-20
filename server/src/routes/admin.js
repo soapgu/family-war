@@ -182,8 +182,8 @@ function registerAdminRoutes(router) {
       ctx.body = { error: `"${word}" 不在词库中` }
       return
     }
-    const page = parseInt(ctx.query.page) || 1
-    const perPage = parseInt(ctx.query.perPage) || 15
+    const page = Math.max(1, parseInt(ctx.query.page, 10) || 1)
+    const perPage = Math.max(1, Math.min(30, parseInt(ctx.query.perPage, 10) || 15))
     try {
       const result = await unsplashClient.searchCandidates(word, page, perPage)
       ctx.body = { word, ...result }

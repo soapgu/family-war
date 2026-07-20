@@ -350,7 +350,7 @@ BaseGameMode
 - 开发模式：`config.auth.adminPassword` 为空 → 登录页正常显示，任意密码都签发合法 JWT，后续完整走校验流程
 - 正式模式：`config.auth.adminPassword` 已配置 → 必须输入正确密码
 - 移除 `app.use(cors())`（HTTP 同域，无需 CORS）；保留 Socket.IO CORS（dev 跨端口直连）
-- `POST /api/admin/*`（login 除外）校验 Origin：若请求头携带 Origin，则提取其 host 部分与请求 Host 头比对，不一致返回 403
+- `POST /api/admin/*`（login 除外）校验 Origin：`NODE_ENV === 'production'` 时，若请求头携带 Origin，则提取其 host 部分与请求 Host 头比对，不一致返回 403；`NODE_ENV` 非 production 时跳过 Origin 校验（兼容 Vite proxy 开发模式）
 - 登录限速：5 次/分钟/IP；`app.proxy = true` 支持 nginx 反代获取真实 IP（`X-Forwarded-For`）；`setInterval` 每 5 分钟清理过期记录，防内存泄漏
 - 候选图片走 `candidateId` 机制：`/candidates` 返回 `crypto.randomUUID()` 生成的一次性 ID，服务端缓存 `Map<word, Map<candidateId, { url, createdAt }>>`（TTL 10 分钟），`/confirm` 收 `candidateId` 查表下载；确认成功后立即从 Map 删除，禁止重复使用
 - `page`/`perPage` 静默钳位（page ≥ 1，1 ≤ perPage ≤ 30）
@@ -359,12 +359,12 @@ BaseGameMode
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | 后端认证：config 增加 `auth` 段；新建 auth 中间件拦截 `/api/admin/*`（白名单 `/api/admin/login`、`/api/admin/logout`）；admin.js 新增 login/logout handler + Origin 校验 + `app.proxy = true`；index.js 挂载中间件 + 移除 `cors()` + 接入登录限速 + 定期清理 | `server/config.js`, `server/package.json`, `server/src/middleware/auth.js`（新建）, `server/src/routes/admin.js`, `server/src/index.js` | ⬜ |
-| 3b | 前端登录弹窗：RequireAuth 组件包裹 Admin/WordConfig 路由，挂载时请求 status 接口检测认证状态；登录弹窗提交密码获取 cookie；遇 401 触发重新登录 | `client/src/components/RequireAuth.jsx`（新建）, `client/src/App.jsx`, `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx` | ⬜ |
-| 3c | **跳过** | — | ⬜ |
-| 3d | 参数校验补齐 + 错误格式统一：`page`/`perPage` 钳位；所有 admin 端点统一返回 `{ error }` | `server/src/routes/admin.js` | ⬜ |
-| 3e | candidateId 机制：searchCandidates 存入 `Map<word, Map<candidateId, { url, createdAt }>>`（TTL 10 分钟），返回值替换 url 为 `crypto.randomUUID()`；confirm 收 candidateId 查表下载，成功即删除；word 须在词库 + 文件名正则白名单 | `server/src/unsplashClient.js`, `server/src/routes/admin.js` | ⬜ |
-| 3f | 测试：未认证 401、过期 JWT、篡改 JWT、错误 role、生产环境缺密码；正确密码登录、登录限速、登出；Cookie 属性（httpOnly/sameSite/path）；认证通过后正常 CRUD；Origin 不匹配 403；confirm — 非法 word / 无效 candidateId / 过期 candidateId / 跨 word 冒用 / 重复使用 / 非图片 URL；page/perPage 钳位 | `server/__tests__/adminAuth.test.js`（新建）, `client/src/__tests__/RequireAuth.test.jsx`（新建） | ⬜ |
+| 3a | 后端认证：config 增加 `auth` 段；新建 auth 中间件拦截 `/api/admin/*`（白名单 `/api/admin/login`、`/api/admin/logout`）；admin.js 新增 login/logout handler + Origin 校验 + `app.proxy = true`；index.js 挂载中间件 + 移除 `cors()` + 接入登录限速 + 定期清理 | `server/config.js`, `server/package.json`, `server/src/middleware/auth.js`（新建）, `server/src/routes/admin.js`, `server/src/index.js` | ✅ |
+| 3b | 前端登录弹窗：RequireAuth 组件包裹 Admin/WordConfig 路由，挂载时请求 status 接口检测认证状态；登录弹窗提交密码获取 cookie；遇 401 触发重新登录 | `client/src/components/RequireAuth.jsx`（新建）, `client/src/App.jsx`, `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx` | ✅ |
+| 3c | **跳过** | — | ✅ |
+| 3d | 参数校验补齐 + 错误格式统一：`page`/`perPage` 钳位；所有 admin 端点统一返回 `{ error }` | `server/src/routes/admin.js` | ✅ |
+| 3e | candidateId 机制 | `server/src/unsplashClient.js`, `server/src/routes/admin.js` | ⬜ |
+| 3f | Phase 3 测试 | `server/__tests__/adminAuth.test.js`, `client/src/__tests__/RequireAuth.test.jsx` | ⬜ |
 
 **验收条件**
 
