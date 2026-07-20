@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import useSocket from '../hooks/useSocket'
 import ArithmeticBoard from '../components/ArithmeticBoard'
 
@@ -46,12 +46,42 @@ it('shows 等待题目 initially', () => {
   expect(screen.getByText('等待题目…')).toBeInTheDocument()
 })
 
+it('首题使用 gameInfo.timeLimitMs 展示倒计时', () => {
+  vi.useFakeTimers()
+  try {
+    render(<ArithmeticBoard gameInfo={{
+      players: PLAYERS,
+      timeLimitMs: 25000,
+      firstQuestion: { questionId: 'q1', expression: '12 + 34', round: 1 },
+    }} onFinish={vi.fn()} />)
+    expect(screen.getByText(/25s/)).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 it('shows question on game:question', async () => {
   const socket = useSocket()
   renderBoard()
   await waitFor(() => emitSocketEvent(socket, 'game:question', { questionId: 'q1', expression: '12 + 34', round: 1 }))
   expect(await screen.findByText('12 + 34 = ?')).toBeInTheDocument()
   expect(screen.getByText('第 1 题')).toBeInTheDocument()
+})
+
+it('game:question 携带 timeLimitMs 控制倒计时', () => {
+  vi.useFakeTimers()
+  try {
+    const socket = useSocket()
+    renderBoard()
+    act(() => emitSocketEvent(socket, 'game:question', {
+      questionId: 'q1', expression: '12 + 34', round: 1, timeLimitMs: 15000,
+    }))
+    expect(screen.getByText(/15s/)).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(1000))
+    expect(screen.getByText(/14s/)).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 it('updates leaderboard on game:roundResult', async () => {

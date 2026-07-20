@@ -328,7 +328,7 @@ BaseGameMode
 | 2b | 服务端创建 `gameInfo` / `question` 时下发 `timeLimitMs`，必要时下发 `robotAnswerAt` 或等价的剩余时间信息 | `server/src/socket/games/BaseGameMode.js`, `server/src/socket/games/ArithmeticGameMode.js`, `server/src/socket/games/SpellingGameMode.js` | ✅ |
 | 2c | 算术前端改为使用服务端下发的 `timeLimitMs` 初始化倒计时和进度条，移除写死的 `ROUND_TIME` 依赖 | `client/src/components/ArithmeticBoard.jsx` | ✅ |
 | 2d | 默写前端改为使用服务端下发的 `timeLimitMs` 初始化倒计时和进度条，难度只影响服务端配置选择 | `client/src/components/SpellingBoard.jsx`, `client/src/__tests__/SpellingBoard.test.jsx` | ✅ |
-| 2e | 补充测试：算术/默写首题和下一题都携带时间配置，前端按下发时间展示倒计时 | `server/__tests__/`, `client/src/__tests__/` | ⬜ |
+| 2e | 补充测试：算术/默写首题和下一题都携带时间配置，前端按下发时间展示倒计时 | `client/src/__tests__/ArithmeticBoard.test.jsx`, `client/src/__tests__/SpellingBoard.test.jsx` | ✅ |
 
 **验收条件**
 

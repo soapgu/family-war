@@ -82,6 +82,24 @@ it('StrictMode 下首题倒计时正常更新', () => {
   }
 })
 
+it('game:question 更新倒计时为服务端下发的 timeLimitMs', () => {
+  vi.useFakeTimers()
+  try {
+    const socket = useSocket()
+    renderBoard()
+    expect(screen.getByText(/30s/)).toBeInTheDocument()
+    emitSocketEvent(socket, 'game:question', {
+      questionId: 'q2', ttsText: 'library', wordLength: 7,
+      blanks: '_ i _ _ a _ _', unsplashImageUrl: '', round: 2, timeLimitMs: 10000,
+    })
+    expect(screen.getByText(/10s/)).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(1000))
+    expect(screen.getByText(/9s/)).toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 it('首题自动使用英式英语朗读并支持重播', async () => {
   render(
     <StrictMode>
