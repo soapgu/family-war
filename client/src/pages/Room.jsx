@@ -148,6 +148,13 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
     }
   }, [socket, roomState])
 
+  useEffect(() => {
+    if (roomState && !roomState.game && gameInfo) {
+      setGameInfo(null)
+      setGameKey((k) => k + 1)
+    }
+  }, [roomState])
+
   function handleRoleClick(role) {
     if (role === '机器人') return
     if (myRole === role) {

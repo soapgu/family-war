@@ -389,7 +389,7 @@ BaseGameMode
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
 | 4a | 客户端保存当前昵称和房间 ID，在 `socket.on('connect', ...)` 后自动重发 `room:join` | `client/src/App.jsx` | ✅ |
-| 4b | 避免首次进入和重连恢复重复触发 toast、BGM 重启或重复事件监听 | `client/src/App.jsx`, `client/src/pages/Room.jsx` | ⬜ |
+| 4b | 避免首次进入和重连恢复重复触发 toast、BGM 重启或重复事件监听 | `client/src/App.jsx`, `client/src/pages/Room.jsx` | ✅ |
 | 4c | 服务端确认重复加入同一房间的行为安全：不会残留旧角色、不会重复机器人、不会污染在线玩家列表 | `server/src/socket/roomManager.js`, `server/src/socket/handler.js` | ⬜ |
 | 4d | 补充客户端重连测试和必要的服务端房间状态测试 | `client/src/__tests__/App.test.jsx`, `server/__tests__/roomManager.test.js` | ⬜ |
 

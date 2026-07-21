@@ -228,3 +228,38 @@ describe('Room', () => {
     expect(screen.queryByText('算术面板')).not.toBeInTheDocument()
   })
 })
+
+describe('Room 断线重连', () => {
+  it('room:state 无 game 时清除 gameInfo', () => {
+    const { rerender } = render(
+      <App>
+        <Room
+          nickname="小明"
+          roomState={{ ...MOCK_ROOM_STATE, gameMode: 'arithmetic', game: { status: 'playing', type: 'arithmetic' } }}
+          onBack={vi.fn()}
+        />
+      </App>
+    )
+
+    act(() => {
+      triggerSocketEvent('game:start', {
+        gameType: 'arithmetic',
+        players: MOCK_ROOM_STATE.players,
+      })
+    })
+    expect(screen.getByText('算术面板')).toBeInTheDocument()
+
+    rerender(
+      <App>
+        <Room
+          nickname="小明"
+          roomState={{ ...MOCK_ROOM_STATE, game: null, gameMode: 'arithmetic' }}
+          onBack={vi.fn()}
+        />
+      </App>
+    )
+
+    expect(screen.queryByText('算术面板')).not.toBeInTheDocument()
+    expect(screen.getByText('选择角色')).toBeInTheDocument()
+  })
+})
