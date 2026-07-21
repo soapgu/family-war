@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { triggerSocketEvent } from '../hooks/useSocket'
+import { mockSocket, triggerSocketEvent } from '../hooks/useSocket'
 import App from '../App'
 
 vi.mock('../hooks/useSocket')
@@ -91,5 +91,62 @@ describe('App BGM', () => {
     expect(instances[0].pause).toHaveBeenCalled()
     expect(instances[1].path).toContain('bgm_battle.mp3')
     expect(instances[1].play).toHaveBeenCalled()
+  })
+})
+
+describe('App 断线重连', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.history.pushState({}, '', '/family-war/')
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('已进入房间时重连自动重新加入', async () => {
+    const { AudioMock } = mockAudio()
+    await enterRoom()
+    act(() => {
+      triggerSocketEvent('room:state', createRoomState({}))
+    })
+    expect(AudioMock).toHaveBeenCalled()
+
+    mockSocket.emit.mockClear()
+
+    act(() => {
+      triggerSocketEvent('connect')
+    })
+
+    expect(mockSocket.emit).toHaveBeenCalledWith('room:join', { nickname: '小明' })
+  })
+
+  it('从未进入房间时重连不加入', async () => {
+    mockAudio()
+    render(<App />)
+
+    act(() => {
+      triggerSocketEvent('connect')
+    })
+
+    expect(mockSocket.emit).not.toHaveBeenCalledWith('room:join', expect.anything())
+  })
+
+  it('离开房间后重连不加入', async () => {
+    mockAudio()
+    await enterRoom()
+    act(() => {
+      triggerSocketEvent('room:state', createRoomState({}))
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: '返回首页' }))
+
+    mockSocket.emit.mockClear()
+
+    act(() => {
+      triggerSocketEvent('connect')
+    })
+
+    expect(mockSocket.emit).not.toHaveBeenCalledWith('room:join', expect.anything())
   })
 })

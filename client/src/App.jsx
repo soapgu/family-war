@@ -20,6 +20,7 @@ function GameApp() {
   const [roomState, setRoomState] = useState(null)
   const bgmRef = useRef(null)
   const prevBgmState = useRef(null)
+  const savedNickname = useRef('')
 
   function startBgm(path) {
     if (bgmRef.current) bgmRef.current.pause()
@@ -39,8 +40,15 @@ function GameApp() {
 
   useEffect(() => {
     socket.on('room:state', setRoomState)
+    function onReconnect() {
+      if (savedNickname.current) {
+        socket.emit('room:join', { nickname: savedNickname.current })
+      }
+    }
+    socket.on('connect', onReconnect)
     return () => {
       socket.off('room:state', setRoomState)
+      socket.off('connect', onReconnect)
       stopBgm()
     }
   }, [socket])
@@ -74,12 +82,14 @@ function GameApp() {
   }, [roomState, socket.id])
 
   function handleEnter(name) {
+    savedNickname.current = name
     setNickname(name)
     socket.emit('room:join', { nickname: name })
     startBgm(BGM_LOBBY)
   }
 
   function handleBack() {
+    savedNickname.current = ''
     setRoomState(null)
     setNickname('')
     stopBgm()

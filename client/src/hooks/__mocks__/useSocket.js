@@ -1,6 +1,6 @@
 const listeners = {}
 
-const mockSocket = {
+export const mockSocket = {
   id: 'test-socket-id',
   on: vi.fn((event, cb) => { listeners[event] = cb }),
   off: vi.fn(),
