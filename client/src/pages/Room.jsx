@@ -98,6 +98,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
   const [gameInfo, setGameInfo] = useState(null)
   const [gameKey, setGameKey] = useState(0)
   const audioCtxRef = useRef(null)
+  const prevSocketIdRef = useRef(socket.id)
   const me = useMemo(() => roomState?.players.find((p) => p.id === socket.id), [roomState, socket.id])
   const myRole = me?.role || null
   const playerList = useMemo(() => roomState?.players || [], [roomState])
@@ -149,7 +150,12 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
   }, [socket, roomState])
 
   useEffect(() => {
-    if (roomState && !roomState.game && gameInfo) {
+    if (!roomState) return
+
+    const isReconnect = prevSocketIdRef.current !== socket.id
+    prevSocketIdRef.current = socket.id
+
+    if (gameInfo && (!roomState.game || isReconnect)) {
       setGameInfo(null)
       setGameKey((k) => k + 1)
     }

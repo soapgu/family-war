@@ -193,6 +193,60 @@ describe('handleDisconnect', () => {
   })
 })
 
+// ==================== 断线重连 ====================
+
+describe('joinRoom 重连场景', () => {
+  it('同昵称旧 socket 残留时清理旧 entry', () => {
+    const s1 = mockSocket('s1')
+    roomManager.joinRoom(s1, 'default', '小明')
+
+    // 模拟断线后旧 socket 仍残留（handleDisconnect 未执行的极端情况）
+    const s2 = mockSocket('s2')
+    roomManager.joinRoom(s2, 'default', '小明')
+
+    const state = roomManager.getRoomState('default')
+    const humans = state.players.filter((p) => p.id !== '__robot__')
+    expect(humans).toHaveLength(1)
+    expect(humans[0].id).toBe('s2')
+  })
+
+  it('清理旧 entry 时释放其角色', () => {
+    const s1 = mockSocket('s1')
+    roomManager.joinRoom(s1, 'default', '小明')
+    roomManager.selectRole(s1, 'default', '爸爸')
+
+    // 模拟重连（旧 socket 未清理 + 角色仍被占用）
+    const s2 = mockSocket('s2')
+    roomManager.joinRoom(s2, 'default', '小明')
+
+    const state = roomManager.getRoomState('default')
+    expect(state.roles['爸爸']).toBeNull()
+  })
+
+  it('重连后旧 entry 不会污染玩家列表', () => {
+    const s1 = mockSocket('s1')
+    roomManager.joinRoom(s1, 'default', '小明')
+    roomManager.joinRoom(s1, 'default', '小明')
+
+    const state = roomManager.getRoomState('default')
+    const humans = state.players.filter((p) => p.id !== '__robot__')
+    expect(humans).toHaveLength(1)
+  })
+
+  it('不同昵称的玩家不受影响', () => {
+    const s1 = mockSocket('s1')
+    roomManager.joinRoom(s1, 'default', '小明')
+    const s2 = mockSocket('s2')
+
+    // 不同昵称不会被清理
+    roomManager.joinRoom(s2, 'default', '小红')
+
+    const state = roomManager.getRoomState('default')
+    const humans = state.players.filter((p) => p.id !== '__robot__')
+    expect(humans).toHaveLength(2)
+  })
+})
+
 // ==================== 状态查询 ====================
 
 describe('getRoomState', () => {

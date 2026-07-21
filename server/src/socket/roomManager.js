@@ -65,6 +65,16 @@ class RoomManager {
   joinRoom(socket, roomId, nickname) {
     const room = this._ensureRoom(roomId)
 
+    // 断线重连场景：清理同昵称的残留旧条目（handleDisconnect 已清理，此处为防御性兜底）
+    for (const [sid, player] of Object.entries(room.players)) {
+      if (sid !== socket.id && player.nickname === nickname) {
+        if (player.role && room.roles[player.role] === sid) {
+          room.roles[player.role] = null
+        }
+        delete room.players[sid]
+      }
+    }
+
     room.players[socket.id] = {
       id: socket.id,
       nickname,
