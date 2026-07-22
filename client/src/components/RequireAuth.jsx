@@ -1,8 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { Button, Input, Modal, Typography } from 'antd'
 import { LockOutlined } from '@ant-design/icons'
-
-const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
+import { API_BASE } from '../utils/api'
 
 export const AuthContext = createContext({ logout: () => {} })
 
@@ -24,7 +23,7 @@ function RequireAuth({ children }) {
 
   async function checkAuth() {
     try {
-      const res = await fetch(BASE + '/api/admin/status')
+      const res = await fetch(API_BASE + '/api/admin/status')
       if (res.ok) {
         setAuthenticated(true)
       } else {
@@ -47,7 +46,7 @@ function RequireAuth({ children }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(BASE + '/api/admin/login', {
+      const res = await fetch(API_BASE + '/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),

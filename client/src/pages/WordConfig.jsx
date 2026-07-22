@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App, Modal, Alert, Progress } from 'antd'
 import { ReloadOutlined, SyncOutlined, SoundOutlined } from '@ant-design/icons'
 import { useAuth } from '../components/RequireAuth'
+import { API_BASE } from '../utils/api'
 
-const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
 const EMPTY_WORD_BANK_MESSAGE = '至少需要保留一个可用的默写单词'
 const SPEECH_RESTART_DELAY = 50
 
@@ -63,7 +63,7 @@ function WordConfig() {
   const fetchConfig = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(BASE + '/api/admin/word-config')
+      const res = await fetch(API_BASE + '/api/admin/word-config')
       if (res.status === 401) { logout(); return }
       if (res.ok) {
         setData(await res.json())
@@ -137,7 +137,7 @@ function WordConfig() {
     setSaving(true)
     try {
       const body = { enabledChapters: data.enabledChapters, disabledWords: data.disabledWords }
-      const res = await fetch(BASE + '/api/admin/word-config', {
+      const res = await fetch(API_BASE + '/api/admin/word-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -161,7 +161,7 @@ function WordConfig() {
   const handleSyncAll = async () => {
     setSyncing(true)
     try {
-      const res = await fetch(BASE + '/api/admin/word-images/sync', { method: 'POST' })
+      const res = await fetch(API_BASE + '/api/admin/word-images/sync', { method: 'POST' })
       if (res.status === 401) { logout(); return }
       if (res.ok) {
         const status = await res.json()
@@ -181,7 +181,7 @@ function WordConfig() {
   const handleSyncMissing = async () => {
     setSyncing(true)
     try {
-      const res = await fetch(BASE + '/api/admin/word-images/sync-missing', { method: 'POST' })
+      const res = await fetch(API_BASE + '/api/admin/word-images/sync-missing', { method: 'POST' })
       if (res.status === 401) { logout(); return }
       if (res.ok) {
         const status = await res.json()
@@ -203,7 +203,7 @@ function WordConfig() {
     setSelectingWord(word)
     setCandidatesLoading(true)
     try {
-      const res = await fetch(BASE + `/api/admin/word-images/candidates/${encodeURIComponent(word)}?page=${pageNum}&perPage=15`)
+      const res = await fetch(API_BASE + `/api/admin/word-images/candidates/${encodeURIComponent(word)}?page=${pageNum}&perPage=15`)
       if (res.status === 401) { logout(); return }
       if (res.ok) {
         const data = await res.json()
@@ -231,7 +231,7 @@ function WordConfig() {
     const photo = candidates.find(c => c.candidateId === selectedPhotoId)
     if (!photo) return
     try {
-      const res = await fetch(BASE + `/api/admin/word-images/confirm/${encodeURIComponent(selectingWord)}`, {
+      const res = await fetch(API_BASE + `/api/admin/word-images/confirm/${encodeURIComponent(selectingWord)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidateId: photo.candidateId }),
@@ -478,7 +478,7 @@ function WordConfig() {
                   <div className="word-config-preview">
                   {w.synced ? (
                     <Image
-                      src={BASE + `/api/images/${encodeURIComponent(w.word)}?t=${refreshKey}`}
+                      src={API_BASE + `/api/images/${encodeURIComponent(w.word)}?t=${refreshKey}`}
                       width={56}
                       height={56}
                       style={{ borderRadius: 8, objectFit: 'cover', border: '1px solid #e8e8e8' }}

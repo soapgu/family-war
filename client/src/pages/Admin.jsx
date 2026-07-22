@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Typography, Button, Tag, Card, Space } from 'antd'
 import { ReloadOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useAuth } from '../components/RequireAuth'
+import { API_BASE } from '../utils/api'
 
 const ROLE_EMOJI = {
   '爸爸': '👨',
@@ -18,8 +19,7 @@ function Admin() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
-      const res = await fetch(BASE + '/api/admin/status')
+      const res = await fetch(API_BASE + '/api/admin/status')
       if (res.status === 401) { logout(); return }
       if (res.ok) {
         setData(await res.json())
@@ -39,8 +39,7 @@ function Admin() {
 
   async function handleLogout() {
     try {
-      const BASE = import.meta.env.DEV ? '' : (import.meta.env.BASE_URL || '')
-      await fetch(BASE + '/api/admin/logout', { method: 'POST' })
+      await fetch(API_BASE + '/api/admin/logout', { method: 'POST' })
     } catch {
       // ignore
     }
