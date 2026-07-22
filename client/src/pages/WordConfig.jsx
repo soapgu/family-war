@@ -551,7 +551,7 @@ function WordConfig() {
                 onClick={() => setSelectedPhotoId(p.candidateId)}
                 style={{
                   cursor: 'pointer',
-                  border: selectedPhotoId === p.id ? '3px solid #1677ff' : '3px solid transparent',
+                  border: selectedPhotoId === p.candidateId ? '3px solid #1677ff' : '3px solid transparent',
                   borderRadius: 6,
                   overflow: 'hidden',
                 }}
