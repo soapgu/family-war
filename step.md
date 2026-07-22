@@ -410,12 +410,12 @@ BaseGameMode
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 5a | 验收前检查：确认预发布进程、健康检查、全量自动化测试、生产构建和工作区状态 | `server/ecosystem.config.js`, `server/__tests__/`, `client/src/__tests__/` | ⬜ |
-| 5b | 认证与会话：未登录拦截、错误/正确密码、Enter 登录、刷新保持、登出、401 后重新登录 | `client/src/components/RequireAuth.jsx`, `server/src/middleware/auth.js`, `server/src/routes/admin.js` | ⬜ |
-| 5c | 管理后台：状态统计、房间卡片、历史对局、手动刷新和 5 秒自动刷新 | `client/src/pages/Admin.jsx` | ⬜ |
-| 5d | 词库管理：路由往返、章节/单词开关、未保存提示、最少一个单词保护、保存与刷新持久化 | `client/src/pages/WordConfig.jsx`, `server/src/data/wordBank.js` | ⬜ |
-| 5e | 图片与语音：同步状态、缺失图片同步、图片预览、候选翻页、取消/确认换图、单词朗读 | `client/src/pages/WordConfig.jsx`, `server/src/unsplashClient.js` | ⬜ |
-| 5f | 1366×768、1440×900、1920×1080 电脑端布局、键盘操作、网络请求与控制台检查，记录并回归缺陷 | `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx` | ⬜ |
+| 5a | 验收前检查：确认预发布进程、健康检查、全量自动化测试、生产构建和工作区状态 | `server/ecosystem.config.js`, `server/__tests__/`, `client/src/__tests__/` | ✅ |
+| 5b | 认证与会话：未登录拦截、错误/正确密码、Enter 登录、刷新保持、登出、401 后重新登录 | `client/src/components/RequireAuth.jsx`, `server/src/middleware/auth.js`, `server/src/routes/admin.js` | ✅ |
+| 5c | 管理后台：状态统计、房间卡片、历史对局、手动刷新和 5 秒自动刷新 | `client/src/pages/Admin.jsx` | ✅ |
+| 5d | 词库管理：路由往返、章节/单词开关、未保存提示、最少一个单词保护、保存与刷新持久化 | `client/src/pages/WordConfig.jsx`, `server/src/data/wordBank.js` | ✅ |
+| 5e | 图片与语音：同步状态、缺失图片同步、图片预览、候选翻页、取消/确认换图、单词朗读 | `client/src/pages/WordConfig.jsx`, `server/src/unsplashClient.js` | ✅ |
+| 5f | 1366×768、1440×900、1920×1080 电脑端布局、键盘操作、网络请求与控制台检查，记录并回归缺陷 | `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx` | ✅ |
 
 **验收条件**
 
