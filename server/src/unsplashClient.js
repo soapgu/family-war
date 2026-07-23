@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
+const logger = require('./logger')
 const config = require('../config')
 const wordBank = require('./data/wordBank')
 const words = wordBank.getAllWords()
@@ -9,10 +10,6 @@ const Unsplash = require('unsplash-js').default
 const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images')
 const CANDIDATE_TTL_MS = 10 * 60 * 1000
 const CANDIDATE_CLEANUP_MS = 5 * 60 * 1000
-
-function ts() {
-  return new Date().toLocaleTimeString('zh-CN', { hour12: false })
-}
 
 class UnsplashClient {
   constructor() {
@@ -152,12 +149,12 @@ class UnsplashClient {
       })
       const data = await result.json()
       if (data.results?.length) {
-        console.log(`[${ts()}] [unsplash] ${word} (查询: "${q}") — 搜到 ${data.results.length} 张`)
+        logger.info(`[unsplash] ${word} (查询: "${q}") — 搜到 ${data.results.length} 张`)
         return { results: data.results, total: data.total }
       }
-      console.log(`[${ts()}] [unsplash] ${word} (查询: "${q}") — 0 结果，继续下一个查询`)
+      logger.info(`[unsplash] ${word} (查询: "${q}") — 0 结果，继续下一个查询`)
     }
-    console.log(`[${ts()}] [unsplash] ${word} — 所有查询均无结果`)
+    logger.warn(`[unsplash] ${word} — 所有查询均无结果`)
     return { results: [], total: 0 }
   }
 
@@ -165,7 +162,7 @@ class UnsplashClient {
     const { results: photos } = await this._searchPhotos(word, config.unsplashPerPage)
     if (!photos.length) return ''
     const idx = Math.floor(Math.random() * photos.length)
-    console.log(`[${ts()}] [unsplash] ${word} — 随机选第 ${idx + 1}/${photos.length} 张`)
+    logger.info(`[unsplash] ${word} — 随机选第 ${idx + 1}/${photos.length} 张`)
     return photos[idx].urls.small || ''
   }
 

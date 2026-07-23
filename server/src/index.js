@@ -5,6 +5,7 @@ const { Server } = require('socket.io')
 const http = require('http')
 const path = require('path')
 const fs = require('fs')
+const logger = require('./logger')
 const registerHandlers = require('./socket/handler')
 const registerAdminRoutes = require('./routes/admin')
 const {
@@ -67,5 +68,5 @@ router.get('/api/images/:name', (ctx) => {
 const PORT = process.env.PORT || 4000
 server.listen(PORT, () => {
   startCleanup()
-  console.log(`Server running on http://localhost:${PORT}`)
+  logger.info(`Server running on http://localhost:${PORT}`)
 })

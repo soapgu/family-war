@@ -5,10 +5,7 @@ const wordBank = require('../data/wordBank')
 const config = require('../../config')
 const jwt = require('jsonwebtoken')
 const { getJwtSecret } = require('../middleware/auth')
-
-function ts() {
-  return new Date().toLocaleTimeString('zh-CN', { hour12: false })
-}
+const logger = require('../logger')
 
 /**
  * 管理接口路由
@@ -20,7 +17,7 @@ function registerAdminRoutes(router) {
     const { adminPassword } = config.auth
 
     if (adminPassword && password !== adminPassword) {
-      console.log(`[${ts()}] [auth] login FAIL — wrong password`)
+      logger.warn('[auth] login FAIL — wrong password')
       ctx.status = 401
       ctx.body = { error: '密码错误' }
       return
@@ -33,7 +30,7 @@ function registerAdminRoutes(router) {
       maxAge: 86400000,
       path: '/',
     })
-    console.log(`[${ts()}] [auth] login OK — token issued (adminPassword=${adminPassword ? 'set' : 'empty'})`)
+    logger.info(`[auth] login OK — token issued (adminPassword=${adminPassword ? 'set' : 'empty'})`)
     ctx.body = { success: true }
   })
 
@@ -45,7 +42,7 @@ function registerAdminRoutes(router) {
       maxAge: -1,
       path: '/',
     })
-    console.log(`[${ts()}] [auth] logout — cookie ${hadCookie ? 'cleared' : 'already empty'}, set-cookie: admin_token=; path=/; expires=Thu, 01 Jan 1970`)
+    logger.info(`[auth] logout — cookie ${hadCookie ? 'cleared' : 'already empty'}, set-cookie: admin_token=; path=/; expires=Thu, 01 Jan 1970`)
     ctx.body = { success: true }
   })
 
@@ -164,10 +161,10 @@ function registerAdminRoutes(router) {
       return
     }
 
-    console.log(`[${ts()}] [replace] ${word} — 开始换图`)
+    logger.info(`[replace] ${word} — 开始换图`)
     try {
       await unsplashClient.syncWord(word)
-      console.log(`[${ts()}] [replace] ${word} — 完成`)
+      logger.info(`[replace] ${word} — 完成`)
       ctx.body = { word, imageUrl: unsplashClient.getImageUrl(word) || null }
     } catch (e) {
       ctx.status = 500
@@ -203,30 +200,30 @@ function registerAdminRoutes(router) {
   router.post('/api/admin/word-images/confirm/:word', async (ctx) => {
     const { word } = ctx.params
     const { candidateId } = ctx.request.body || {}
-    console.log(`[${ts()}] [confirm] ${word} — 请求, candidateId=${candidateId ? candidateId.slice(0, 8) + '...' : '无'}`)
+    logger.info(`[confirm] ${word} — 请求, candidateId=${candidateId ? candidateId.slice(0, 8) + '...' : '无'}`)
     if (!candidateId) {
       ctx.status = 400
       ctx.body = { error: '缺少 candidateId' }
-      console.log(`[${ts()}] [confirm] ${word} — 缺少 candidateId`)
+      logger.warn(`[confirm] ${word} — 缺少 candidateId`)
       return
     }
     if (!wordBank.getAllWords().includes(word)) {
       ctx.status = 400
       ctx.body = { error: `"${word}" 不在词库中` }
-      console.log(`[${ts()}] [confirm] ${word} — 不在词库中`)
+      logger.warn(`[confirm] ${word} — 不在词库中`)
       return
     }
     if (!/^[\w\s-]+$/.test(word)) {
       ctx.status = 400
       ctx.body = { error: '无效的单词' }
-      console.log(`[${ts()}] [confirm] ${word} — 无效格式`)
+      logger.warn(`[confirm] ${word} — 无效格式`)
       return
     }
     const imageUrl = unsplashClient.consumeCandidate(word, candidateId)
     if (!imageUrl) {
       ctx.status = 400
       ctx.body = { error: '无效或已过期的 candidateId' }
-      console.log(`[${ts()}] [confirm] ${word} — 无效或已过期的 candidateId, 缓存已清除, 当前无此候选`)
+      logger.warn(`[confirm] ${word} — 无效或已过期的 candidateId, 缓存已清除, 当前无此候选`)
       return
     }
     try {
@@ -234,15 +231,15 @@ function registerAdminRoutes(router) {
       if (!saved) {
         ctx.status = 500
         ctx.body = { error: '图片下载失败' }
-        console.log(`[${ts()}] [confirm] ${word} — 图片下载失败, URL=${imageUrl}`)
+        logger.warn(`[confirm] ${word} — 图片下载失败, URL=${imageUrl}`)
         return
       }
       ctx.body = { word, imageUrl: unsplashClient.getImageUrl(word) }
-      console.log(`[${ts()}] [confirm] ${word} — 换图成功, imageUrl=${imageUrl}`)
+      logger.info(`[confirm] ${word} — 换图成功, imageUrl=${imageUrl}`)
     } catch (e) {
       ctx.status = 500
       ctx.body = { error: e.message }
-      console.log(`[${ts()}] [confirm] ${word} — 异常: ${e.message}`)
+      logger.error(`[confirm] ${word} — 异常: ${e.message}`)
     }
   })
 }
