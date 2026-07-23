@@ -206,4 +206,26 @@ describe('WordConfig', () => {
     expect(screen.getAllByRole('switch')[1]).not.toBeChecked()
     expect(screen.getByRole('button', { name: '保存配置' })).toBeEnabled()
   })
+
+  it('候选图片卡片顶部对齐，不随弹窗内容区拉伸', async () => {
+    renderWordConfig()
+    await screen.findByText('第一章')
+    fetch.mockResolvedValueOnce(response({
+      candidates: [{
+        id: 'photo-1',
+        candidateId: 'candidate-uuid-1',
+        thumb: 'https://example.com/thumb.jpg',
+        alt: '候选教室图片',
+        author: 'Tester',
+      }],
+      total: 1,
+      page: 1,
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '更换 classroom 图片' }))
+
+    const candidate = (await screen.findByAltText('候选教室图片')).closest('.word-config-candidate')
+    expect(candidate).toBeInTheDocument()
+    expect(candidate.parentElement).toHaveClass('word-config-candidate-grid')
+  })
 })

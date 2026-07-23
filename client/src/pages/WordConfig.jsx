@@ -545,10 +545,11 @@ function WordConfig() {
         }
       >
         <Spin spinning={candidatesLoading}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, minHeight: 330 }}>
+          <div className="word-config-candidate-grid">
             {candidates.map(p => (
               <div
                 key={p.id}
+                className="word-config-candidate"
                 onClick={() => setSelectedPhotoId(p.candidateId)}
                 style={{
                   cursor: 'pointer',

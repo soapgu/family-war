@@ -88,6 +88,18 @@ body {
   font-size: 12px;
 }
 
+.word-config-candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-height: 330px;
+}
+
+.word-config-candidate {
+  align-self: start;
+}
+
 .word-config-save-bar {
   position: fixed;
   left: 50%;
