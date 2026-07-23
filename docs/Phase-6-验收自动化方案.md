@@ -151,6 +151,8 @@ module.exports = {
 - 访问 `/api/admin/status` 检查当前 Cookie 是否有效
 - 若有效，直接返回
 - 若失效或不存在，自动执行登录流程
+- 登录时监听 `POST /api/admin/login` 响应；非 2xx 时立即报告 HTTP 状态和服务端错误，不以弹窗等待超时代替接口错误
+- 登录成功后等待登录弹窗在 10 秒内关闭；`waitForFunction` 的参数与超时选项必须分开传递
 
 每个步骤的认证策略：
 
@@ -523,5 +525,6 @@ await expect(page.getByRole('button', { name: '返回管理' })).toBeEnabled()
 - `.gitignore` 添加 `server/tests/acceptance/output/` 和 `server/tests/acceptance/recovery/backups/`
 - `recovery/recovery.json` 不被 `.gitignore` 排除（应提交空文件），但 `backups/` 目录必须排除
 - runner 中 `headless: true` 无头运行，失败时通过 `reporter.onStepFail` 截取现场图
+- 管理员登录限流只累计密码错误导致的 401；成功登录立即清空该 IP 的失败计数，避免独立 BrowserContext 的正常验收登录互相累积
 - 不设 `playwright.config.js`，所有配置由 `test-config.js` 显式管理，避免误以为自动生效
 - `--reset` 不能绕过恢复；先 `--restore-only`，再 `--reset`

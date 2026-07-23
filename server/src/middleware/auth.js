@@ -9,7 +9,7 @@ function getJwtSecret() {
   return jwtSecret
 }
 
-function loginRateLimitMiddleware(ctx, next) {
+async function loginRateLimitMiddleware(ctx, next) {
   if (ctx.path !== '/api/admin/login' || ctx.method !== 'POST') return next()
 
   const ip = ctx.ip
@@ -21,15 +21,19 @@ function loginRateLimitMiddleware(ctx, next) {
     loginAttempts.set(ip, record)
   }
 
-  record.count++
-
-  if (record.count > 5) {
+  if (record.count >= 5) {
     ctx.status = 429
     ctx.body = { error: '登录尝试过于频繁，请稍后再试' }
     return
   }
 
-  return next()
+  await next()
+
+  if (ctx.status === 401) {
+    record.count++
+  } else if (ctx.status >= 200 && ctx.status < 300) {
+    loginAttempts.delete(ip)
+  }
 }
 
 function originCheckMiddleware(ctx, next) {

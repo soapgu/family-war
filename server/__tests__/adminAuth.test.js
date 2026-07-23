@@ -196,6 +196,35 @@ describe('loginRateLimitMiddleware', () => {
     expect(res.status).toBe(429)
     expect(res.body).toEqual({ error: '登录尝试过于频繁，请稍后再试' })
   })
+
+  it('成功登录不累计限流次数', async () => {
+    const app = createApp()
+
+    for (let i = 0; i < 8; i++) {
+      const res = await request(app.callback()).post('/api/admin/login').send({ password: 'test123' })
+      expect(res.status).toBe(200)
+    }
+  })
+
+  it('成功登录后清空此前的失败次数', async () => {
+    const app = createApp()
+
+    for (let i = 0; i < 4; i++) {
+      const res = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+      expect(res.status).toBe(401)
+    }
+
+    const success = await request(app.callback()).post('/api/admin/login').send({ password: 'test123' })
+    expect(success.status).toBe(200)
+
+    for (let i = 0; i < 5; i++) {
+      const res = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+      expect(res.status).toBe(401)
+    }
+
+    const limited = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+    expect(limited.status).toBe(429)
+  })
 })
 
 describe('originCheckMiddleware', () => {

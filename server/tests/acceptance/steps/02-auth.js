@@ -13,7 +13,7 @@ module.exports = {
     await page.waitForSelector('.ant-modal', { timeout: 10000 })
     await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
     await page.click('button:has-text("登录")')
-    await page.waitForFunction(() => !document.querySelector('.ant-modal'), { timeout: 10000 })
+    await page.waitForFunction(() => !document.querySelector('.ant-modal'), null, { timeout: 10000 })
     details.push('首次登录成功')
 
     // 点击"登出"按钮
@@ -56,7 +56,7 @@ module.exports = {
     // 重新登录
     await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
     await page.click('button:has-text("登录")')
-    await page.waitForFunction(() => !document.querySelector('.ant-modal'), { timeout: 10000 })
+    await page.waitForFunction(() => !document.querySelector('.ant-modal'), null, { timeout: 10000 })
     details.push('重新登录成功')
 
     const finalCookie = (await page.context().cookies()).find(c => c.name === 'admin_token')
