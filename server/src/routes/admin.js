@@ -203,25 +203,30 @@ function registerAdminRoutes(router) {
   router.post('/api/admin/word-images/confirm/:word', async (ctx) => {
     const { word } = ctx.params
     const { candidateId } = ctx.request.body || {}
+    console.log(`[${ts()}] [confirm] ${word} — 请求, candidateId=${candidateId ? candidateId.slice(0, 8) + '...' : '无'}`)
     if (!candidateId) {
       ctx.status = 400
       ctx.body = { error: '缺少 candidateId' }
+      console.log(`[${ts()}] [confirm] ${word} — 缺少 candidateId`)
       return
     }
     if (!wordBank.getAllWords().includes(word)) {
       ctx.status = 400
       ctx.body = { error: `"${word}" 不在词库中` }
+      console.log(`[${ts()}] [confirm] ${word} — 不在词库中`)
       return
     }
     if (!/^[\w\s-]+$/.test(word)) {
       ctx.status = 400
       ctx.body = { error: '无效的单词' }
+      console.log(`[${ts()}] [confirm] ${word} — 无效格式`)
       return
     }
     const imageUrl = unsplashClient.consumeCandidate(word, candidateId)
     if (!imageUrl) {
       ctx.status = 400
       ctx.body = { error: '无效或已过期的 candidateId' }
+      console.log(`[${ts()}] [confirm] ${word} — 无效或已过期的 candidateId, 缓存已清除, 当前无此候选`)
       return
     }
     try {
@@ -229,12 +234,15 @@ function registerAdminRoutes(router) {
       if (!saved) {
         ctx.status = 500
         ctx.body = { error: '图片下载失败' }
+        console.log(`[${ts()}] [confirm] ${word} — 图片下载失败, URL=${imageUrl}`)
         return
       }
       ctx.body = { word, imageUrl: unsplashClient.getImageUrl(word) }
+      console.log(`[${ts()}] [confirm] ${word} — 换图成功, imageUrl=${imageUrl}`)
     } catch (e) {
       ctx.status = 500
       ctx.body = { error: e.message }
+      console.log(`[${ts()}] [confirm] ${word} — 异常: ${e.message}`)
     }
   })
 }
