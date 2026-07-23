@@ -422,6 +422,7 @@ function WordConfig() {
         return (
           <Card
             key={ch.chapter}
+            className="word-config-chapter-card"
             size="small"
             style={{ marginBottom: 12 }}
             title={

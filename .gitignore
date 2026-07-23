@@ -4,3 +4,8 @@ node_modules/
 *.local.js
 server/public/images/
 server/src/data/word-config.json
+
+# Phase 6 acceptance test outputs
+server/tests/acceptance/output/
+server/tests/acceptance/recovery/backups/
+server/tests/acceptance/recovery/recovery.json
