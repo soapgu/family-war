@@ -1,186 +1,252 @@
 # Phase 6：管理员验收测试自动化方案
 
-## 1. 目标
+## 1. 当前目标与范围
 
-将 Phase 5 的人工浏览器验收流程（5a–5f）转化为可编程、可回归、可中断续跑的 Playwright 自动化测试，取代每次发版前的手动操作。
+Phase 6 将 Phase 5 的管理员浏览器验收场景（5a–5f）实现为 Playwright 自动化流程，用于预发布环境的重复验收、失败记录和中断后的数据恢复。
 
-## 2. 目录结构
+当前只验收以下页面：
 
-```
+- 管理员入口：`/family-war/admin`
+- 词库管理：`/family-war/admin/word-config`
+
+5f 只覆盖普通电脑的大分辨率：
+
+- 1366×768
+- 1440×900
+- 1920×1080
+
+不验收手机、平板和窄屏，也不进入房间或游戏页面。5a 当前会访问项目根路径一次，只用于确认生产构建能够渲染并读取版本号，不执行首页业务流程。
+
+本文档描述仓库中现有实现，不包含尚未实现的规划能力。
+
+## 2. 当前目录结构
+
+```text
 server/tests/acceptance/
-├── runner.js                     # 步进执行器：状态管理 + 中断处理 + 报告生成
-├── test-config.js                # URL/密码/截图目录等公共配置
+├── runner.js
+├── test-config.js
 ├── steps/
-│   ├── 01-precheck.js            # 5a: 进程/测试/构建/工作区
-│   ├── 02-auth.js                # 5b: 认证与会话
-│   ├── 03-dashboard.js           # 5c: 管理仪表盘
-│   ├── 04-word-config.js         # 5d: 词库配置
-│   ├── 05-images.js              # 5e: 图片换图
-│   └── 06-responsive.js          # 5f: 响应式布局
+│   ├── 01-precheck.js
+│   ├── 02-auth.js
+│   ├── 03-dashboard.js
+│   ├── 04-word-config.js
+│   ├── 05-images.js
+│   └── 06-responsive.js
 ├── pages/
-│   ├── LoginPage.js              # 登录弹窗 POM
-│   ├── AdminDashboard.js         # 仪表盘 POM
-│   └── WordConfigPage.js         # 词库管理 POM
+│   ├── AdminDashboard.js
+│   ├── LoginPage.js
+│   └── WordConfigPage.js
 ├── lib/
-│   ├── auth.js                   # ensureAuthenticated() + 登录/登出/状态检查
-│   ├── cleanup.js                # 词库配置备份恢复 + 图片恢复 + recovery.json 管理
-│   ├── reporter.js               # 报告写入工具（以 report.json 为事实源）
-│   └── state.js                  # 状态持久化工具（同步原子写入）
-├── recovery/                     # 持久化恢复清单（不会被 --reset 清空）
-│   └── recovery.json
-└── output/                       # 自动生成，.gitignore
-    ├── screenshots/              # 分步截图
-    ├── state.json                # 执行进度（中断恢复用）
-    ├── report.json               # 机器可读结果（事实源）
-    └── report.md                 # 人类可读报告（从 report.json 全量生成）
+│   ├── auth.js
+│   ├── cleanup.js
+│   ├── reporter.js
+│   └── state.js
+├── recovery/
+│   ├── recovery.json             # 有待恢复数据时生成
+│   └── backups/                  # 词库配置和图片备份
+└── output/
+    ├── screenshots/
+    ├── state.json
+    ├── report.json
+    └── report.md
 ```
 
-### 2.1 新增依赖
+以下内容被 `.gitignore` 忽略：
+
+```text
+server/tests/acceptance/output/
+server/tests/acceptance/recovery/backups/
+server/tests/acceptance/recovery/recovery.json
+```
+
+## 3. 环境与配置
+
+### 3.1 依赖
+
+Playwright 安装在 `server` 包：
 
 ```bash
-npm install --save-dev @playwright/test
+npm install --prefix server
+cd server
 npx playwright install chromium
 ```
 
-### 2.2 统一上下文
+### 3.2 必填环境变量
 
-runner 通过全局上下文对象传递所有模块：
+`test-config.js` 读取：
+
+| 环境变量 | 用途 |
+|---|---|
+| `ACCEPTANCE_WEB_URL` | 浏览器访问地址 |
+| `ACCEPTANCE_API_URL` | 健康检查和认证探针地址 |
+| `ACCEPTANCE_SOCKET_URL` | Socket.IO 地址；当前步骤尚未使用 |
+| `ACCEPTANCE_ADMIN_PASSWORD` | 验收期间使用的管理员密码，允许传入空字符串 |
+
+可选环境变量：
+
+| 环境变量 | 默认值 | 用途 |
+|---|---|---|
+| `ACCEPTANCE_SOCKET_PATH` | `/family-war/socket.io` | Socket.IO path；当前步骤尚未使用 |
+| `ACCEPTANCE_STEP_TIMEOUT` | `60000` | 没有专属超时的步骤使用的超时毫秒数 |
+| `ACCEPTANCE_SCREENSHOT_DIR` | `server/tests/acceptance/output/screenshots` | 截图目录 |
+| `HEADED` | 未设置 | 设为 `1` 时显示 Chromium，否则无头运行 |
+
+环境变量只要不是 `undefined` 或 `null` 就通过启动校验，因此 `ACCEPTANCE_ADMIN_PASSWORD=` 是有效配置。
+
+### 3.3 预发布标准运行命令
+
+从 `server` 目录执行：
+
+```bash
+cd /Users/guhui/Githubs/family-war/server
+
+ACCEPTANCE_WEB_URL=http://localhost:8080/family-war \
+ACCEPTANCE_API_URL=http://localhost:8080/family-war \
+ACCEPTANCE_SOCKET_URL=http://localhost:8080/family-war \
+ACCEPTANCE_ADMIN_PASSWORD=123456 \
+node tests/acceptance/runner.js --reset
+```
+
+浏览器和 API 都通过 nginx 的 `/family-war` 路径访问，不使用 Vite 开发地址代替预发布环境。
+
+## 4. runner 当前行为
+
+### 4.1 支持的命令行参数
+
+当前只实现两个参数：
+
+```bash
+# 删除 output/ 并从 5a 重新运行
+node tests/acceptance/runner.js --reset
+
+# 只处理 recovery.json 中登记的数据恢复
+node tests/acceptance/runner.js --restore-only
+```
+
+未实现：
+
+- `--from`
+- `--continue-on-failure`
+- 按步骤名称单独运行
+
+正常运行采用 fail-fast：一个步骤失败后停止执行后续步骤。
+
+### 4.2 执行上下文
+
+每个步骤实际收到：
 
 ```js
 {
-  browser,    // Chromium Browser 实例
-  context,    // BrowserContext（每个步骤独立创建，隔离 Cookie）
-  page,       // 当前页面
-  config,     // test-config.js 导出的配置
-  reporter,   // 报告写入器
-  state,      // 状态管理器
-  auth,       // 认证工具
-  cleanup,    // 数据恢复工具（词库配置 + 图片 + recovery.json）
-  signal,     // AbortSignal（步骤超时时触发取消）
+  state,
+  page,
+  config,
+  reporter,
+  context,
 }
 ```
 
-### 2.3 test-config.js 完整结构
+`cleanup`、页面对象等由步骤自行引入；runner 不传入 `browser`、`auth`、`signal` 或子进程句柄。
 
-全部通过环境变量注入，无硬编码密钥：
+每个步骤创建独立的 `BrowserContext` 和 `Page`，步骤结束后关闭 Context，因此步骤之间不共享 Cookie。
+
+### 4.3 步骤超时
+
+默认超时为 60 秒。当前只有 5e 声明专属超时：
+
+| 步骤 | 当前超时 |
+|---|---:|
+| 5a | 60 秒 |
+| 5b | 60 秒 |
+| 5c | 60 秒 |
+| 5d | 60 秒 |
+| 5e | 120 秒 |
+| 5f | 60 秒 |
+
+当前实现使用：
 
 ```js
-const path = require('path')
-
-module.exports = {
-  webBaseURL: process.env.ACCEPTANCE_WEB_URL,
-  apiBaseURL: process.env.ACCEPTANCE_API_URL,
-  socketURL: process.env.ACCEPTANCE_SOCKET_URL,
-  socketPath: process.env.ACCEPTANCE_SOCKET_PATH || '/family-war/socket.io',
-  adminPassword: process.env.ACCEPTANCE_ADMIN_PASSWORD,
-  headless: process.env.HEADED !== '1',
-  stepTimeoutOverride: process.env.ACCEPTANCE_STEP_TIMEOUT
-    ? parseInt(process.env.ACCEPTANCE_STEP_TIMEOUT, 10)
-    : undefined,
-  screenshotDir:
-    process.env.ACCEPTANCE_SCREENSHOT_DIR ||
-    path.join(__dirname, 'output/screenshots'),
-}
+step.timeoutMs || config.stepTimeoutOverride || 60000
 ```
 
-启动时校验必填环境变量：
+因此步骤专属超时优先于 `ACCEPTANCE_STEP_TIMEOUT`。换言之，环境变量目前不能覆盖 5e 的 120 秒。
 
-```js
-for (const key of ['webBaseURL', 'apiBaseURL', 'socketURL', 'adminPassword']) {
-  if (!config[key]) {
-    throw new Error(`缺少验收配置：${key}`)
-  }
-}
-```
+超时由 `Promise.race` 实现。超时会把步骤标记为失败并进入 runner 的清理流程，但不会通过 `AbortSignal` 主动取消步骤内部尚未结束的异步操作。
 
-## 3. 关键机制
+### 4.4 运行状态与续跑
 
-### 3.1 步进执行器（runner.js）
-
-每个步骤是一个独立模块，导出以下接口：
-
-```js
-module.exports = {
-  id: '5c',
-  name: '管理仪表盘',
-  timeoutMs: 60_000,   // 步骤专属超时（可覆盖全局默认值）
-  async run(ctx) {
-    // ctx: { page, config, reporter, auth, cleanup, signal, ... }
-    await ctx.auth.ensureAuthenticated(ctx.page)
-  }
-}
-```
-
-步骤默认超时：
-
-| 步骤 | timeoutMs |
-|------|-----------|
-| 5a | 5 min |
-| 5b | 60 s |
-| 5c | 60 s |
-| 5d | 60 s |
-| 5e | 2 min |
-| 5f | 60 s |
-
-优先级：`config.stepTimeoutOverride` > `step.timeoutMs` > 上表默认值。
-
-`runner.js` 按顺序加载 `steps/*.js`，状态由 `lib/state.js` 管理：
+`output/state.json` 保存：
 
 ```json
 {
   "schemaVersion": 1,
-  "gitCommit": "d84f08c",
+  "gitCommit": "7b39b0c",
   "webBaseURL": "http://localhost:8080/family-war",
-  "apiBaseURL": "http://localhost:4010",
+  "apiBaseURL": "http://localhost:8080/family-war",
   "planVersion": "Phase 6",
   "completed": ["5a", "5b"],
   "current": null,
   "failed": [],
-  "startedAt": "2026-07-22T15:00:00Z"
+  "startedAt": "2026-07-23T12:00:00.000Z"
 }
 ```
 
-启动时校验 `gitCommit`、`webBaseURL`、`apiBaseURL` 与当前环境一致，否则提示 `--reset`。
+未使用 `--reset` 时，runner 会校验以下运行指纹：
 
-### 3.2 步骤之间的认证独立
+- `schemaVersion`
+- 当前 Git commit
+- `webBaseURL`
+- `apiBaseURL`
 
-**不依赖前序步骤的 Cookie 状态**。每个步骤独立创建 BrowserContext（隔离 Cookie）。
+指纹一致时跳过 `completed` 中的步骤，从上次未完成位置继续；不一致时创建新状态，并提示使用 `--reset`。状态通过临时文件加 `renameSync` 原子写入。
 
-`ensureAuthenticated()` 行为：
+`--reset` 会递归删除整个 `output/`，包括报告、截图和续跑状态。
 
-- 访问 `/api/admin/status` 检查当前 Cookie 是否有效
-- 若有效，直接返回
-- 若失效或不存在，自动执行登录流程
-- 登录时监听 `POST /api/admin/login` 响应；非 2xx 时立即报告 HTTP 状态和服务端错误，不以弹窗等待超时代替接口错误
-- 登录成功后等待登录弹窗在 10 秒内关闭；`waitForFunction` 的参数与超时选项必须分开传递
+## 5. 认证与限流
 
-每个步骤的认证策略：
+### 5.1 临时管理员密码
 
-| 步骤 | 认证策略 |
-|------|---------|
-| 5a | 不使用浏览器，不调用 |
-| 5b | **不调用 `ensureAuthenticated()`**。自行创建 Context → 验证 401 弹窗 → 输入错误密码 → 验证错误提示 (`".ant-typography-danger"`) + 弹窗保持打开 → 清空 → 正确密码登录 → 登出 → 重新登录。    |
-| 5c | 开头调用 `ensureAuthenticated()` |
-| 5d | 开头调用 `ensureAuthenticated()` |
-| 5e | 开头调用 `ensureAuthenticated()` |
-| 5f | 开头调用 `ensureAuthenticated()`，无需认证的页面部分跳过 |
+当 `ACCEPTANCE_ADMIN_PASSWORD` 非空时，runner 会：
 
-当环境变量 `ACCEPTANCE_ADMIN_PASSWORD` 为非空字符串时，runner 自动完成以下生命周期：
+1. 将现有 `server/config.local.js` 内容保存在内存。
+2. 临时写入 `auth.adminPassword`。
+3. 执行 `pm2 restart family-war-server`。
+4. 等待 `/api/health` 正常。
+5. 使用错误密码探针确认密码保护已经生效。
+6. 执行验收。
+7. 在全局 `finally` 中恢复原文件、重启 PM2 并等待健康检查。
 
-1. 写入 `config.local.js`（合并 `auth.adminPassword`）
-2. `pm2 restart` 使新配置生效
-3. 等待健康检查通过后，再用探针请求验证密码保护生效（错误密码返回 `"密码错误"`）
-4. 执行验收步骤
-5. 从内存备份恢复 `config.local.js`（`cleanConfigLocal()` → `restoreConfigLocal()`）
-6. `pm2 restart` 回到无密码状态（`waitForHealth` 跳过密码探针，因为已无密码）
+正常完成或步骤失败都会进入上述 `finally`。SIGINT 首次触发时只尝试恢复 `config.local.js` 后退出；它不会完整执行浏览器关闭、PM2 重启和 recovery 数据恢复。
 
-SIGINT 也执行 `cleanConfigLocal()` 恢复逻辑，确保异常退出后密码配置被清理。
+执行 `--restore-only` 时建议使用空密码变量，避免触发临时密码生命周期：
 
-### 3.3 数据恢复
+```bash
+ACCEPTANCE_WEB_URL=http://localhost:8080/family-war \
+ACCEPTANCE_API_URL=http://localhost:8080/family-war \
+ACCEPTANCE_SOCKET_URL=http://localhost:8080/family-war \
+ACCEPTANCE_ADMIN_PASSWORD= \
+node tests/acceptance/runner.js --restore-only
+```
 
-#### 恢复清单（recovery.json）
+### 5.2 步骤认证
 
-持久化文件，独立于 `output/` 目录，不会被 `--reset` 清空。
+5a 和 5b 自己完成登录流程。5c–5f 标记 `requiresAuth: true`，runner 会在运行步骤前调用 `ensureAuthenticated()`。
+
+`ensureAuthenticated()`：
+
+1. 打开 `/admin`。
+2. 请求 `/family-war/api/admin/status` 检查当前 Context 是否已认证。
+3. 未认证时等待登录弹窗，填写密码。
+4. 监听 `POST /api/admin/login`。
+5. 非 2xx 时立即报告 HTTP 状态和服务端错误。
+6. 成功后等待弹窗在 10 秒内关闭。
+
+服务端登录限流只累计密码错误产生的 401；成功登录会清空当前 IP 的失败计数。连续 5 次密码错误后，下一次登录请求返回 429。
+
+## 6. 数据恢复
+
+### 6.1 恢复清单
+
+5d 和 5e 在修改文件前写入 `recovery/recovery.json`：
 
 ```json
 {
@@ -188,343 +254,112 @@ SIGINT 也执行 `cleanConfigLocal()` 恢复逻辑，确保异常退出后密码
   "pending": [
     {
       "type": "wordConfig",
-      "snapshot": {
-        "enabledChapters": ["1 Be good at school"],
-        "disabledWords": []
-      }
+      "backupPath": "/absolute/path/to/word-config-backup.json"
     },
     {
       "type": "image",
-      "word": "hot dog",
-      "originalPath": "/path/to/server/src/data/images/hot-dog.jpg",
-      "backupPath": "/path/to/server/tests/acceptance/recovery/backups/hot-dog.jpg",
-      "originalHash": "sha256:abc123..."
+      "word": "classroom",
+      "originalPath": "/absolute/path/to/server/public/images/classroom.jpg",
+      "backupPath": "/absolute/path/to/recovery/backups/classroom.jpg",
+      "originalHash": "af71b143ee72..."
     }
   ]
 }
 ```
 
-规则：
+恢复规则：
 
-1. **先生成备份，再写入 `recovery.json`，最后才执行有副作用的测试**
-2. 成功执行的恢复项从 `pending` 中移除
-3. 失败的恢复项保留在 `pending` 中供再次执行
-4. `pending` 为空时删除 `recovery.json`
-5. 恢复使用 `Promise.allSettled()` 逐项 try/catch，单个失败不影响其他
+1. 先创建备份，再登记恢复项，之后才修改数据。
+2. 5d 成功时通过界面恢复原开关，再用文件备份覆盖一次原配置。
+3. 5e 在 `finally` 中恢复原图并校验 SHA-256。
+4. 恢复成功后移除对应恢复项。
+5. runner 结束时再次调用 `restoreRegistered()` 处理遗留项。
+6. 多项恢复使用 `Promise.allSettled()`；失败项继续保留在 `recovery.json`。
+7. 全部恢复成功后删除 `recovery.json`，备份文件仍保留在被忽略的 `backups/` 中。
 
-#### 生产者消费者模式
+启动普通验收时，如果检测到待恢复项，runner 会先自动调用 `restoreRegistered()`，而不是拒绝运行。`--reset` 只删除 `output/`，不会删除 `recovery/`。
 
-谁产生副作用谁登记恢复信息，runner 不负责备份：
+## 7. 报告与截图
 
-| 步骤 | 登记 |
-|------|------|
-| 5d | 进入步骤时保存原始 word-config → 调用 `cleanup.registerRecovery({ type: 'wordConfig', snapshot })` |
-| 5e | 进入步骤时备份图片文件 → 调用 `cleanup.registerRecovery({ type: 'image', word, originalPath, backupPath, originalHash })` |
+### 7.1 报告
 
-runner 全局 finally 只调用 `cleanup.restoreRegistered()`，不亲自执行备份逻辑。
+`lib/reporter.js` 维护：
 
-```js
-try {
-  await runSelectedSteps()
-} finally {
-  await cleanup.restoreRegistered()
-  await browser.close()
-}
+- `output/report.json`：结构化报告
+- `output/report.md`：由内存中的报告对象重新完整生成
+
+报告记录每个步骤的状态、明细和错误，结束时写入汇总和总耗时。错误文本最多保留 500 个字符。
+
+报告文件使用普通 `writeFileSync` 全量写入，不使用临时文件原子替换。
+
+### 7.2 截图
+
+当前自动截图范围：
+
+- 5e 失败时：`5e-failure.png`
+- 5f 每种分辨率：
+  - `5f-responsive-1366x768.png`
+  - `5f-responsive-1440x900.png`
+  - `5f-responsive-1920x1080.png`
+
+其他步骤当前不会自动截图，也没有 runner 级通用失败截图。
+
+## 8. 当前 5a–5f 验证内容
+
+| 步骤 | 当前实际验证 |
+|---|---|
+| 5a | PM2 进程在线、健康接口、根页面 `#root` 渲染、页面显示 `v3.x`、管理员登录弹窗与正确密码登录 |
+| 5b | 首次登录、登出、Cookie 清除、刷新后重新出现弹窗、错误密码提示、正确密码重新登录、Cookie 重新设置 |
+| 5c | 管理页标题可见；浏览器内请求 `/api/admin/status` 成功并返回状态字段 |
+| 5d | 词库页面加载、章节/单词数量、选择首个可操作单词、切换并保存、刷新验证持久化、恢复原状态、文件级兜底恢复 |
+| 5e | 打开首个单词的候选弹窗、记录候选接口状态、要求至少 2 张候选、选择最后一张、确认接口状态、图片文件哈希变化、原图恢复及哈希复核 |
+| 5f | 1366×768、1440×900、1920×1080 下截图；检测可见元素造成的水平溢出；检查后台标题、词库管理按钮、刷新按钮和至少一张统计卡片 |
+
+### 8.1 5e 的外部依赖和失败诊断
+
+5e 会访问真实 Unsplash：
+
+- 候选接口或确认接口非 2xx 时，报告记录 HTTP 状态和响应正文。
+- 下载接口最多重试 3 次，因此 5e 专属超时为 120 秒。
+- 失败时保留已完成明细并保存全页截图。
+- 无候选、候选不足 2 张、下载失败或新旧哈希相同都会使步骤失败。
+
+### 8.2 5f 的适配标准
+
+5f 面向普通电脑，不追求复杂响应式适配。每个尺寸检查：
+
+- 页面不存在超出视口右边界的水平溢出元素。
+- “后台管理”标题可见。
+- “词库管理”按钮可见。
+- “刷新”按钮可见。
+- 至少渲染一张 Ant Design Card。
+
+当前不检查按钮是否 enabled、弹窗边界、词库管理页面布局、键盘导航或浏览器控制台。
+
+## 9. 已知限制
+
+- 5a 名称仍包含“预检查”，但当前不会运行 Jest、Vitest、生产构建或 Git 工作区检查；这些需要在验收前单独执行。
+- `ACCEPTANCE_SOCKET_URL` 和 `ACCEPTANCE_SOCKET_PATH` 是必填/可配字段，但当前 5a–5f 没有 Socket.IO 验收步骤。
+- `AdminDashboard.js` 和 `LoginPage.js` 已存在，但当前步骤主要直接使用 Playwright locator；`WordConfigPage.js` 被 5d 使用。
+- 5a 的 `waitForFunction` 仍采用第二参数传超时对象，Playwright 会把它视为页面函数参数，实际使用默认超时；其他已修复的位置按 10 秒超时。
+- 5a、5b 的登录没有像 `ensureAuthenticated()` 一样监听登录接口响应；失败时可能表现为弹窗等待超时。
+- 步骤超时不会取消底层异步任务。
+- SIGINT 不执行完整的全局清理流程。
+- `--restore-only` 在进程早退前不进入普通验收的全局 `finally`。
+- 没有 `--from`、`--continue-on-failure` 或单步骤执行参数。
+
+## 10. 验收通过标准
+
+一次完整验收通过应满足：
+
+```text
+通过: 6 | 失败: 0 | 跳过: 0 | 总计: 6
 ```
 
-#### `--restore-only`
-
-启动时如发现 `recovery.json` 存在且有未完成项：
-
-1. 打印警告并阻止新测试
-2. 提示执行 `--restore-only`
-3. `--reset` 必须先成功恢复才能清空
-
-```bash
-node server/tests/acceptance/runner.js --restore-only
-```
-
-恢复逻辑：
-
-```js
-// 读取 recovery.json
-// 逐项尝试恢复（Promise.allSettled）
-// 成功项从 pending 移除
-// 失败项保留在 pending
-// 全部完成后写入最终状态
-```
-
-#### 启动安全
-
-runner 启动时检测 `recovery.json` 存在且有 `pending` 项 → 拒绝执行新测试 → 打印提示：
-
-```
-发现未完成的恢复项，请先执行：
-  node server/tests/acceptance/runner.js --restore-only
-```
-
-### 3.4 中断与超时
-
-#### SIGINT
-
-- 第一次 Ctrl+C：执行 `cleanConfigLocal()`（清理密码配置）→ `process.exit(130)`
-- 第二次 Ctrl+C：强制退出 `process.exit(137)`
-
-#### 步骤超时
-
-通过 `Promise.race` + `setTimeout` 实现超时：
-
-```js
-function runStepWithTimeout(id, promise, ms) {
-  let timer
-  const timeoutPromise = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new StepTimeoutError(id, ms)), ms)
-  })
-  return Promise.race([promise.finally(() => clearTimeout(timer)), timeoutPromise])
-}
-```
-
-处理规则：
-
-- 超时 → 标记 `failed` → 不加入 `completed`
-- 截取失败现场截图
-- 关闭当前 Context、Socket、子进程
-- 执行已登记的恢复
-- 默认 fail-fast，停止后续步骤
-- 续跑时失败步骤重新执行
-
-如需继续后续步骤：`--continue-on-failure`
-
-#### 状态原子写入
-
-已完成步骤的标记写入采用 **同步原子写**：先写临时文件，再 `rename` 为 `state.json`。
-
-```
-state.saveSync(data)  // writeFileSync + rename
-```
-
-### 3.5 报告（lib/reporter.js）
-
-**以 `report.json` 为唯一事实源**。每次状态变更后：
-
-1. 更新 `report.json`（JSON.stringify 全量写入）
-2. 根据 `report.json` 全量重新生成 `report.md`
-
-不采用追加写入，避免续跑后重复内容。
-
-报告头部包含总耗时，由 `reporter.finish(new Date())` 在全部步骤完成后写入。
-
-`report.md` 示例：
-
-```markdown
-# Phase 6 验收报告
-
-- **总耗时**: 35s
-
-### 5a ✅ 预检查：环境健康、API、构造版本号、登录
-- PM2 family-war-server 状态: online
-- GET /api/health → {"status":"ok"}
-- 版本号页内可见: v3.0.0
-
-### 5b ✅ 登录认证：登出 → 重定向 → 重新登录
-- 首次登录成功
-- admin_token Cookie 已清除
-- 错误密码弹窗保持打开
-- 错误提示: "密码错误"
-- 重新登录成功
-```
-
-### 3.6 截图
-
-每个步骤在关键断言点自动截图，命名格式 `{stepId}-{序号}-{描述}.png`：
-
-```
-output/screenshots/
-├── 5b-01-login-dialog.png
-├── 5b-02-error-password.png
-├── 5b-03-logged-in.png
-├── 5c-01-dashboard.png
-├── 5e-01-candidates-dialog.png
-├── 5e-02-selected-candidate.png
-├── 5f-01-1366x768.png
-├── 5f-02-1440x900.png
-└── 5f-03-1920x1080.png
-```
-
-`screenshotDir` 使用绝对路径（`test-config.js` 中已通过 `path.join(__dirname, ...)` 转换）。
-
-## 4. 运行方式
-
-```bash
-# 全量运行
-node server/tests/acceptance/runner.js
-
-# 重置状态从头跑（必须先完成恢复）
-node server/tests/acceptance/runner.js --reset
-
-# 从指定步骤开始
-node server/tests/acceptance/runner.js --from 5c
-
-# 仅执行数据恢复
-node server/tests/acceptance/runner.js --restore-only
-
-# 超时/失败后继续后续步骤
-node server/tests/acceptance/runner.js --continue-on-failure
-```
-
-runner 显式读取 `test-config.js` 中的 Playwright 配置（headless、截图路径等），不存在隐式生效的配置文件。
-
-## 5. 验收场景对应
-
-| 文件 | 对应步骤 | 核心验证点 |
-|------|----------|-----------|
-| `01-precheck.js` | 5a | PM2 进程 up / 健康检查 200 / npm test exit code 0 / 构建通过 / 工作区干净 |
-| `02-auth.js` | 5b | 401 弹登录 / 错误密码提示 / 正确密码登录 / cookie 持久化 / 登出 |
-| `03-dashboard.js` | 5c | 状态卡片渲染 / 创建 Socket.IO 客户端加入房间验证自动刷新 0→1→2 / finally 关闭 socket |
-| `04-word-config.js` | 5d | 登记恢复清单 / 章节开关 / 未保存提示 / 最少启用保护 / 保存后刷新验证 |
-| `05-images.js` | 5e | 登记恢复清单 / 候选弹窗 / 选中 / 确认换图 / 预览 / 文件系统备份 + SHA-256 校验 |
-| `06-responsive.js` | 5f | 1366×768 / 1440×900 / 1920×1080 三组截图 + scrollWidth<=innerWidth + 按钮可见可点击 + 弹窗不超出视口 |
-
-### 5a 验收前检查细则
-
-以命令退出码为准，测试数量只用于报告：
-
-```js
-const { stdout, exitCode } = await exec('npm test')
-const passedMatch = stdout.match(/(\d+)\s+passed/)
-const passed = passedMatch ? Number(passedMatch[1]) : null
-
-assert.equal(exitCode, 0)
-
-reporter.record(
-  passed === null
-    ? 'npm test: exit code 0'
-    : `npm test: ${passed} passed`
-)
-```
-
-PM2 验证：
-
-```js
-// pm2 jlist 解析 JSON
-const { pm2_env } = proc.find(p => p.name === 'family-war-server')
-assert.ok(pm2_env.status === 'online')
-// 健康检查
-await fetch(`${config.apiBaseURL}/api/health`).then(r => assert.ok(r.ok))
-```
-
-### 5b 认证与会话细则
-
-**不调用 `ensureAuthenticated()`**，自行完成完整认证生命周期：
-
-```js
-// 首次登录（config.adminPassword）
-await page.waitForSelector('.ant-modal', { timeout: 10000 })
-await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
-await page.click('button:has-text("登录")')
-await page.waitForFunction(() => !document.querySelector('.ant-modal'), { timeout: 10000 })
-
-// 登出
-await page.locator('button:has-text("登出")').click()
-
-// Cookie 清除验证
-const cookies = await page.context().cookies()
-assert(!cookies.find(c => c.name === 'admin_token'))
-
-// 重新加载 → Modal 重新弹出
-await page.reload({ waitUntil: 'networkidle' })
-await page.waitForSelector('.ant-modal', { timeout: 10000 })
-
-// 错误密码测试
-await page.fill('input[placeholder="请输入管理密码"]', 'wrong-password')
-await page.click('button:has-text("登录")')
-await page.waitForSelector('.ant-typography-danger', { timeout: 10000 })  // 等待 "密码错误" 文字
-assert(await page.locator('.ant-modal').count() > 0)                      // 弹窗保持打开
-
-// 清空输入 → 正确密码登录
-await page.fill('input[placeholder="请输入管理密码"]', '')
-await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
-await page.click('button:has-text("登录")')
-await page.waitForFunction(() => !document.querySelector('.ant-modal'), { timeout: 10000 })
-
-// Cookie 验证
-const finalCookie = (await page.context().cookies()).find(c => c.name === 'admin_token')
-assert(finalCookie)
-```
-
-### 5c 仪表盘功能验证细则
-
-```js
-await ctx.auth.ensureAuthenticated(page)
-
-await page.goto(config.webBaseURL + '/admin', { waitUntil: 'networkidle', timeout: 20000 })
-await page.locator('text=后台管理').waitFor({ state: 'visible', timeout: 15000 })
-
-const statusApi = await page.evaluate(async () => {
-  const res = await fetch('/family-war/api/admin/status')
-  return res.ok ? (await res.json()) : null
-})
-assert(statusApi, 'GET /api/admin/status 响应异常')
-```
-
-### 5d 词库配置细则
-
-```js
-await ctx.auth.ensureAuthenticated(page)
-
-// 保存原始配置 → 登记恢复
-const originalConfig = await cleanup.saveOriginalWordConfig()
-await cleanup.registerRecovery({ type: 'wordConfig', snapshot: originalConfig })
-
-// 执行配置修改测试
-// ...
-```
-
-### 5e 图片换图与恢复细则
-
-5e 仅在 runner 与预发布服务同机运行时执行。图片通过文件系统备份恢复：
-
-```js
-await ctx.auth.ensureAuthenticated(page)
-
-const testWord = 'classroom'
-
-// 备份原始图片 → 登记恢复
-const backup = await cleanup.backupImage(testWord)
-await cleanup.registerRecovery({ type: 'image', word: testWord, ...backup })
-
-// 执行换图测试
-// 打开候选弹窗 → 等待 spin 消失 → 选最后一张候选（避当前图片）→ 确认换图 → 等待 Modal 关闭（最长 60s）
-//   → 校验 SHA-256 已变更 → 恢复图片 → 校验恢复后 SHA-256 一致
-```
-
-### 5f 响应式布局断言细则
-
-每个尺寸至少验证：
-
-```js
-await page.setViewportSize({ width: 1366, height: 768 })
-
-// 无水平溢出
-const noOverflow = await page.evaluate(() =>
-  document.documentElement.scrollWidth <= window.innerWidth)
-expect(noOverflow).toBe(true)
-
-// 关键控件可见可点击
-await expect(page.getByRole('button', { name: '返回管理' })).toBeVisible()
-await expect(page.getByRole('button', { name: '返回管理' })).toBeEnabled()
-
-// 弹窗不超出视口（在对应步骤验证）
-```
-
-## 6. 注意事项
-
-- 验收测试依赖 PM2 预发布服务（`:4010`），不能与常规 Jest/Vitest 单元测试混跑
-- 5d 词库配置和 5e 换图有副作用，通过 `recovery.json` 持久化恢复清单管理，`--restore-only` 专门处理
-- 5e 图片换图通过文件系统备份 + SHA-256 校验恢复；runner 必须与预发布服务同机运行
-- `.gitignore` 添加 `server/tests/acceptance/output/` 和 `server/tests/acceptance/recovery/backups/`
-- `recovery/recovery.json` 不被 `.gitignore` 排除（应提交空文件），但 `backups/` 目录必须排除
-- runner 中 `headless: true` 无头运行，失败时通过 `reporter.onStepFail` 截取现场图
-- 管理员登录限流只累计密码错误导致的 401；成功登录立即清空该 IP 的失败计数，避免独立 BrowserContext 的正常验收登录互相累积
-- 不设 `playwright.config.js`，所有配置由 `test-config.js` 显式管理，避免误以为自动生效
-- `--reset` 不能绕过恢复；先 `--restore-only`，再 `--reset`
+同时确认：
+
+- `report.md` 中 5a–5f 均为 ✅。
+- 5e 报告包含候选接口和确认接口 HTTP 200、图片哈希变化以及恢复哈希校验。
+- 5f 报告包含三组电脑分辨率均无溢出且关键元素可见。
+- `recovery.json` 不存在或其中 `pending` 为空。
+- `config.local.js` 已恢复，PM2 服务已回到验收前配置。
