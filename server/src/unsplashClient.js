@@ -10,6 +10,22 @@ const Unsplash = require('unsplash-js').default
 const IMAGES_DIR = path.join(__dirname, '..', 'public', 'images')
 const CANDIDATE_TTL_MS = 10 * 60 * 1000
 const CANDIDATE_CLEANUP_MS = 5 * 60 * 1000
+const DOWNLOAD_TIMEOUT_MS = 15 * 1000
+const DOWNLOAD_MAX_ATTEMPTS = 3
+const DOWNLOAD_RETRY_DELAYS_MS = [500, 1500]
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function errorDetails(error) {
+  const cause = error?.cause
+  return [
+    error?.message,
+    cause?.code && `code=${cause.code}`,
+    cause?.message && `cause=${cause.message}`,
+  ].filter(Boolean).join(', ')
+}
 
 class UnsplashClient {
   constructor() {
@@ -17,6 +33,7 @@ class UnsplashClient {
     this._syncing = false
     this._candidateCache = new Map()
     this._cleanupTimer = setInterval(() => this._cleanupCandidates(), CANDIDATE_CLEANUP_MS)
+    this._cleanupTimer.unref?.()
     this._init()
   }
 
@@ -50,6 +67,11 @@ class UnsplashClient {
     wordCache.delete(candidateId)
     if (wordCache.size === 0) this._candidateCache.delete(word)
     return entry.url
+  }
+
+  getCandidateUrl(word, candidateId) {
+    const entry = this._candidateCache.get(word)?.get(candidateId)
+    return entry?.url || null
   }
 
   _filePath(word) {
@@ -170,7 +192,16 @@ class UnsplashClient {
     if (!this.api) {
       throw new Error('UNSPLASH_ACCESS_KEY 未配置')
     }
-    const { results, total } = await this._searchPhotos(word, perPage, page)
+    let results
+    let total
+    try {
+      ({ results, total } = await this._searchPhotos(word, perPage, page))
+    } catch (error) {
+      logger.error(
+        `[candidates] ${word} — Unsplash 候选查询失败, page=${page}, perPage=${perPage}, ${errorDetails(error)}`
+      )
+      throw error
+    }
 
     if (!this._candidateCache.has(word)) {
       this._candidateCache.set(word, new Map())
@@ -199,12 +230,67 @@ class UnsplashClient {
   }
 
   async _downloadImage(imageUrl, word) {
-    const response = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) })
-    if (!response.ok) return false
+    const imageHost = (() => {
+      try { return new URL(imageUrl).host } catch { return 'invalid-url' }
+    })()
 
-    const buffer = Buffer.from(await response.arrayBuffer())
-    fs.writeFileSync(this._filePath(word), buffer)
-    return fs.statSync(this._filePath(word)).size > 0
+    for (let attempt = 1; attempt <= DOWNLOAD_MAX_ATTEMPTS; attempt++) {
+      const tempPath = `${this._filePath(word)}.tmp-${process.pid}-${crypto.randomUUID()}`
+      try {
+        logger.info(
+          `[download] ${word} — 开始第 ${attempt}/${DOWNLOAD_MAX_ATTEMPTS} 次, host=${imageHost}, timeout=${DOWNLOAD_TIMEOUT_MS}ms`
+        )
+        const response = await fetch(imageUrl, {
+          signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+        })
+
+        if (!response.ok) {
+          const retryable = response.status === 429 || response.status >= 500
+          const error = new Error(`图片服务器返回 HTTP ${response.status}`)
+          error.retryable = retryable
+          if (!retryable) {
+            logger.error(
+              `[download] ${word} — 下载失败且不重试, host=${imageHost}, status=${response.status}`
+            )
+            return false
+          }
+          throw error
+        }
+
+        const buffer = Buffer.from(await response.arrayBuffer())
+        fs.writeFileSync(tempPath, buffer)
+        if (fs.statSync(tempPath).size <= 0) {
+          throw new Error('下载结果为空文件')
+        }
+        fs.renameSync(tempPath, this._filePath(word))
+        logger.info(
+          `[download] ${word} — 第 ${attempt}/${DOWNLOAD_MAX_ATTEMPTS} 次成功, host=${imageHost}, size=${buffer.length}`
+        )
+        return true
+      } catch (error) {
+        try {
+          if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath)
+        } catch (cleanupError) {
+          logger.warn(`[download] ${word} — 临时文件清理失败: ${cleanupError.message}`)
+        }
+
+        const retryable = error.retryable !== false
+        const finalAttempt = attempt === DOWNLOAD_MAX_ATTEMPTS || !retryable
+        logger.error(
+          `[download] ${word} — 第 ${attempt}/${DOWNLOAD_MAX_ATTEMPTS} 次失败, host=${imageHost}, ` +
+          `${errorDetails(error)}${finalAttempt ? ', 不再重试' : ', 准备重试'}`
+        )
+        if (finalAttempt) {
+          throw new Error(
+            `图片下载失败：已尝试 ${attempt} 次（${error.message || '网络异常'}）`,
+            { cause: error }
+          )
+        }
+        await sleep(DOWNLOAD_RETRY_DELAYS_MS[attempt - 1] || 1500)
+      }
+    }
+
+    return false
   }
 
   async downloadImage(imageUrl, word) {

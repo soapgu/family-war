@@ -27,6 +27,8 @@ describe('无 API Key', () => {
       existsSync: jest.fn(() => false),
       readdirSync: jest.fn(() => []),
       writeFileSync: jest.fn(),
+      renameSync: jest.fn(),
+      unlinkSync: jest.fn(),
       mkdirSync: jest.fn(),
       statSync: jest.fn(() => ({ size: 100 })),
     }))
@@ -87,6 +89,8 @@ describe('有 API Key', () => {
       existsSync: jest.fn(() => false),
       readdirSync: jest.fn(() => []),
       writeFileSync: jest.fn(),
+      renameSync: jest.fn(),
+      unlinkSync: jest.fn(),
       mkdirSync: jest.fn(),
       statSync: jest.fn(() => ({ size: 100 })),
     }))
@@ -339,6 +343,29 @@ describe('有 API Key', () => {
         expect(w.status).toBe('synced')
         expect(w.url).toBe(`/api/images/${w.word}`)
       })
+    })
+  })
+
+  describe('候选缓存', () => {
+    it('可先读取候选 URL，成功后再消费', async () => {
+      mockSearchPhotos.mockResolvedValue({
+        json: jest.fn().mockResolvedValue({
+          results: [{
+            id: 'photo-1',
+            urls: { small: 'https://images.unsplash.com/photo.jpg', thumb: 'thumb.jpg' },
+            user: { name: 'Tester' },
+            alt_description: 'cat',
+          }],
+          total: 1,
+        }),
+      })
+
+      const result = await client.searchCandidates('cat')
+      const candidateId = result.candidates[0].candidateId
+
+      expect(client.getCandidateUrl('cat', candidateId)).toBe('https://images.unsplash.com/photo.jpg')
+      expect(client.consumeCandidate('cat', candidateId)).toBe('https://images.unsplash.com/photo.jpg')
+      expect(client.getCandidateUrl('cat', candidateId)).toBeNull()
     })
   })
 })

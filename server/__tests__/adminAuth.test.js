@@ -42,6 +42,7 @@ const mockUnsplash = {
   syncWord: jest.fn(),
   getImageUrl: jest.fn((w) => `/api/images/${w}`),
   searchCandidates: jest.fn(),
+  getCandidateUrl: jest.fn(),
   consumeCandidate: jest.fn(),
   downloadImage: jest.fn(),
 }
@@ -252,7 +253,7 @@ describe('candidateId 机制', () => {
   })
 
   it('无效 candidateId 返回 400', async () => {
-    mockUnsplash.consumeCandidate.mockReturnValue(null)
+    mockUnsplash.getCandidateUrl.mockReturnValue(null)
     const app = createApp()
     const res = await request(app.callback())
       .post('/api/admin/word-images/confirm/cat')
@@ -263,6 +264,7 @@ describe('candidateId 机制', () => {
   })
 
   it('有效 candidateId 成功下载', async () => {
+    mockUnsplash.getCandidateUrl.mockReturnValue('https://example.com/img.jpg')
     mockUnsplash.consumeCandidate.mockReturnValue('https://example.com/img.jpg')
     mockUnsplash.downloadImage.mockResolvedValue(true)
     const app = createApp()
@@ -272,8 +274,23 @@ describe('candidateId 机制', () => {
       .send({ candidateId: 'valid-uuid' })
     expect(res.status).toBe(200)
     expect(res.body).toEqual({ word: 'cat', imageUrl: '/api/images/cat' })
+    expect(mockUnsplash.getCandidateUrl).toHaveBeenCalledWith('cat', 'valid-uuid')
     expect(mockUnsplash.consumeCandidate).toHaveBeenCalledWith('cat', 'valid-uuid')
     expect(mockUnsplash.downloadImage).toHaveBeenCalledWith('https://example.com/img.jpg', 'cat')
+  })
+
+  it('下载失败时保留 candidateId 供重试', async () => {
+    mockUnsplash.getCandidateUrl.mockReturnValue('https://example.com/img.jpg')
+    mockUnsplash.downloadImage.mockRejectedValue(new Error('图片下载失败：已尝试 3 次'))
+    const app = createApp()
+    const res = await request(app.callback())
+      .post('/api/admin/word-images/confirm/cat')
+      .set('Cookie', `admin_token=${validToken()}`)
+      .send({ candidateId: 'retryable-uuid' })
+
+    expect(res.status).toBe(500)
+    expect(res.body).toEqual({ error: '图片下载失败：已尝试 3 次' })
+    expect(mockUnsplash.consumeCandidate).not.toHaveBeenCalled()
   })
 
   it('词库外的 word 返回 400', async () => {

@@ -246,14 +246,14 @@ async function main() {
           await step.run(stepContext)
         }
 
-        await runStepWithTimeout(step.id, run(), stepTimeout)
+        await runStepWithTimeout(step.id, run(), step.timeoutMs || stepTimeout)
         state.current = null
         state.failed = state.failed.filter((id) => id !== step.id)
         state.completed.push(step.id)
         stateLib.saveSync(state)
         console.log(`步骤 ${step.id} 完成`)
       } catch (err) {
-        reporter.onStepFail(step.id, [], err.message)
+        reporter.onStepFail(step.id, err.details || [], err.message)
         state.current = step.id
         state.failed.push(step.id)
         stateLib.saveSync(state)

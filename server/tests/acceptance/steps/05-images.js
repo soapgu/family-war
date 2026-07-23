@@ -5,6 +5,7 @@ module.exports = {
   id: '5e',
   name: '图片管理：浏览备选、确认替换、预览',
   requiresAuth: true,
+  timeoutMs: 120000,
 
   async run({ state, page, config, reporter }) {
     reporter.onStepStart(this.id, this.name)
@@ -27,6 +28,9 @@ module.exports = {
     await cleanup.registerRecovery(backupEntry)
 
     try {
+      const candidatesResponsePromise = page.waitForResponse(
+        (response) => response.url().includes('/api/admin/word-images/candidates/')
+      )
       await changeBtn.click()
 
       // 等待 Modal 出现
@@ -35,9 +39,14 @@ module.exports = {
       const modalTitle = await modal.locator('.ant-modal-title').innerText()
       details.push(`Modal 标题: "${modalTitle}"`)
 
-      // 等待加载动画消失，然后等待候选元素出现
-      await modal.locator('.ant-spin-spinning').waitFor({ state: 'hidden', timeout: 20000 })
-      const candidateItems = modal.locator('[style*="cursor: pointer"]')
+      const candidatesResponse = await candidatesResponsePromise
+      const candidatesBody = await candidatesResponse.text()
+      details.push(`候选接口: HTTP ${candidatesResponse.status()}`)
+      if (!candidatesResponse.ok()) {
+        throw new Error(`候选接口失败: HTTP ${candidatesResponse.status()} ${candidatesBody}`)
+      }
+
+      const candidateItems = modal.locator('.word-config-candidate')
       await candidateItems.first().waitFor({ state: 'visible', timeout: 10000 })
       const candidateCount = await candidateItems.count()
       details.push(`备选图片数量: ${candidateCount}`)
@@ -58,21 +67,20 @@ module.exports = {
       if (!(await confirmBtn.isEnabled())) {
         throw new Error('确认换图按钮不可用')
       }
+      const confirmResponsePromise = page.waitForResponse(
+        (response) => response.url().includes('/api/admin/word-images/confirm/')
+      )
       await confirmBtn.click()
       details.push('已点击确认换图')
 
-      // 等待 Modal 关闭（成功）或 60s 超时后检查 toast（失败）
-      try {
-        await modal.waitFor({ state: 'hidden', timeout: 60000 })
-      } catch {
-        // 超时 → 收集 toast
+      const confirmResponse = await confirmResponsePromise
+      const confirmBody = await confirmResponse.text()
+      details.push(`确认接口: HTTP ${confirmResponse.status()}`)
+      if (!confirmResponse.ok()) {
+        throw new Error(`确认换图接口失败: HTTP ${confirmResponse.status()} ${confirmBody}`)
       }
-      const modalStillOpen = await modal.isVisible()
-      if (modalStillOpen) {
-        const toast = page.locator('.ant-message-notice')
-        const toastText = (await toast.count() > 0) ? await toast.innerText() : ''
-        throw new Error(`确认换图失败 (Modal 未关闭): ${toastText || '无 toast 消息'}`)
-      }
+
+      await modal.waitFor({ state: 'hidden', timeout: 10000 })
       details.push('图片已更换，Modal 已关闭')
       const toast = page.locator('.ant-message-notice')
       if (await toast.count() > 0) {
@@ -89,6 +97,16 @@ module.exports = {
         throw new Error(`换图后图片哈希未改变: ${newHash} (size=${imgStat.size})`)
       }
       details.push(`SHA-256 ${backupEntry.originalHash.slice(0, 12)} → ${newHash.slice(0, 12)}`)
+    } catch (error) {
+      error.details = [...details]
+      try {
+        const screenshotPath = path.join(config.screenshotDir, '5e-failure.png')
+        await page.screenshot({ path: screenshotPath, fullPage: true })
+        error.details.push(`失败截图: ${screenshotPath}`)
+      } catch {
+        // 截图失败不覆盖原始错误
+      }
+      throw error
     } finally {
       // 恢复原图
       await cleanup.restoreImage(backupEntry)

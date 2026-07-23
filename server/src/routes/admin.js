@@ -188,12 +188,19 @@ function registerAdminRoutes(router) {
     const rawPerPage = parseInt(ctx.query.perPage, 10)
     const page = Math.max(1, Number.isFinite(rawPage) ? rawPage : 1)
     const perPage = Math.max(1, Math.min(30, Number.isFinite(rawPerPage) ? rawPerPage : 15))
+    logger.info(`[candidates] ${word} — 请求, page=${page}, perPage=${perPage}`)
     try {
       const result = await unsplashClient.searchCandidates(word, page, perPage)
       ctx.body = { word, ...result }
+      logger.info(`[candidates] ${word} — 成功, 返回 ${result.candidates.length} 张`)
     } catch (e) {
       ctx.status = 500
       ctx.body = { error: e.message }
+      logger.error(
+        `[candidates] ${word} — 接口失败: ${e.message}` +
+        `${e.cause?.code ? `, code=${e.cause.code}` : ''}` +
+        `${e.cause?.message ? `, cause=${e.cause.message}` : ''}`
+      )
     }
   })
 
@@ -219,7 +226,7 @@ function registerAdminRoutes(router) {
       logger.warn(`[confirm] ${word} — 无效格式`)
       return
     }
-    const imageUrl = unsplashClient.consumeCandidate(word, candidateId)
+    const imageUrl = unsplashClient.getCandidateUrl(word, candidateId)
     if (!imageUrl) {
       ctx.status = 400
       ctx.body = { error: '无效或已过期的 candidateId' }
@@ -231,15 +238,19 @@ function registerAdminRoutes(router) {
       if (!saved) {
         ctx.status = 500
         ctx.body = { error: '图片下载失败' }
-        logger.warn(`[confirm] ${word} — 图片下载失败, URL=${imageUrl}`)
+        logger.error(`[confirm] ${word} — 图片下载失败`)
         return
       }
+      unsplashClient.consumeCandidate(word, candidateId)
       ctx.body = { word, imageUrl: unsplashClient.getImageUrl(word) }
-      logger.info(`[confirm] ${word} — 换图成功, imageUrl=${imageUrl}`)
+      logger.info(`[confirm] ${word} — 换图成功`)
     } catch (e) {
       ctx.status = 500
       ctx.body = { error: e.message }
-      logger.error(`[confirm] ${word} — 异常: ${e.message}`)
+      logger.error(
+        `[confirm] ${word} — 图片下载异常，candidateId 保留可重试: ${e.message}` +
+        `${e.cause?.message ? `, cause=${e.cause.message}` : ''}`
+      )
     }
   })
 }

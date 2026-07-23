@@ -228,4 +228,40 @@ describe('WordConfig', () => {
     expect(candidate).toBeInTheDocument()
     expect(candidate.parentElement).toHaveClass('word-config-candidate-grid')
   })
+
+  it('候选接口失败时展示服务端错误', async () => {
+    renderWordConfig()
+    await screen.findByText('第一章')
+    fetch.mockResolvedValueOnce(response({ error: 'Unsplash 候选查询失败' }, false))
+
+    fireEvent.click(screen.getByRole('button', { name: '更换 classroom 图片' }))
+
+    expect(await screen.findByText('Unsplash 候选查询失败')).toBeInTheDocument()
+  })
+
+  it('确认换图失败时保留弹窗和已选候选', async () => {
+    renderWordConfig()
+    await screen.findByText('第一章')
+    fetch.mockResolvedValueOnce(response({
+      candidates: [{
+        id: 'photo-1',
+        candidateId: 'candidate-uuid-1',
+        thumb: 'https://example.com/thumb.jpg',
+        alt: '候选教室图片',
+        author: 'Tester',
+      }],
+      total: 1,
+      page: 1,
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: '更换 classroom 图片' }))
+    fireEvent.click(await screen.findByAltText('候选教室图片'))
+    fetch.mockResolvedValueOnce(response({ error: '图片下载失败：已尝试 3 次' }, false))
+    const confirmButton = screen.getByRole('button', { name: '确认换图' })
+    fireEvent.click(confirmButton)
+
+    expect(await screen.findByText('图片下载失败：已尝试 3 次')).toBeInTheDocument()
+    expect(screen.getByText('选择 classroom 的新图片')).toBeInTheDocument()
+    expect(confirmButton).toBeEnabled()
+  })
 })

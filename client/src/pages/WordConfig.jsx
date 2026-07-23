@@ -211,7 +211,8 @@ function WordConfig() {
         setTotalCandidates(data.total)
         setPage(data.page)
       } else {
-        message.error('获取候选图片失败')
+        const err = await res.json().catch(() => ({}))
+        message.error(err.error || '获取候选图片失败')
       }
     } catch {
       message.error('获取候选图片请求失败')
@@ -253,7 +254,7 @@ function WordConfig() {
           })),
         }))
       } else {
-        const err = await res.json()
+        const err = await res.json().catch(() => ({}))
         message.error(err.error || '确认换图失败')
       }
     } catch {
