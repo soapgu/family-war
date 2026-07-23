@@ -43,13 +43,13 @@ module.exports = {
     } else {
       await page.fill('input[placeholder="请输入管理密码"]', 'wrong-password')
       await page.click('button:has-text("登录")')
-      await page.waitForTimeout(1000)
+      await page.waitForSelector('.ant-typography-danger', { timeout: 10000 })
       if (await page.locator('.ant-modal').count() === 0) {
         throw new Error('错误密码登录后弹窗消失（预期应保持打开）')
       }
       details.push('错误密码弹窗保持打开')
       const errText = page.locator('.ant-typography-danger')
-      if (await errText.count() > 0) details.push(`错误提示: "${await errText.innerText()}"`)
+      details.push(`错误提示: "${await errText.innerText()}"`)
       await page.fill('input[placeholder="请输入管理密码"]', '')
     }
 

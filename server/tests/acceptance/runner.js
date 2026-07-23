@@ -2,6 +2,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const { execSync } = require('child_process')
 const { chromium } = require('@playwright/test')
 const config = require('./test-config')
 const stateLib = require('./lib/state')
@@ -20,7 +21,91 @@ const STEP_FILES = [
   '06-responsive.js',
 ]
 
+const CONFIG_LOCAL_PATH = path.join(__dirname, '..', 'config.local.js')
+const CONFIG_LOCAL_BAK = CONFIG_LOCAL_PATH + '.bak'
+
 const DEFAULT_STEP_TIMEOUT = 60000
+
+function pm2Restart() {
+  execSync('pm2 restart family-war-server', { stdio: 'inherit' })
+}
+
+async function waitForHealth(url, maxRetries = 30, delay = 1000) {
+  const http = require('http')
+  const apiBase = config.apiBaseURL
+  const passwordSet = config.adminPassword && config.adminPassword !== ''
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const body = await new Promise((resolve, reject) => {
+        const r = http.get(url, res => {
+          let d = ''
+          res.on('data', c => d += c)
+          res.on('end', () => resolve(d))
+        })
+        r.on('error', reject)
+        r.setTimeout(2000, () => { r.destroy(); reject(new Error('timeout')) })
+      })
+      const data = JSON.parse(body)
+      if (data.status !== 'ok') continue
+    } catch {
+      await new Promise(r => setTimeout(r, delay))
+      continue
+    }
+    // 健康通过后验证密码保护是否生效
+    if (passwordSet) {
+      const loginBody = await new Promise((resolve, reject) => {
+        const postData = JSON.stringify({ password: 'probe-wrong' })
+        const options = {
+          hostname: new URL(apiBase).hostname,
+          port: new URL(apiBase).port,
+          path: new URL(apiBase).pathname + '/api/admin/login',
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
+        }
+        const r = http.request(options, res => {
+          let d = ''
+          res.on('data', c => d += c)
+          res.on('end', () => resolve(d))
+        })
+        r.on('error', reject)
+        r.setTimeout(5000, () => { r.destroy(); reject(new Error('timeout')) })
+        r.write(postData)
+        r.end()
+      })
+      const loginData = JSON.parse(loginBody)
+      if (loginData.error !== '密码错误') {
+        console.log('密码保护未生效，等待新进程...')
+        await new Promise(r => setTimeout(r, delay))
+        continue
+      }
+      console.log('密码保护已生效')
+    }
+    return
+  }
+  throw new Error(`服务等待超时 ${maxRetries * delay}ms: ${url}`)
+}
+
+function backupAndSetAdminPassword(password) {
+  if (!fs.existsSync(CONFIG_LOCAL_PATH)) return
+  fs.copyFileSync(CONFIG_LOCAL_PATH, CONFIG_LOCAL_BAK)
+  delete require.cache[require.resolve(CONFIG_LOCAL_PATH)]
+  const current = require(CONFIG_LOCAL_PATH)
+  current.auth = current.auth || {}
+  current.auth.adminPassword = password
+  const output = `module.exports = ${JSON.stringify(current, null, 2)}\n`
+  fs.writeFileSync(CONFIG_LOCAL_PATH, output, 'utf-8')
+  // 同步确认磁盘内容一致
+  const readBack = fs.readFileSync(CONFIG_LOCAL_PATH, 'utf-8')
+  if (readBack !== output) throw new Error('config.local.js 写入验证失败')
+  console.log(`已写入 ${CONFIG_LOCAL_PATH} (auth.adminPassword)`)
+}
+
+function restoreConfigLocal() {
+  if (!fs.existsSync(CONFIG_LOCAL_BAK)) return
+  fs.copyFileSync(CONFIG_LOCAL_BAK, CONFIG_LOCAL_PATH)
+  fs.unlinkSync(CONFIG_LOCAL_BAK)
+  console.log('已恢复 config.local.js')
+}
 
 class StepTimeoutError extends Error {
   constructor(id, ms) {
@@ -63,6 +148,14 @@ async function main() {
   })
 
   const stepTimeout = config.stepTimeoutOverride || DEFAULT_STEP_TIMEOUT
+
+  // 如果设置了管理员密码，临时覆写 config.local.js 并重启
+  const hasPassword = config.adminPassword && config.adminPassword !== ''
+  if (hasPassword) {
+    backupAndSetAdminPassword(config.adminPassword)
+    pm2Restart()
+    await waitForHealth(config.apiBaseURL + '/api/health')
+  }
 
   if (onlyRestore) {
     console.log('--restore-only 模式：执行恢复...')
@@ -167,6 +260,11 @@ async function main() {
   } finally {
     try { await browser.close() } catch {}
     await cleanup.restoreRegistered()
+    if (hasPassword) {
+      restoreConfigLocal()
+      pm2Restart()
+      await waitForHealth(config.apiBaseURL + '/api/health')
+    }
     reporter.finish(new Date())
 
     const summary = reporter.getSummary()

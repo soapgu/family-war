@@ -7,9 +7,8 @@ module.exports = {
     reporter.onStepStart(this.id, this.name)
     const details = []
 
-    await page.goto(config.webBaseURL + '/admin', { waitUntil: 'networkidle' })
-
-    if (await page.locator('text=后台管理').count() === 0) throw new Error('未找到"后台管理"标题')
+    await page.goto(config.webBaseURL + '/admin', { waitUntil: 'networkidle', timeout: 20000 })
+    await page.locator('text=后台管理').waitFor({ state: 'visible', timeout: 15000 })
     details.push('头部标题 "后台管理" 可见')
 
     const statusApi = await page.evaluate(async () => {
