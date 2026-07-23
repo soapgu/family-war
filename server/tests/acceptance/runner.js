@@ -2,6 +2,9 @@
 
 const fs = require('fs')
 const path = require('path')
+
+const CONFIG_LOCAL_PATH = path.join(__dirname, '..', '..', 'config.local.js')
+
 const { execSync } = require('child_process')
 const { chromium } = require('@playwright/test')
 const config = require('./test-config')
@@ -20,9 +23,7 @@ const STEP_FILES = [
   '05-images.js',
   '06-responsive.js',
 ]
-
-const CONFIG_LOCAL_PATH = path.join(__dirname, '..', 'config.local.js')
-const CONFIG_LOCAL_BAK = CONFIG_LOCAL_PATH + '.bak'
+let configLocalBackup = null  // 内存备份，避免文件系统竞争
 
 const DEFAULT_STEP_TIMEOUT = 60000
 
@@ -30,7 +31,7 @@ function pm2Restart() {
   execSync('pm2 restart family-war-server', { stdio: 'inherit' })
 }
 
-async function waitForHealth(url, maxRetries = 30, delay = 1000) {
+async function waitForHealth(url, maxRetries = 30, delay = 1000, checkPassword = true) {
   const http = require('http')
   const apiBase = config.apiBaseURL
   const passwordSet = config.adminPassword && config.adminPassword !== ''
@@ -52,7 +53,7 @@ async function waitForHealth(url, maxRetries = 30, delay = 1000) {
       continue
     }
     // 健康通过后验证密码保护是否生效
-    if (passwordSet) {
+    if (passwordSet && checkPassword) {
       const loginBody = await new Promise((resolve, reject) => {
         const postData = JSON.stringify({ password: 'probe-wrong' })
         const options = {
@@ -87,24 +88,30 @@ async function waitForHealth(url, maxRetries = 30, delay = 1000) {
 
 function backupAndSetAdminPassword(password) {
   if (!fs.existsSync(CONFIG_LOCAL_PATH)) return
-  fs.copyFileSync(CONFIG_LOCAL_PATH, CONFIG_LOCAL_BAK)
+  configLocalBackup = fs.readFileSync(CONFIG_LOCAL_PATH, 'utf-8')
   delete require.cache[require.resolve(CONFIG_LOCAL_PATH)]
   const current = require(CONFIG_LOCAL_PATH)
   current.auth = current.auth || {}
   current.auth.adminPassword = password
   const output = `module.exports = ${JSON.stringify(current, null, 2)}\n`
   fs.writeFileSync(CONFIG_LOCAL_PATH, output, 'utf-8')
-  // 同步确认磁盘内容一致
   const readBack = fs.readFileSync(CONFIG_LOCAL_PATH, 'utf-8')
   if (readBack !== output) throw new Error('config.local.js 写入验证失败')
   console.log(`已写入 ${CONFIG_LOCAL_PATH} (auth.adminPassword)`)
 }
 
 function restoreConfigLocal() {
-  if (!fs.existsSync(CONFIG_LOCAL_BAK)) return
-  fs.copyFileSync(CONFIG_LOCAL_BAK, CONFIG_LOCAL_PATH)
-  fs.unlinkSync(CONFIG_LOCAL_BAK)
+  if (!configLocalBackup) {
+    console.log('无内存备份，跳过恢复')
+    return
+  }
+  fs.writeFileSync(CONFIG_LOCAL_PATH, configLocalBackup, 'utf-8')
+  configLocalBackup = null
   console.log('已恢复 config.local.js')
+}
+
+function cleanConfigLocal() {
+  try { restoreConfigLocal() } catch (e) { console.error('恢复失败:', e.message) }
 }
 
 class StepTimeoutError extends Error {
@@ -134,11 +141,11 @@ async function main() {
     process.exit(1)
   })
 
-  process.on('SIGINT', async () => {
+  process.on('SIGINT', () => {
     sigintCount++
     if (sigintCount === 1) {
       console.log('\n收到中断信号，正在执行恢复...')
-      await cleanup.restoreRegistered()
+      cleanConfigLocal()
       console.log('恢复完成，安全退出。再次 Ctrl+C 强制退出。')
       process.exit(130)
     } else {
@@ -152,7 +159,7 @@ async function main() {
   // 如果设置了管理员密码，临时覆写 config.local.js 并重启
   const hasPassword = config.adminPassword && config.adminPassword !== ''
   if (hasPassword) {
-    backupAndSetAdminPassword(config.adminPassword)
+    try { backupAndSetAdminPassword(config.adminPassword) } catch (e) { console.error('写入 config.local.js 失败:', e.message) }
     pm2Restart()
     await waitForHealth(config.apiBaseURL + '/api/health')
   }
@@ -260,10 +267,11 @@ async function main() {
   } finally {
     try { await browser.close() } catch {}
     await cleanup.restoreRegistered()
+    cleanConfigLocal()
     if (hasPassword) {
-      restoreConfigLocal()
       pm2Restart()
-      await waitForHealth(config.apiBaseURL + '/api/health')
+      // 恢复原始 config.local.js 后无密码，skip password probe
+      await waitForHealth(config.apiBaseURL + '/api/health', 15, 1000, false)
     }
     reporter.finish(new Date())
 

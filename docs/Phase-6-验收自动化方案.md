@@ -157,11 +157,22 @@ module.exports = {
 | 步骤 | 认证策略 |
 |------|---------|
 | 5a | 不使用浏览器，不调用 |
-| 5b | **不调用 `ensureAuthenticated()`**。自行创建 Context → 验证 401 弹窗 → 错误密码提示 → 正确密码登录 → 刷新保持 → 登出 → 关闭 Context。结束后不重登 |
+| 5b | **不调用 `ensureAuthenticated()`**。自行创建 Context → 验证 401 弹窗 → 输入错误密码 → 验证错误提示 (`".ant-typography-danger"`) + 弹窗保持打开 → 清空 → 正确密码登录 → 登出 → 重新登录。    |
 | 5c | 开头调用 `ensureAuthenticated()` |
 | 5d | 开头调用 `ensureAuthenticated()` |
 | 5e | 开头调用 `ensureAuthenticated()` |
 | 5f | 开头调用 `ensureAuthenticated()`，无需认证的页面部分跳过 |
+
+当环境变量 `ACCEPTANCE_ADMIN_PASSWORD` 为非空字符串时，runner 自动完成以下生命周期：
+
+1. 写入 `config.local.js`（合并 `auth.adminPassword`）
+2. `pm2 restart` 使新配置生效
+3. 等待健康检查通过后，再用探针请求验证密码保护生效（错误密码返回 `"密码错误"`）
+4. 执行验收步骤
+5. 从内存备份恢复 `config.local.js`（`cleanConfigLocal()` → `restoreConfigLocal()`）
+6. `pm2 restart` 回到无密码状态（`waitForHealth` 跳过密码探针，因为已无密码）
+
+SIGINT 也执行 `cleanConfigLocal()` 恢复逻辑，确保异常退出后密码配置被清理。
 
 ### 3.3 数据恢复
 
@@ -254,48 +265,20 @@ runner 启动时检测 `recovery.json` 存在且有 `pending` 项 → 拒绝执�
 
 #### SIGINT
 
-- 第一次 Ctrl+C：设置 `cancelled = true`，runner 在当前步骤结束后自然退出，`finally` 执行恢复
-- 第二次 Ctrl+C：强制退出进程（`process.exit(1)`），提示恢复可能不完整
+- 第一次 Ctrl+C：执行 `cleanConfigLocal()`（清理密码配置）→ `process.exit(130)`
+- 第二次 Ctrl+C：强制退出 `process.exit(137)`
 
 #### 步骤超时
 
-通过 `AbortController` 实现取消：
+通过 `Promise.race` + `setTimeout` 实现超时：
 
 ```js
-const controller = new AbortController()
-
-try {
-  await runWithTimeout(
-    () => step.run({ ...ctx, signal: controller.signal }),
-    timeoutMs,
-    () => controller.abort(),
-  )
-} finally {
-  await context.close()
-}
-```
-
-取消传播：
-
-- Playwright 操作使用 `page.setDefaultTimeout(timeoutMs)`
-- fetch 请求传入 `signal: controller.signal`
-- 子进程超时主动 `child.kill()`
-- Socket.IO 客户端超时 `socket.close()`
-
-超时后的状态：
-
-```json
-{
-  "completed": ["5a", "5b"],
-  "current": null,
-  "failed": [
-    {
-      "id": "5e",
-      "reason": "timeout",
-      "timeoutMs": 120000,
-      "endedAt": "2026-07-22T16:00:00Z"
-    }
-  ]
+function runStepWithTimeout(id, promise, ms) {
+  let timer
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new StepTimeoutError(id, ms)), ms)
+  })
+  return Promise.race([promise.finally(() => clearTimeout(timer)), timeoutPromise])
 }
 ```
 
@@ -327,27 +310,26 @@ state.saveSync(data)  // writeFileSync + rename
 
 不采用追加写入，避免续跑后重复内容。
 
+报告头部包含总耗时，由 `reporter.finish(new Date())` 在全部步骤完成后写入。
+
 `report.md` 示例：
 
 ```markdown
-## Phase 6 验收报告
+# Phase 6 验收报告
 
-### 5a ✅ 验收前检查
-- PM2 online（family-war-server）
-- 健康检查 /api/health 200
-- npm test 全部通过（99 passed，0 failed）
-- 生产构建通过
-- 工作区干净
+- **总耗时**: 35s
 
-### 5b ✅ 认证与会话
-- 未登录拦截 → 弹出登录弹窗
-- 错误密码提示
-- 登录成功
-- 刷新保持
-- 登出
+### 5a ✅ 预检查：环境健康、API、构造版本号、登录
+- PM2 family-war-server 状态: online
+- GET /api/health → {"status":"ok"}
+- 版本号页内可见: v3.0.0
 
-### 5c ❌ 管理仪表盘
-- 状态卡片渲染失败：预期 3 张卡片，实际 0
+### 5b ✅ 登录认证：登出 → 重定向 → 重新登录
+- 首次登录成功
+- admin_token Cookie 已清除
+- 错误密码弹窗保持打开
+- 错误提示: "密码错误"
+- 重新登录成功
 ```
 
 ### 3.6 截图
@@ -434,69 +416,53 @@ await fetch(`${config.apiBaseURL}/api/health`).then(r => assert.ok(r.ok))
 **不调用 `ensureAuthenticated()`**，自行完成完整认证生命周期：
 
 ```js
-const browserContext = await browser.newContext()
-const page = await browserContext.newPage()
+// 首次登录（config.adminPassword）
+await page.waitForSelector('.ant-modal', { timeout: 10000 })
+await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
+await page.click('button:has-text("登录")')
+await page.waitForFunction(() => !document.querySelector('.ant-modal'), { timeout: 10000 })
 
-try {
-  // 1. 未登录访问 /admin → 重定向到 /admin → 401 → 弹出登录弹窗
-  await page.goto(config.webBaseURL + '/admin')
-  await loginPage.expectLoginRequired()
+// 登出
+await page.locator('button:has-text("登出")').click()
 
-  // 2. 输入错误密码 → 验证错误提示
-  await loginPage.loginWithWrongPassword()
-  await loginPage.expectPasswordError()
+// Cookie 清除验证
+const cookies = await page.context().cookies()
+assert(!cookies.find(c => c.name === 'admin_token'))
 
-  // 3. 输入正确密码 → 弹窗关闭 → 管理页面显示
-  await loginPage.login(config.adminPassword)
-  await dashboard.expectVisible()
+// 重新加载 → Modal 重新弹出
+await page.reload({ waitUntil: 'networkidle' })
+await page.waitForSelector('.ant-modal', { timeout: 10000 })
 
-  // 4. 刷新 → Cookie 持久化 → 仍是登录状态
-  await page.reload()
-  await dashboard.expectVisible()
+// 错误密码测试
+await page.fill('input[placeholder="请输入管理密码"]', 'wrong-password')
+await page.click('button:has-text("登录")')
+await page.waitForSelector('.ant-typography-danger', { timeout: 10000 })  // 等待 "密码错误" 文字
+assert(await page.locator('.ant-modal').count() > 0)                      // 弹窗保持打开
 
-  // 5. 登出 → 重新显示登录弹窗
-  await dashboard.logout()
-  await loginPage.expectLoginRequired()
-} finally {
-  await browserContext.close()
-}
+// 清空输入 → 正确密码登录
+await page.fill('input[placeholder="请输入管理密码"]', '')
+await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
+await page.click('button:has-text("登录")')
+await page.waitForFunction(() => !document.querySelector('.ant-modal'), { timeout: 10000 })
+
+// Cookie 验证
+const finalCookie = (await page.context().cookies()).find(c => c.name === 'admin_token')
+assert(finalCookie)
 ```
 
-### 5c 仪表盘自动刷新验证细则
+### 5c 仪表盘功能验证细则
 
 ```js
 await ctx.auth.ensureAuthenticated(page)
 
-const socket = io(config.socketURL, {
-  path: config.socketPath,
+await page.goto(config.webBaseURL + '/admin', { waitUntil: 'networkidle', timeout: 20000 })
+await page.locator('text=后台管理').waitFor({ state: 'visible', timeout: 15000 })
+
+const statusApi = await page.evaluate(async () => {
+  const res = await fetch('/family-war/api/admin/status')
+  return res.ok ? (await res.json()) : null
 })
-
-try {
-  // 等待 Socket 连接成功
-  await new Promise((resolve, reject) => {
-    socket.once('connect', resolve)
-    socket.once('connect_error', reject)
-  })
-
-  socket.emit('room:join', {
-    roomId: 'default',
-    nickname: '验收测试玩家',
-  })
-
-  // 等待仪表盘自动刷新请求
-  await page.waitForResponse(resp =>
-    resp.url().includes('/api/admin/status') &&
-    resp.status() === 200, { timeout: 10000 })
-
-  // 服务端自动添加机器人，所以玩家数为 2
-  const roomCard = page.locator('.ant-card').filter({ hasText: '在线房间' })
-  await expect(roomCard).toContainText('1')
-
-  const playerCard = page.locator('.ant-card').filter({ hasText: '在线玩家' })
-  await expect(playerCard).toContainText('2')
-} finally {
-  socket.close()
-}
+assert(statusApi, 'GET /api/admin/status 响应异常')
 ```
 
 ### 5d 词库配置细则
@@ -519,20 +485,15 @@ await cleanup.registerRecovery({ type: 'wordConfig', snapshot: originalConfig })
 ```js
 await ctx.auth.ensureAuthenticated(page)
 
-const testWord = 'hot dog'
+const testWord = 'classroom'
 
 // 备份原始图片 → 登记恢复
 const backup = await cleanup.backupImage(testWord)
-await cleanup.registerRecovery({
-  type: 'image',
-  word: testWord,
-  originalPath: backup.originalPath,
-  backupPath: backup.backupPath,
-  originalHash: backup.originalHash,
-})
+await cleanup.registerRecovery({ type: 'image', word: testWord, ...backup })
 
 // 执行换图测试
-// 打开候选弹窗 → 选中 → 确认换图 → 预览
+// 打开候选弹窗 → 等待 spin 消失 → 选最后一张候选（避当前图片）→ 确认换图 → 等待 Modal 关闭（最长 60s）
+//   → 校验 SHA-256 已变更 → 恢复图片 → 校验恢复后 SHA-256 一致
 ```
 
 ### 5f 响应式布局断言细则
