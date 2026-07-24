@@ -5,7 +5,7 @@ class LoginPage {
   }
 
   async goto() {
-    await this.page.goto(this.config.webBaseURL + '/admin', { waitUntil: 'networkidle' })
+    await this.page.goto(this.config.adminBaseURL + '/family-war', { waitUntil: 'networkidle' })
   }
 
   async isLoggedIn() {

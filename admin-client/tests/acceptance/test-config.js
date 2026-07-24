@@ -1,12 +1,10 @@
 const path = require('path')
 
-const required = ['webBaseURL', 'apiBaseURL', 'socketURL', 'adminPassword']
+const required = ['adminBaseURL', 'apiBaseURL', 'adminPassword']
 
 const config = {
-  webBaseURL: process.env.ACCEPTANCE_WEB_URL,
+  adminBaseURL: process.env.ACCEPTANCE_ADMIN_URL,
   apiBaseURL: process.env.ACCEPTANCE_API_URL,
-  socketURL: process.env.ACCEPTANCE_SOCKET_URL,
-  socketPath: process.env.ACCEPTANCE_SOCKET_PATH || '/family-war/socket.io',
   adminPassword: process.env.ACCEPTANCE_ADMIN_PASSWORD,
   headless: process.env.HEADED !== '1',
   stepTimeoutOverride: process.env.ACCEPTANCE_STEP_TIMEOUT

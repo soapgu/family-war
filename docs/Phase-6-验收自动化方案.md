@@ -1,12 +1,12 @@
-# Phase 6：管理员验收测试自动化方案
+# Phase 6：管理端预发布验收自动化方案
 
 > 版本归属说明：
 >
-> - v3.1 已发布实现仍位于 `server/tests/acceptance/`，本文后续章节记录的是该版本当前可执行的目录和命令；
-> - v3.2 拆分 `admin-client` 时，由于全部 Playwright 场景均以管理员页面为测试对象，整套验收代码将迁移到 `admin-client/tests/acceptance/`；
+> - v3.1 已发布实现位于 `server/tests/acceptance/`；
+> - v3.2 已将整套 Playwright 验收代码迁移到 `admin-client/tests/acceptance/`；
 > - 迁移范围包括 runner、Page Object、steps、lib、恢复机制、输出目录和 `@playwright/test` 依赖；
 > - runner 仍可准备 `server/config.local.js`、重启 PM2 并恢复词库与图片数据，但这些属于管理端端到端验收的环境编排；
-> - v3.2 实施完成后，本文将整体更新为新目录、新命令以及独立的 `ACCEPTANCE_ADMIN_URL`、`ACCEPTANCE_API_URL` 配置，不再要求未使用的 Socket.IO 验收参数。
+> - 页面和 API 分别使用 `ACCEPTANCE_ADMIN_URL`、`ACCEPTANCE_API_URL`，不再要求未使用的 Socket.IO 验收参数。
 
 ## 1. 当前目标与范围
 
@@ -14,8 +14,9 @@ Phase 6 将 Phase 5 的管理员浏览器验收场景（5a–5f）实现为 Play
 
 当前只验收以下页面：
 
-- 管理员入口：`/family-war/admin`
-- 词库管理：`/family-war/admin/word-config`
+- 管理首页：`/admin/`
+- Family War 管理页：`/admin/family-war/`
+- 词库管理：`/admin/family-war/word-config`
 
 5f 只覆盖普通电脑的大分辨率：
 
@@ -23,14 +24,14 @@ Phase 6 将 Phase 5 的管理员浏览器验收场景（5a–5f）实现为 Play
 - 1440×900
 - 1920×1080
 
-不验收手机、平板和窄屏，也不进入房间或游戏页面。5a 当前会访问项目根路径一次，只用于确认生产构建能够渲染并读取版本号，不执行首页业务流程。
+不验收手机、平板和窄屏，也不进入房间或游戏页面。游戏端、API 和 Socket.IO 的回归由 Phase 6 的独立步骤负责。
 
-本文档描述仓库中现有实现，不包含尚未实现的规划能力。
+Phase 5 只迁移并检查测试能力；完整 acceptance 必须等 Phase 6 完成生产构建和预发布部署后执行。
 
 ## 2. 当前目录结构
 
 ```text
-server/tests/acceptance/
+admin-client/tests/acceptance/
 ├── runner.js
 ├── test-config.js
 ├── steps/
@@ -62,20 +63,20 @@ server/tests/acceptance/
 以下内容被 `.gitignore` 忽略：
 
 ```text
-server/tests/acceptance/output/
-server/tests/acceptance/recovery/backups/
-server/tests/acceptance/recovery/recovery.json
+admin-client/tests/acceptance/output/
+admin-client/tests/acceptance/recovery/backups/
+admin-client/tests/acceptance/recovery/recovery.json
 ```
 
 ## 3. 环境与配置
 
 ### 3.1 依赖
 
-Playwright 安装在 `server` 包：
+Playwright 安装在 `admin-client` 包：
 
 ```bash
-npm install --prefix server
-cd server
+npm install --prefix admin-client
+cd admin-client
 npx playwright install chromium
 ```
 
@@ -85,43 +86,40 @@ npx playwright install chromium
 
 | 环境变量 | 用途 |
 |---|---|
-| `ACCEPTANCE_WEB_URL` | 浏览器访问地址 |
+| `ACCEPTANCE_ADMIN_URL` | 管理端浏览器地址，例如 `http://localhost:8080/admin` |
 | `ACCEPTANCE_API_URL` | 健康检查和认证探针地址 |
-| `ACCEPTANCE_SOCKET_URL` | Socket.IO 地址；当前步骤尚未使用 |
 | `ACCEPTANCE_ADMIN_PASSWORD` | 验收期间使用的管理员密码，允许传入空字符串 |
 
 可选环境变量：
 
 | 环境变量 | 默认值 | 用途 |
 |---|---|---|
-| `ACCEPTANCE_SOCKET_PATH` | `/family-war/socket.io` | Socket.IO path；当前步骤尚未使用 |
 | `ACCEPTANCE_STEP_TIMEOUT` | `60000` | 没有专属超时的步骤使用的超时毫秒数 |
-| `ACCEPTANCE_SCREENSHOT_DIR` | `server/tests/acceptance/output/screenshots` | 截图目录 |
+| `ACCEPTANCE_SCREENSHOT_DIR` | `admin-client/tests/acceptance/output/screenshots` | 截图目录 |
 | `HEADED` | 未设置 | 设为 `1` 时显示 Chromium，否则无头运行 |
 
 环境变量只要不是 `undefined` 或 `null` 就通过启动校验，因此 `ACCEPTANCE_ADMIN_PASSWORD=` 是有效配置。
 
 ### 3.3 预发布标准运行命令
 
-从 `server` 目录执行：
+从仓库根目录执行：
 
 ```bash
-cd /Users/guhui/Githubs/family-war/server
+cd /Users/guhui/Githubs/family-war
 
-ACCEPTANCE_WEB_URL=http://localhost:8080/family-war \
+ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
 ACCEPTANCE_API_URL=http://localhost:8080/family-war \
-ACCEPTANCE_SOCKET_URL=http://localhost:8080/family-war \
 ACCEPTANCE_ADMIN_PASSWORD=123456 \
-node tests/acceptance/runner.js --reset
+npm run test:acceptance -- --reset
 ```
 
-浏览器和 API 都通过 nginx 的 `/family-war` 路径访问，不使用 Vite 开发地址代替预发布环境。
+浏览器通过 nginx 的独立 `/admin` 站点访问，API 仍通过 `/family-war` 访问，不使用 Vite 开发地址代替预发布环境。
 
 ## 4. runner 当前行为
 
 ### 4.1 支持的命令行参数
 
-当前只实现两个参数：
+当前实现三个参数：
 
 ```bash
 # 删除 output/ 并从 5a 重新运行
@@ -129,6 +127,9 @@ node tests/acceptance/runner.js --reset
 
 # 只处理 recovery.json 中登记的数据恢复
 node tests/acceptance/runner.js --restore-only
+
+# Phase 5 本地检查目录、服务端路径、步骤模块和 Playwright 依赖，不访问预发布环境
+node tests/acceptance/runner.js --check
 ```
 
 未实现：
@@ -186,9 +187,9 @@ step.timeoutMs || config.stepTimeoutOverride || 60000
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "gitCommit": "7b39b0c",
-  "webBaseURL": "http://localhost:8080/family-war",
+  "adminBaseURL": "http://localhost:8080/admin",
   "apiBaseURL": "http://localhost:8080/family-war",
   "planVersion": "Phase 6",
   "completed": ["5a", "5b"],
@@ -202,7 +203,7 @@ step.timeoutMs || config.stepTimeoutOverride || 60000
 
 - `schemaVersion`
 - 当前 Git commit
-- `webBaseURL`
+- `adminBaseURL`
 - `apiBaseURL`
 
 指纹一致时跳过 `completed` 中的步骤，从上次未完成位置继续；不一致时创建新状态，并提示使用 `--reset`。状态通过临时文件加 `renameSync` 原子写入。
@@ -228,11 +229,10 @@ step.timeoutMs || config.stepTimeoutOverride || 60000
 执行 `--restore-only` 时建议使用空密码变量，避免触发临时密码生命周期：
 
 ```bash
-ACCEPTANCE_WEB_URL=http://localhost:8080/family-war \
+ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
 ACCEPTANCE_API_URL=http://localhost:8080/family-war \
-ACCEPTANCE_SOCKET_URL=http://localhost:8080/family-war \
 ACCEPTANCE_ADMIN_PASSWORD= \
-node tests/acceptance/runner.js --restore-only
+npm run test:acceptance:restore
 ```
 
 ### 5.2 步骤认证
@@ -241,7 +241,7 @@ node tests/acceptance/runner.js --restore-only
 
 `ensureAuthenticated()`：
 
-1. 打开 `/admin`。
+1. 打开 `/admin/family-war`。
 2. 请求 `/family-war/api/admin/status` 检查当前 Context 是否已认证。
 3. 未认证时等待登录弹窗，填写密码。
 4. 监听 `POST /api/admin/login`。
@@ -316,7 +316,7 @@ node tests/acceptance/runner.js --restore-only
 
 | 步骤 | 当前实际验证 |
 |---|---|
-| 5a | PM2 进程在线、健康接口、根页面 `#root` 渲染、页面显示 `v3.x`、管理员登录弹窗与正确密码登录 |
+| 5a | PM2 进程在线、健康接口、独立管理站点 `#root` 渲染、管理员登录弹窗、正确密码登录和管理首页可见 |
 | 5b | 首次登录、登出、Cookie 清除、刷新后重新出现弹窗、错误密码提示、正确密码重新登录、Cookie 重新设置 |
 | 5c | 管理页标题可见；浏览器内请求 `/api/admin/status` 成功并返回状态字段 |
 | 5d | 词库页面加载、章节/单词数量、选择首个可操作单词、切换并保存、刷新验证持久化、恢复原状态、文件级兜底恢复 |
@@ -347,10 +347,7 @@ node tests/acceptance/runner.js --restore-only
 ## 9. 已知限制
 
 - 5a 名称仍包含“预检查”，但当前不会运行 Jest、Vitest、生产构建或 Git 工作区检查；这些需要在验收前单独执行。
-- `ACCEPTANCE_SOCKET_URL` 和 `ACCEPTANCE_SOCKET_PATH` 是必填/可配字段，但当前 5a–5f 没有 Socket.IO 验收步骤。
 - `AdminDashboard.js` 和 `LoginPage.js` 已存在，但当前步骤主要直接使用 Playwright locator；`WordConfigPage.js` 被 5d 使用。
-- 5a 的 `waitForFunction` 仍采用第二参数传超时对象，Playwright 会把它视为页面函数参数，实际使用默认超时；其他已修复的位置按 10 秒超时。
-- 5a、5b 的登录没有像 `ensureAuthenticated()` 一样监听登录接口响应；失败时可能表现为弹窗等待超时。
 - 步骤超时不会取消底层异步任务。
 - SIGINT 不执行完整的全局清理流程。
 - `--restore-only` 在进程早退前不进入普通验收的全局 `finally`。
@@ -367,6 +364,7 @@ node tests/acceptance/runner.js --restore-only
 同时确认：
 
 - `report.md` 中 5a–5f 均为 ✅。
+- 浏览器网络记录中没有 `/socket.io` 或 `/family-war/socket.io` 请求，所有管理 API 均通过 `/family-war/api/`。
 - 5e 报告包含候选接口和确认接口 HTTP 200、图片哈希变化以及恢复哈希校验。
 - 5f 报告包含三组电脑分辨率均无溢出且关键元素可见。
 - `recovery.json` 不存在或其中 `pending` 为空。

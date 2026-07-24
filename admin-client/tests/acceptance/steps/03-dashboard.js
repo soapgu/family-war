@@ -7,7 +7,7 @@ module.exports = {
     reporter.onStepStart(this.id, this.name)
     const details = []
 
-    await page.goto(config.webBaseURL + '/admin', { waitUntil: 'networkidle', timeout: 20000 })
+    await page.goto(config.adminBaseURL + '/family-war', { waitUntil: 'networkidle', timeout: 20000 })
     await page.locator('text=后台管理').waitFor({ state: 'visible', timeout: 15000 })
     details.push('头部标题 "后台管理" 可见')
 

@@ -5,7 +5,7 @@ node_modules/
 server/public/images/
 server/src/data/word-config.json
 
-# Phase 6 acceptance test outputs
-server/tests/acceptance/output/
-server/tests/acceptance/recovery/backups/
-server/tests/acceptance/recovery/recovery.json
+# Acceptance test runtime outputs
+admin-client/tests/acceptance/output/
+admin-client/tests/acceptance/recovery/backups/
+admin-client/tests/acceptance/recovery/recovery.json

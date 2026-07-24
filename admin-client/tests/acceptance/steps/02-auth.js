@@ -7,7 +7,7 @@ module.exports = {
     reporter.onStepStart(this.id, this.name)
     const details = []
 
-    await page.goto(config.webBaseURL + '/admin', { waitUntil: 'networkidle' })
+    await page.goto(config.adminBaseURL + '/family-war', { waitUntil: 'networkidle' })
 
     // 先登录（独立 Context 初始无 Cookie）
     await page.waitForSelector('.ant-modal', { timeout: 10000 })

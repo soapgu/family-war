@@ -5,7 +5,7 @@ class WordConfigPage {
   }
 
   async navigate() {
-    await this.page.goto(this.config.webBaseURL + '/admin/word-config', { waitUntil: 'networkidle' })
+    await this.page.goto(this.config.adminBaseURL + '/family-war/word-config', { waitUntil: 'networkidle' })
   }
 
   async getWordCount(chapterIndex) {

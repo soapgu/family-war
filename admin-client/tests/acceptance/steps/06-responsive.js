@@ -16,7 +16,7 @@ module.exports = {
 
     for (const vp of viewports) {
       await page.setViewportSize({ width: vp.w, height: vp.h })
-      await page.goto(config.webBaseURL + '/admin', { waitUntil: 'networkidle' })
+      await page.goto(config.adminBaseURL + '/family-war', { waitUntil: 'networkidle' })
       await page.waitForTimeout(500)
 
       const screenshotDir = config.screenshotDir || path.join(__dirname, '..', 'output/screenshots')

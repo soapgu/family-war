@@ -1,5 +1,5 @@
 async function ensureAuthenticated(page, config) {
-  const response = await page.goto(config.webBaseURL + '/admin', {
+  await page.goto(config.adminBaseURL + '/family-war', {
     waitUntil: 'networkidle',
     timeout: 15000,
   })

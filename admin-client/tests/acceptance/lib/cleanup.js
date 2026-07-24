@@ -4,7 +4,7 @@ const crypto = require('crypto')
 
 const RECOVERY_DIR = path.join(__dirname, '..', 'recovery')
 const RECOVERY_FILE = path.join(RECOVERY_DIR, 'recovery.json')
-const SERVER_DIR = path.join(__dirname, '..', '..', '..')
+const SERVER_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'server')
 const IMAGES_DIR = path.join(SERVER_DIR, 'public', 'images')
 const WORD_CONFIG_SRC = path.join(SERVER_DIR, 'src', 'data', 'word-config.json')
 

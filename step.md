@@ -597,9 +597,9 @@ admin-client/build/assets/
 - 管理端构建产物不包含 Socket.IO 客户端代码；
 - 游戏和管理端产物之间不存在复制、嵌套或交叉写入。
 
-### Phase 5：测试迁移与自动化验收
+### Phase 5：测试迁移与自动化准备
 
-目标：保持管理功能现有测试覆盖，将所有以管理页面为对象的 Playwright 验收代码整体归入 `admin-client`，并验证拆分后的运行时网络边界。
+目标：保持管理功能现有测试覆盖，将所有以管理页面为对象的 Playwright 验收代码整体归入 `admin-client`，完成本地测试与预发布验收能力准备；本阶段不连接预发布环境执行 acceptance。
 
 目标测试边界：
 
@@ -613,19 +613,19 @@ admin-client/tests/acceptance/       管理端 Playwright 浏览器验收
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 5a | 将 Admin 页面测试迁入管理端，覆盖标题、空状态、统计和刷新行为 | `admin-client/src/__tests__/AdminPage.test.jsx` | ⬜ |
-| 5b | 将 RequireAuth 测试迁入管理端，覆盖未登录、登录成功/失败、401、登出和 Cookie 同源请求流程 | `admin-client/src/__tests__/RequireAdminAuth.test.jsx` | ⬜ |
-| 5c | 将 WordConfig 测试迁入管理端，保持现有词库开关、保存、同步、候选图和换图覆盖 | `admin-client/src/__tests__/WordConfigPage.test.jsx` | ⬜ |
-| 5d | 增加路由测试，覆盖 `/admin/`、`/admin/family-war/`、`/admin/family-war/word-config`、未知路径回退和页面间导航 | `admin-client/src/__tests__/App.test.jsx` | ⬜ |
-| 5e | 将 `server/tests/acceptance/` 整体迁移到 `admin-client/tests/acceptance/`，包含 runner、Page Object、steps、lib、恢复机制和报告输出目录，迁移过程中保持异常与中断后的数据恢复能力 | `server/tests/acceptance/` → `admin-client/tests/acceptance/` | ⬜ |
-| 5f | 将 `@playwright/test` 从服务端依赖迁到管理端；管理端增加 `test:acceptance`、`test:acceptance:restore`，根目录增加统一委托命令 | `server/package.json`, `server/package-lock.json`, `admin-client/package.json`, `admin-client/package-lock.json`, `package.json` | ⬜ |
-| 5g | 修改 runner 的路径解析：从仓库根目录显式定位 `server/config.local.js`、词库配置和图片目录；不得依赖验收代码仍位于 `server/` | `admin-client/tests/acceptance/runner.js`, `admin-client/tests/acceptance/lib/cleanup.js` | ⬜ |
-| 5h | 分离管理页面与 API 验收地址：新增 `ACCEPTANCE_ADMIN_URL`（`/admin`）并保留独立 `ACCEPTANCE_API_URL`（v3.2 仍为 `/family-war`）；删除管理验收未使用的 `socketURL` 和 `ACCEPTANCE_SOCKET_PATH` | `admin-client/tests/acceptance/test-config.js`, `admin-client/tests/acceptance/runner.js` | ⬜ |
-| 5i | 更新 Playwright 页面入口和选择器，通过 Browser Router 访问 `/admin/family-war/` 与 `/admin/family-war/word-config` | `admin-client/tests/acceptance/pages/`, `admin-client/tests/acceptance/steps/`, `admin-client/tests/acceptance/lib/auth.js` | ⬜ |
-| 5j | 增加浏览器网络断言：管理端不得请求 `/socket.io` 或 `/family-war/socket.io`，管理请求仍通过 `/family-war/api/*` | `admin-client/tests/acceptance/` | ⬜ |
-| 5k | 整理运行产物：临时状态、备份和普通运行截图加入 `.gitignore`；需要随版本保留的正式验收报告另存到版本化文档目录 | `.gitignore`, `admin-client/tests/acceptance/output/`, `docs/acceptance/v3.2/`（如需） | ⬜ |
-| 5l | 更新验收自动化方案中的目录、命令、环境变量、恢复路径和运行示例 | `docs/Phase-6-验收自动化方案.md` | ⬜ |
-| 5m | 执行服务端、游戏端、管理端全部单元测试，执行 Socket.IO 集成测试、管理端 Playwright 验收和生产构建 | `server/`, `client/`, `admin-client/` | ⬜ |
+| 5a | 将 Admin 页面测试迁入管理端，覆盖标题、空状态、统计和刷新行为 | `admin-client/src/__tests__/AdminPage.test.jsx` | ✅ |
+| 5b | 将 RequireAuth 测试迁入管理端，覆盖未登录、登录成功/失败、401、登出和 Cookie 同源请求流程 | `admin-client/src/__tests__/RequireAdminAuth.test.jsx` | ✅ |
+| 5c | 将 WordConfig 测试迁入管理端，保持现有词库开关、保存、同步、候选图和换图覆盖 | `admin-client/src/__tests__/WordConfigPage.test.jsx` | ✅ |
+| 5d | 增加路由测试，覆盖 `/admin/`、`/admin/family-war/`、`/admin/family-war/word-config`、未知路径回退和页面间导航 | `admin-client/src/__tests__/App.test.jsx` | ✅ |
+| 5e | 将 `server/tests/acceptance/` 整体迁移到 `admin-client/tests/acceptance/`，包含 runner、Page Object、steps、lib、恢复机制和报告输出目录，迁移过程中保持异常与中断后的数据恢复能力 | `server/tests/acceptance/` → `admin-client/tests/acceptance/` | ✅ |
+| 5f | 将 `@playwright/test` 从服务端依赖迁到管理端；管理端增加 `test:acceptance`、`test:acceptance:restore`，根目录增加统一委托命令 | `server/package.json`, `server/package-lock.json`, `admin-client/package.json`, `admin-client/package-lock.json`, `package.json` | ✅ |
+| 5g | 修改 runner 的路径解析：从仓库根目录显式定位 `server/config.local.js`、词库配置和图片目录；不得依赖验收代码仍位于 `server/` | `admin-client/tests/acceptance/runner.js`, `admin-client/tests/acceptance/lib/cleanup.js` | ✅ |
+| 5h | 分离管理页面与 API 验收地址：新增 `ACCEPTANCE_ADMIN_URL`（`/admin`）并保留独立 `ACCEPTANCE_API_URL`（v3.2 仍为 `/family-war`）；删除管理验收未使用的 `socketURL` 和 `ACCEPTANCE_SOCKET_PATH` | `admin-client/tests/acceptance/test-config.js`, `admin-client/tests/acceptance/runner.js` | ✅ |
+| 5i | 更新 Playwright 页面入口和选择器，通过 Browser Router 访问 `/admin/family-war/` 与 `/admin/family-war/word-config` | `admin-client/tests/acceptance/pages/`, `admin-client/tests/acceptance/steps/`, `admin-client/tests/acceptance/lib/auth.js` | ✅ |
+| 5j | 增加浏览器网络断言：管理端不得请求 `/socket.io` 或 `/family-war/socket.io`，管理请求仍通过 `/family-war/api/*` | `admin-client/tests/acceptance/` | ✅ |
+| 5k | 整理运行产物：临时状态、备份和普通运行截图加入 `.gitignore`；需要随版本保留的正式验收报告另存到版本化文档目录 | `.gitignore`, `admin-client/tests/acceptance/output/`, `docs/acceptance/v3.2/`（如需） | ✅ |
+| 5l | 更新验收自动化方案中的目录、命令、环境变量、恢复路径和运行示例 | `docs/Phase-6-验收自动化方案.md` | ✅ |
+| 5m | 执行服务端、游戏端、管理端全部单元测试和 Socket.IO 集成测试；检查管理端 Playwright 用例发现、配置加载及本地运行能力，不执行预发布 acceptance 和生产构建 | `server/`, `client/`, `admin-client/` | ✅ |
 
 **测试边界**
 
@@ -637,9 +637,9 @@ admin-client/tests/acceptance/       管理端 Playwright 浏览器验收
 - 验收套件不得拆成管理端用例与服务端恢复脚本两部分，避免跨 package 相互调用和恢复流程分散；
 - 未来覆盖平台首页、多个前端和多个后端的跨系统验收出现后，再考虑建立仓库级 `tests/e2e/`。
 
-### Phase 6：预发布验收与文档收尾
+### Phase 6：预发布验收、正式部署与文档收尾
 
-目标：在保持现有游戏、API 和 Socket.IO 配置不变的基础上，为管理端增加独立 Nginx 静态站点，完成预发布验收和版本文档。
+目标：在保持现有游戏、API 和 Socket.IO 配置不变的基础上，为管理端增加独立 Nginx 静态站点；完成生产构建和预发布部署后运行 acceptance，验收通过再按原有发布流程部署正式环境。本版本暂不增加生产环境只读冒烟检查。
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
@@ -650,8 +650,10 @@ admin-client/tests/acceptance/       管理端 Playwright 浏览器验收
 | 6e | 验证直接刷新 `/admin/family-war/` 和 `/admin/family-war/word-config` 正常，浏览器前进/后退正常 | 预发布环境 | ⬜ |
 | 6f | 检查管理端网络和控制台：无 Socket.IO 请求、无资源 404、无错误 API 路径和未处理异常 | 预发布环境 | ⬜ |
 | 6g | 回归 `/family-war/`、`/family-war/api/` 和 `/family-war/socket.io`，确认新增 `/admin/` location 未改变现有匹配行为 | 预发布环境 | ⬜ |
-| 6h | 更新项目结构、开发命令、构建命令、管理入口和部署说明 | `README.md`, `AGENTS.md` | ⬜ |
-| 6i | 更新路线图状态和 v3.2 发布说明；明确 v3.3 才开始修改公网 API 和 Socket.IO 路径 | `road-map.md`, `docs/RELEASE.md` 或版本发布说明 | ⬜ |
+| 6h | 对已部署的预发布环境执行管理端完整 `test:acceptance`，确认测试数据在成功、失败或中断后均已恢复 | `admin-client/tests/acceptance/`, 预发布环境 | ⬜ |
+| 6i | acceptance 验收通过后，按现有发布流程将 v3.2 部署到正式环境；本阶段不新增生产环境只读冒烟检查 | 现有正式发布流程 | ⬜ |
+| 6j | 更新项目结构、开发命令、构建命令、管理入口和部署说明 | `README.md`, `AGENTS.md` | ⬜ |
+| 6k | 更新路线图状态和 v3.2 发布说明；明确 v3.3 才开始修改公网 API 和 Socket.IO 路径 | `road-map.md`, `docs/RELEASE.md` 或版本发布说明 | ⬜ |
 
 ### v3.2 最终验收条件
 
@@ -668,7 +670,7 @@ admin-client/tests/acceptance/       管理端 Playwright 浏览器验收
 - 根目录可以统一启动、测试和构建三个 package；
 - 完整构建可以重复执行，且两个前端构建产物彼此独立；
 - 服务端、游戏端、管理端单元测试全部通过；
-- Socket.IO 集成测试、浏览器验收和生产构建通过；
+- Socket.IO 集成测试和生产构建通过，预发布环境 acceptance 验收通过后才部署正式环境；
 - README、`road-map.md` 和验收文档与实际行为一致。
 
 ### 明确延期到后续版本

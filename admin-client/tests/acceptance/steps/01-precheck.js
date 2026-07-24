@@ -2,7 +2,7 @@ const { execSync } = require('child_process')
 
 module.exports = {
   id: '5a',
-  name: '预检查：环境健康、API、构造版本号、登录',
+  name: '预检查：环境健康、管理站点、API、登录',
   requiresAuth: false,
 
   async run({ state, page, config, reporter }) {
@@ -38,29 +38,34 @@ module.exports = {
       throw new Error(`/api/health 不可达: ${err.message}`)
     }
 
-    // 主页渲染
-    await page.goto(config.webBaseURL, { waitUntil: 'networkidle' })
+    // 独立管理站点渲染
+    await page.goto(config.adminBaseURL + '/', { waitUntil: 'networkidle' })
     const appNode = await page.locator('#root').innerHTML()
-    if (!appNode || appNode.length === 0) throw new Error('主页渲染失败')
-    details.push('主页渲染正常 (root render)')
-
-    // 版本号
-    const versionEl = page.locator('text=v3.')
-    if (await versionEl.count() > 0) {
-      details.push(`版本号页内可见: ${await versionEl.first().innerText()}`)
-    } else {
-      throw new Error('页面上未找到 v3.x 版本号')
-    }
+    if (!appNode || appNode.length === 0) throw new Error('管理站点渲染失败')
+    details.push('独立管理站点渲染正常 (root render)')
 
     // 管理员登录
-    await page.goto(config.webBaseURL + '/admin', { waitUntil: 'networkidle' })
     if (await page.locator('.ant-modal').count() > 0) {
       details.push('未登录 → 弹出密码对话框')
     }
     await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
+    const loginResponsePromise = page.waitForResponse(
+      (response) => response.url().includes('/api/admin/login')
+        && response.request().method() === 'POST'
+    )
     await page.click('button:has-text("登录")')
-    await page.waitForFunction(() => !document.querySelector('.ant-modal'), { timeout: 10000 })
+    const loginResponse = await loginResponsePromise
+    if (!loginResponse.ok()) {
+      throw new Error(`管理员登录失败: HTTP ${loginResponse.status()}`)
+    }
+    await page.waitForFunction(
+      () => !document.querySelector('.ant-modal'),
+      null,
+      { timeout: 10000 }
+    )
     details.push('密码登录成功，弹窗消失')
+    await page.getByRole('heading', { name: '管理首页' }).waitFor({ state: 'visible' })
+    details.push('管理首页可见')
 
     reporter.onStepPass(this.id, details)
   },

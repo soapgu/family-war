@@ -11,7 +11,7 @@ module.exports = {
     reporter.onStepStart(this.id, this.name)
     const details = []
 
-    await page.goto(config.webBaseURL + '/admin/word-config', { waitUntil: 'networkidle' })
+    await page.goto(config.adminBaseURL + '/family-war/word-config', { waitUntil: 'networkidle' })
 
     await page.locator('.word-config-word-row').first().waitFor({ state: 'visible', timeout: 15000 })
     details.push('词库单词列表已加载')

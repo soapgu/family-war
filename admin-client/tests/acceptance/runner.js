@@ -3,11 +3,13 @@
 const fs = require('fs')
 const path = require('path')
 
-const CONFIG_LOCAL_PATH = path.join(__dirname, '..', '..', 'config.local.js')
+const REPOSITORY_ROOT = path.resolve(__dirname, '..', '..', '..')
+const CONFIG_LOCAL_PATH = path.join(REPOSITORY_ROOT, 'server', 'config.local.js')
+const CHECK_ONLY = process.argv.slice(2).includes('--check')
 
 const { execSync } = require('child_process')
 const { chromium } = require('@playwright/test')
-const config = require('./test-config')
+const config = CHECK_ONLY ? null : require('./test-config')
 const stateLib = require('./lib/state')
 const reporterLib = require('./lib/reporter')
 const cleanup = require('./lib/cleanup')
@@ -129,10 +131,52 @@ function runStepWithTimeout(id, promise, ms) {
   return Promise.race([promise.finally(() => clearTimeout(timer)), timeoutPromise])
 }
 
+function checkSetup() {
+  const requiredPaths = [
+    CONFIG_LOCAL_PATH,
+    path.join(REPOSITORY_ROOT, 'server', 'src', 'data'),
+    ...STEP_FILES.map((file) => path.join(STEPS_DIR, file)),
+  ]
+  const missing = requiredPaths.filter((target) => !fs.existsSync(target))
+  if (missing.length > 0) {
+    throw new Error(`验收测试依赖路径缺失：\n${missing.join('\n')}`)
+  }
+  for (const file of STEP_FILES) {
+    const step = require(path.join(STEPS_DIR, file))
+    if (!step.id || typeof step.run !== 'function') {
+      throw new Error(`验收步骤格式无效：${file}`)
+    }
+  }
+  require.resolve('@playwright/test')
+  console.log(`验收测试结构检查通过：${STEP_FILES.length} 个步骤，服务端路径与 Playwright 依赖可用`)
+}
+
+function assertAdminNetworkBoundary(requestURLs) {
+  const socketRequests = requestURLs.filter((url) => {
+    const parsed = new URL(url)
+    return parsed.pathname.includes('/socket.io')
+  })
+  if (socketRequests.length > 0) {
+    throw new Error(`管理端发起了 Socket.IO 请求：${socketRequests.join(', ')}`)
+  }
+
+  const invalidAdminAPIs = requestURLs.filter((url) => {
+    const pathname = new URL(url).pathname
+    return pathname.includes('/api/admin/') && !pathname.startsWith('/family-war/api/')
+  })
+  if (invalidAdminAPIs.length > 0) {
+    throw new Error(`管理 API 未使用 /family-war/api/：${invalidAdminAPIs.join(', ')}`)
+  }
+}
+
 let sigintCount = 0
 
 async function main() {
   const args = process.argv.slice(2)
+  if (CHECK_ONLY) {
+    checkSetup()
+    return
+  }
   const onlyRestore = args.includes('--restore-only')
   const reset = args.includes('--reset')
 
@@ -185,7 +229,7 @@ async function main() {
   if (!state) {
     state = stateLib.defaultState()
     state.gitCommit = stateLib.getGitCommit()
-    state.webBaseURL = config.webBaseURL
+    state.adminBaseURL = config.adminBaseURL
     state.apiBaseURL = config.apiBaseURL
     state.planVersion = 'Phase 6'
     state.startedAt = new Date().toISOString()
@@ -236,6 +280,8 @@ async function main() {
 
       const context = await browser.newContext({ ignoreHTTPSErrors: true })
       const page = await context.newPage()
+      const requestURLs = []
+      page.on('request', (request) => requestURLs.push(request.url()))
 
       try {
         const run = async () => {
@@ -244,6 +290,7 @@ async function main() {
           }
           const stepContext = { state, page, config, reporter, context }
           await step.run(stepContext)
+          assertAdminNetworkBoundary(requestURLs)
         }
 
         await runStepWithTimeout(step.id, run(), step.timeoutMs || stepTimeout)
