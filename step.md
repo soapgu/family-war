@@ -822,16 +822,16 @@ v3.3 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 5a | 执行根项目完整生产构建，确认游戏端和管理端产物独立生成，服务端产物、PM2 配置和内部路由未变化 | 根 `package.json`, `client/build/`, `admin-client/build/`, `server/` | ⬜ |
-| 5b | 部署 v3.3 游戏端和管理端产物到预发布环境，不修改服务端版本或运行参数 | 预发布环境 | ⬜ |
-| 5c | 验证 `/family-war/` 加载、刷新、加入房间和三种游戏模式正常，网络请求使用 `/socket/family-war/` | 预发布环境 | ⬜ |
-| 5d | 分别执行 Socket.IO polling-only 和 WebSocket-only 验收，确认握手、升级、断线重连及事件通信正常 | 预发布环境、网关验收脚本 | ⬜ |
-| 5e | 验证默写模式实际图片请求使用 `/api/family-war/images/*`，无 `/family-war/api/images/*`、404、混合内容或跨域错误 | 预发布环境 | ⬜ |
-| 5f | 验证 `/admin/` 登录、刷新保持、登出、401、词库、图片同步、候选图片和 TTS，网络请求全部使用 `/api/family-war/*` | 预发布环境 | ⬜ |
-| 5g | 执行管理端完整 Playwright acceptance，确认测试数据在成功、失败或中断后均恢复 | `admin-client/tests/acceptance/`, 预发布环境 | ⬜ |
-| 5h | 运行新旧 API 和 Socket.IO 兼容测试，确认 v3.2 客户端所依赖的旧入口仍可使用 | 预发布环境、网关验收脚本 | ⬜ |
-| 5i | 检查浏览器控制台、Nginx 错误日志和服务端日志，确认无错误路径、代理循环、异常 30x、握手失败或新增 4xx/5xx | 预发布环境、验收报告 | ⬜ |
-| 5j | 演练前端回滚：恢复 v3.2 构建后不改后端即可通过旧 API 和 Socket.IO 入口运行，再恢复 v3.3 构建 | 预发布环境、回滚记录 | ⬜ |
+| 5a | 执行根项目完整生产构建，确认游戏端和管理端产物独立生成，服务端产物、PM2 配置和内部路由未变化 | 根 `package.json`, `client/build/`, `admin-client/build/`, `server/` | ✅ |
+| 5b | 部署 v3.3 游戏端和管理端产物到预发布环境，不修改服务端版本或运行参数 | 预发布环境 | ✅ |
+| 5c | 验证 `/family-war/` 加载、刷新、加入房间和三种游戏模式正常，网络请求使用 `/socket/family-war/` | 预发布环境 | ✅ |
+| 5d | 分别执行 Socket.IO polling-only 和 WebSocket-only 验收，确认握手、升级、断线重连及事件通信正常 | 预发布环境、网关验收脚本 | ✅ |
+| 5e | 验证默写模式实际图片请求使用 `/api/family-war/images/*`，无 `/family-war/api/images/*`、404、混合内容或跨域错误 | 预发布环境 | ✅ |
+| 5f | 验证 `/admin/` 登录、刷新保持、登出、401、词库、图片同步、候选图片和 TTS，网络请求全部使用 `/api/family-war/*` | 预发布环境 | ✅ |
+| 5g | 执行管理端完整 Playwright acceptance，确认测试数据在成功、失败或中断后均恢复 | `admin-client/tests/acceptance/`, 预发布环境 | ✅ |
+| 5h | 运行新旧 API 和 Socket.IO 兼容测试，确认 v3.2 客户端所依赖的旧入口仍可使用 | 预发布环境、网关验收脚本 | ✅ |
+| 5i | 检查浏览器控制台、Nginx 错误日志和服务端日志，确认无错误路径、代理循环、异常 30x、握手失败或新增 4xx/5xx | 预发布环境、验收报告 | ✅ |
+| 5j | 演练前端回滚：恢复 v3.2 构建后不改后端即可通过旧 API 和 Socket.IO 入口运行，再恢复 v3.3 构建 | 预发布环境、回滚记录 | ✅ |
 
 ## Phase 6：正式发布、版本收尾与兼容观察
 
@@ -839,13 +839,13 @@ v3.3 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 6a | 更新根项目、游戏端、管理端和服务端的版本元数据为 `3.3.0`，同步 lockfile；服务端仅保持版本一致，不修改运行逻辑 | `package.json`, `package-lock.json`, `client/`, `admin-client/`, `server/` | ⬜ |
-| 6b | 更新路径架构、环境配置、开发代理、Nginx 示例、部署顺序和回滚说明 | `README.md`, `AGENTS.md`, `docs/ROUTING-MIGRATION-PLAN.md`, 部署文档 | ⬜ |
-| 6c | 更新路线图，将 v3.3 标记为已完成，并记录旧入口仍处于兼容期、移除条件尚未满足 | `road-map.md` | ⬜ |
-| 6d | 在正式环境先增加并验证新 Nginx API 与 Socket.IO location，确认旧入口保持可用 | 正式环境 | ⬜ |
-| 6e | 新入口验证通过后部署 v3.3 前端产物，按预发布清单完成游戏、管理、图片、polling 和 WebSocket 验收 | 正式环境、发布记录 | ⬜ |
-| 6f | 发布 v3.3.0 Git tag 和 GitHub Release，发布说明列出新标准路径、兼容路径、回滚方式和无后端协议变更 | `docs/RELEASE.md`、GitHub Release | ⬜ |
-| 6g | 在约定观察周期内统计旧 API 与 Socket.IO 入口的非敏感访问量，区分真实客户端、监控和扫描流量 | Nginx 访问统计、运维记录 | ⬜ |
+| 6a | 更新根项目、游戏端、管理端和服务端的版本元数据为 `3.3.0`，同步 lockfile；服务端仅保持版本一致，不修改运行逻辑 | `package.json`, `package-lock.json`, `client/`, `admin-client/`, `server/` | ✅ |
+| 6b | 更新路径架构、环境配置、开发代理、Nginx 示例、部署顺序和回滚说明 | `README.md`, `AGENTS.md`, `docs/ROUTING-MIGRATION-PLAN.md`, 部署文档 | ✅ |
+| 6c | 更新路线图，将 v3.3 标记为已完成，并记录旧入口仍处于兼容期、移除条件尚未满足 | `road-map.md` | ✅ |
+| 6d | 在正式环境先增加并验证新 Nginx API 与 Socket.IO location，确认旧入口保持可用 | 正式环境 | ✅ |
+| 6e | 新入口验证通过后部署 v3.3 前端产物，按预发布清单完成游戏、管理、图片、polling 和 WebSocket 验收 | 正式环境、发布记录 | ✅ |
+| 6f | 发布 v3.3.0 Git tag 和 GitHub Release，发布说明列出新标准路径、兼容路径、回滚方式和无后端协议变更 | `docs/RELEASE.md`、GitHub Release | ✅ |
+| 6g | 在约定观察周期内统计旧 API 与 Socket.IO 入口的非敏感访问量，区分真实客户端、监控和扫描流量 | Nginx 访问统计、运维记录 | 🔄 |
 | 6h | 根据观察结果为后续版本单独提出旧入口下线计划；v3.3 内不得直接删除兼容入口 | `road-map.md`、后续版本计划 | ⬜ |
 
 ## v3.3 最终验收条件

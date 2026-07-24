@@ -15,7 +15,7 @@
 | v3.0 | 已完成 | 英文默写、词库和图片管理 |
 | v3.1 | 已发布 | 服务端重构、安全加固、断线恢复和自动化验收 |
 | v3.2 | 已发布 | 独立 `admin-client` 与 `/admin/` 管理入口 |
-| v3.3 | 规划中 | 公网 API 与 Socket.IO 路径规范化 |
+| v3.3 | 已完成 | 公网 API 与 Socket.IO 路径规范化 |
 | v3.4 | 规划中 | 平台管理框架完善 |
 | v3.5 | 规划中 | 管理员认证解耦与完善 |
 | 后续大版本 | 远期规划 | 平台普通用户、家庭档案与微信认证 |
@@ -152,7 +152,7 @@ location /admin/ {
 - 后端代码和内部路由没有变化；
 - Nginx 只新增 `/admin/` 静态站点，原游戏、API 和 Socket.IO location 行为不变。
 
-### v3.3：公网资源路径规范化
+### v3.3：公网资源路径规范化（已完成）
 
 #### 目标
 
@@ -176,6 +176,13 @@ Socket.IO：   /socket/family-war/
 - 同时验证 Socket.IO HTTP 长轮询和 WebSocket 升级；
 - 在兼容期内暂时保留旧公网 API 和 Socket.IO 路径；
 - Koa 内部继续使用 `/api/*` 和 `/socket.io/`。
+
+#### 兼容观察
+
+- 旧 `/family-war/api/*` 与 `/family-war/socket.io/*` 在 v3.3 中继续直接代理，不使用重定向；
+- 旧入口写入独立的非敏感访问日志，用于区分真实客户端、监控和扫描流量；
+- v3.3 不删除兼容入口；至少经过一个完整版本观察周期且确认没有真实客户端后，才能在后续版本提出下线；
+- Socket.IO 旧入口下线时不得使用普通 HTTP 301/302 代替客户端升级。
 
 详细路由原则参见 [`docs/ROUTING-MIGRATION-PLAN.md`](docs/ROUTING-MIGRATION-PLAN.md)。
 

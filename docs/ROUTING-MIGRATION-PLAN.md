@@ -1,6 +1,6 @@
 # 多应用平台路由改造方案
 
-> 状态：后期规划，暂不实施
+> 状态：v3.3 已完成公网路径规范化；统一认证与旧入口下线仍属后续规划
 >
 > 适用项目：`family-war` 及未来的统一学习平台
 >
@@ -15,7 +15,7 @@
 - `that-math-things`：纯前端数学学习应用；
 - 未来可能增加识字、英语等子应用。
 
-当前 `family-war` 的生产前端已部署在 `/family-war/` 下，浏览器访问的 API 和 Socket.IO 路径分别带有相同的应用前缀：
+v3.2 及更早版本中，浏览器访问的 API 和 Socket.IO 路径分别带有相同的应用前缀：
 
 ```text
 /family-war/api/admin/status
@@ -195,13 +195,13 @@ React Router basename：/family-war
 
 ### 5.2 HTTP API
 
-当前公网路径：
+v3.2 公网路径（v3.3 兼容入口）：
 
 ```text
 /family-war/api/admin/status
 ```
 
-目标公网路径：
+v3.3 标准公网路径：
 
 ```text
 /api/family-war/admin/status
@@ -230,13 +230,13 @@ fetch(`${API_BASE}/admin/status`)
 
 ### 5.3 Socket.IO
 
-当前公网路径：
+v3.2 公网路径（v3.3 兼容入口）：
 
 ```text
 /family-war/socket.io
 ```
 
-目标公网路径：
+v3.3 标准公网路径：
 
 ```text
 /socket/family-war/

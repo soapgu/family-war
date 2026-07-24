@@ -1,5 +1,21 @@
 # 发布流程
 
+## v3.3.0 发布摘要
+
+- 公网 API 标准入口调整为 `/api/family-war/`；
+- 公网 Socket.IO 标准入口调整为 `/socket/family-war/`；
+- 页面路径继续使用 `/family-war/` 和 `/admin/`；
+- 游戏端页面基址、API 基址和 Socket.IO path 已独立配置；
+- 管理端全部生产请求切换到标准 API 入口，管理员 JWT Cookie 与后端协议不变；
+- 默写图片通过 `/api/family-war/images/*` 加载；
+- 新旧 Socket.IO 入口均通过 polling-only 和 WebSocket-only 网关验收；
+- 旧 `/family-war/api/` 与 `/family-war/socket.io/` 在兼容期继续可用，并写入独立访问日志；
+- Koa 内部 `/api/*`、Socket.IO `/socket.io/` 和 PM2 运行配置没有行为变更；
+- 前端可通过恢复 v3.2 构建产物回滚，无需回滚服务端。
+- 服务端 255 项、游戏端 87 项、管理端 25 项和 Socket.IO 集成 95 项测试通过；
+- 管理端 Playwright acceptance 6/6 通过，测试词库和图片均已恢复；
+- 详细结果见 `docs/acceptance/v3.3/release-report.md`。
+
 ## v3.2.0 发布摘要
 
 - 新增独立 `admin-client`，管理页面从游戏客户端拆分；

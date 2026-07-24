@@ -509,7 +509,7 @@ MatchResult.jsx
 
 ## 后台管理
 
-无数据库，独立管理端位于 `/admin/`，当前提供管理员 JWT Cookie 登录、状态监控和词库管理。v3.2 保持现有 `/family-war/api/admin/*` 公网 API 路径不变。
+无数据库，独立管理端位于 `/admin/`，当前提供管理员 JWT Cookie 登录、状态监控和词库管理。v3.3 的标准公网 API 为 `/api/family-war/*`，服务端内部仍使用 `/api/*`。
 
 - 当前房间状态（谁在线、选了谁、是否对战中）
 - 已完成对局记录（存在内存数组中）
@@ -556,9 +556,12 @@ npm test --prefix admin-client
 # Acceptance 配置与依赖检查（不连接预发布）
 npm run test:acceptance:check
 
+# 公网 API、Socket.IO 和图片网关验收
+GATEWAY_BASE_URL=http://localhost:8080 npm run test:gateway
+
 # 预发布完整验收
 ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
-ACCEPTANCE_API_URL=http://localhost:8080/family-war \
+ACCEPTANCE_API_URL=http://localhost:8080/api/family-war \
 ACCEPTANCE_ADMIN_PASSWORD= \
 npm run test:acceptance -- --reset
 ```
@@ -681,7 +684,7 @@ pm2 save       # 保存当前进程列表
 
 ### Nginx 配置
 
-**目标**：提供 `/family-war/` 游戏站点和独立 `/admin/` 管理站点，并将 API/WebSocket 代理到预发布后端。
+**目标**：提供 `/family-war/` 游戏站点和独立 `/admin/` 管理站点，通过 `/api/family-war/` 和 `/socket/family-war/` 访问后端，并在迁移期保留 v3.2 兼容入口。
 
 **实施内容**
 
@@ -692,30 +695,30 @@ pm2 save       # 保存当前进程列表
 | 3 | 重载 nginx | `nginx -s reload` |
 | 4 | 全链路验证 | 访问 `http://localhost:8080/family-war/`，确认页面/API/WebSocket 均正常 |
 
-**Nginx 配置**：
+**Nginx 配置**：版本化完整配置见
+[`deploy/nginx/family-war.conf`](deploy/nginx/family-war.conf)，部署顺序为先更新并验证
+Nginx，再构建两个前端。
 
 ```nginx
-# redirect /family-war -> /family-war/
-location = /family-war {
-    return 302 /family-war/;
+# v3.3 标准 API
+location /api/family-war/ {
+    proxy_pass http://localhost:4010/api/;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
 }
 
-# 静态文件服务 + SPA fallback（BrowserRouter）
-location /family-war/ {
-    alias /Users/guhui/Githubs/family-war/client/build/;
-    index index.html;
-    try_files $uri $uri/ /family-war/index.html;
-}
-
-# API 反向代理（自动剥离 /family-war 前缀）
+# v3.2 兼容 API；观察期结束前不得移除
 location /family-war/api/ {
+    access_log /opt/homebrew/var/log/nginx/family-war-legacy-access.log;
     proxy_pass http://localhost:4010/api/;
     proxy_set_header Host $http_host;
     proxy_set_header X-Real-IP $remote_addr;
 }
 
-# Socket.IO WebSocket 代理
-location /family-war/socket.io/ {
+# v3.3 标准 Socket.IO
+location /socket/family-war/ {
     proxy_pass http://localhost:4010/socket.io/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -724,17 +727,20 @@ location /family-war/socket.io/ {
     proxy_set_header X-Real-IP $remote_addr;
 }
 
-# 独立管理站点 + BrowserRouter SPA fallback
-location = /admin {
-    return 302 /admin/;
+# v3.2 兼容 Socket.IO；不得使用 301/302
+location /family-war/socket.io/ {
+    access_log /opt/homebrew/var/log/nginx/family-war-legacy-access.log;
+    proxy_pass http://localhost:4010/socket.io/;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
 }
 
-location /admin/ {
-    alias /Users/guhui/Githubs/family-war/admin-client/build/;
-    index index.html;
-    try_files $uri $uri/ /admin/index.html;
-}
 ```
+
+回滚前端时恢复 v3.2 的 `client/build/` 与 `admin-client/build/` 即可，旧代理入口仍然可用，不需要回滚服务端。当前 Nginx 直接读取仓库 `build/`，执行生产构建即会更新本机预发布静态产物。
 
 ### 环境对照
 
@@ -743,6 +749,6 @@ location /admin/ {
 | 游戏前端 | Vite `:3000` | Nginx `:8080/family-war/` |
 | 管理前端 | Vite `:3001` | Nginx `:8080/admin/` |
 | 后端进程 | nodemon `:4000`（自动重启） | PM2 `:4010`（手动重启） |
-| API 入口 | `http://localhost:3000/api/*`（Vite 代理） | `http://localhost:8080/family-war/api/*`（nginx 反代） |
-| Socket.IO | 直连 `http://{host}:4000` | nginx 反代 `/family-war/socket.io` → `:4010` |
-| 配置文件 | `client/vite.config.js` | `nginx conf.d/family-war.conf` |
+| API 入口 | `http://localhost:3000/api/*`（Vite 代理） | `http://localhost:8080/api/family-war/*`（旧 `/family-war/api/*` 暂时兼容） |
+| Socket.IO | 直连 `http://{host}:4000/socket.io` | nginx 反代 `/socket/family-war/` → `:4010/socket.io/`（旧路径暂时兼容） |
+| 配置文件 | `client/vite.config.js` | `deploy/nginx/family-war.conf` 与生效的 Nginx 配置 |

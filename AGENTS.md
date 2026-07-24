@@ -26,6 +26,7 @@ root package.json  (concurrently orchestrates all three)
 | server unit | `npm test --prefix server` | |
 | server unit watch | `npm run test:watch --prefix server` | |
 | server integration | `npm run test:integration` | plain Node script, real sockets, port :4001 |
+| gateway acceptance | `npm run test:gateway` | requires `GATEWAY_BASE_URL`, checks new/legacy API and Socket paths |
 | client unit | `npm test --prefix client` | Vitest |
 | client unit watch | `npm run test:watch --prefix client` | |
 | admin unit | `npm test --prefix admin-client` | Vitest |
@@ -39,7 +40,8 @@ root package.json  (concurrently orchestrates all three)
 
 - **No database** — all state in `server/src/socket/roomManager.js` / `gameManager.js` singletons
 - **Socket.IO is a module-level singleton** on client (`client/src/hooks/useSocket.js`). Tests mock via `client/src/hooks/__mocks__/useSocket.js` (exports `triggerSocketEvent`)
-- **Client socket URL** — dev: `http://{hostname}:4000`; production: `/` with socket path `/family-war/socket.io`
+- **Client socket URL** — dev: `http://{hostname}:4000` with `/socket.io`; production: `/` with `/socket/family-war/`
+- **Production API base** — `/api/family-war`; legacy `/family-war/api/` remains temporarily available at Nginx
 - **Vite proxy** (`client/vite.config.js`): forwards `/api` → `:4000`, `/socket.io` → `:4000` (ws)
 - **Vite base** is `/family-war/` for production (nginx reverse proxy)
 - **Admin Vite base** is `/admin/`; its production output is `admin-client/build/`
