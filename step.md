@@ -552,12 +552,12 @@ admin-client/src/
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | 从游戏 `App.jsx` 删除 Admin、WordConfig、RequireAuth 和路由导入，移除 `/admin`、`/admin/word-config` 路由 | `client/src/App.jsx` | ⬜ |
-| 3b | 删除游戏入口的 Browser Router 包装；保留 Ant Design App 容器并直接渲染游戏应用 | `client/src/App.jsx` | ⬜ |
-| 3c | 删除已经迁移的管理页面、认证组件、管理 API 工具及其旧测试文件 | `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx`, `client/src/components/RequireAuth.jsx`, `client/src/utils/api.js`, `client/src/__tests__/Admin.test.jsx`, `client/src/__tests__/WordConfig.test.jsx`, `client/src/__tests__/RequireAuth.test.jsx` | ⬜ |
-| 3d | 检查并清理游戏端不再使用的 `react-router-dom` 等依赖；Ant Design 若仍被游戏 UI 使用则保留 | `client/package.json`, `client/package-lock.json` | ⬜ |
-| 3e | 补充游戏 App 回归测试，确认渲染游戏首页时仍使用 Socket.IO，而源码和构建产物中不再包含管理页面入口 | `client/src/__tests__/App.test.jsx` | ⬜ |
-| 3f | 全局搜索确认 `client/src` 不再出现 Admin、WordConfig、RequireAuth 和 `/admin` 路由引用 | `client/src/` | ⬜ |
+| 3a | 从游戏 `App.jsx` 删除 Admin、WordConfig、RequireAuth 和路由导入，移除 `/admin`、`/admin/word-config` 路由 | `client/src/App.jsx` | ✅ |
+| 3b | 删除游戏入口的 Browser Router 包装；保留 Ant Design App 容器并直接渲染游戏应用 | `client/src/App.jsx` | ✅ |
+| 3c | 删除已经迁移的管理页面、认证组件、管理 API 工具及其旧测试文件 | `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx`, `client/src/components/RequireAuth.jsx`, `client/src/utils/api.js`, `client/src/__tests__/Admin.test.jsx`, `client/src/__tests__/WordConfig.test.jsx`, `client/src/__tests__/RequireAuth.test.jsx` | ✅ |
+| 3d | 检查并清理游戏端不再使用的 `react-router-dom` 等依赖；Ant Design 若仍被游戏 UI 使用则保留 | `client/package.json`, `client/package-lock.json` | ✅ |
+| 3e | 补充游戏 App 回归测试，确认渲染游戏首页时仍使用 Socket.IO，而源码和构建产物中不再包含管理页面入口 | `client/src/__tests__/App.test.jsx` | ✅ |
+| 3f | 全局搜索确认 `client/src` 不再出现 Admin、WordConfig、RequireAuth 和 `/admin` 路由引用 | `client/src/` | ✅ |
 
 **边界说明**
 

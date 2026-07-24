@@ -48,6 +48,22 @@ async function enterRoom() {
   await userEvent.click(screen.getByRole('button', { name: '进入房间' }))
 }
 
+describe('App 游戏入口', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('直接渲染游戏首页并注册 Socket.IO 监听，不依赖页面路由', () => {
+    window.history.pushState({}, '', '/unexpected-path')
+    render(<App />)
+
+    expect(screen.getByPlaceholderText('输入昵称')).toBeInTheDocument()
+    expect(mockSocket.on).toHaveBeenCalledWith('room:state', expect.any(Function))
+    expect(mockSocket.on).toHaveBeenCalledWith('connect', expect.any(Function))
+    expect(screen.queryByText('后台管理')).not.toBeInTheDocument()
+  })
+})
+
 describe('App BGM', () => {
   beforeEach(() => {
     vi.clearAllMocks()
