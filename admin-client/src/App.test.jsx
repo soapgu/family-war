@@ -6,20 +6,32 @@ function renderAt(pathname) {
   return render(<App />)
 }
 
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ rooms: [], matchHistory: [] }),
+  }))
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 describe('Admin App', () => {
-  it('renders the admin landing page', () => {
+  it('renders the authenticated admin landing page', async () => {
     renderAt('/admin/')
 
-    expect(screen.getByText('管理平台')).toBeInTheDocument()
-    expect(screen.getByText('admin-client 工程骨架已建立')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '管理首页' })).toBeInTheDocument()
+    expect(screen.getByText('选择需要管理的应用。')).toBeInTheDocument()
   })
 
-  it('navigates to the family-war placeholder', async () => {
+  it('navigates to the family-war admin page', async () => {
     renderAt('/admin/')
 
-    fireEvent.click(screen.getByRole('button', { name: '进入 Family War 管理' }))
+    fireEvent.click(await screen.findByRole('button', { name: '进入管理' }))
 
-    expect(await screen.findByText('Family War 管理')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '后台管理' })).toBeInTheDocument()
     expect(window.location.pathname).toBe('/admin/family-war')
   })
 
@@ -29,6 +41,6 @@ describe('Admin App', () => {
     await waitFor(() => {
       expect(window.location.pathname).toBe('/admin')
     })
-    expect(screen.getByText('管理平台')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '管理首页' })).toBeInTheDocument()
   })
 })

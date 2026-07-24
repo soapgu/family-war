@@ -530,13 +530,13 @@ admin-client/src/
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 2a | 建立 `family-war` 服务配置；开发环境 API Base 为空字符串，生产环境暂时为 `/family-war`，页面不再直接从 Vite Public Base 推导 API 地址 | `admin-client/src/config/services.js` | ⬜ |
-| 2b | 将现有 `RequireAuth` 迁为管理端认证组件，保留 status 探测、密码登录、401 重新登录、登出状态和 `admin_token` Cookie 行为 | `admin-client/src/auth/AdminAuthContext.jsx`, `admin-client/src/auth/RequireAdminAuth.jsx` | ⬜ |
-| 2c | 将 `Admin.jsx` 迁入 `modules/family-war`，保留房间、玩家、历史对局、手动刷新和 5 秒自动刷新 | `admin-client/src/modules/family-war/AdminPage.jsx` | ⬜ |
-| 2d | 将 `WordConfig.jsx` 迁入 `modules/family-war`，保留章节/单词配置、图片状态、缺失同步、候选翻页、确认换图、缓存刷新和 TTS | `admin-client/src/modules/family-war/WordConfigPage.jsx` | ⬜ |
-| 2e | 抽出 family-war 管理 API 封装，集中维护 `/api/admin/*` 和 `/api/images/*` 地址；保持服务端请求方法、请求体和响应结构不变 | `admin-client/src/modules/family-war/api.js` | ⬜ |
-| 2f | 调整页面导航以适配 `/admin` Browser Router，确保管理首页、family-war 状态页与词库管理之间往返正常 | `admin-client/src/App.jsx`, `admin-client/src/modules/family-war/*.jsx` | ⬜ |
-| 2g | 增加最小管理布局，为后续多应用入口预留导航区域；本版本只展示 `family-war`，不提前实现空的跨应用框架功能 | `admin-client/src/layout/AdminLayout.jsx` | ⬜ |
+| 2a | 建立 `family-war` 服务配置；开发环境 API Base 为空字符串，生产环境暂时为 `/family-war`，页面不再直接从 Vite Public Base 推导 API 地址 | `admin-client/src/config/services.js` | ✅ |
+| 2b | 将现有 `RequireAuth` 迁为管理端认证组件，保留 status 探测、密码登录、401 重新登录、登出状态和 `admin_token` Cookie 行为 | `admin-client/src/auth/AdminAuthContext.jsx`, `admin-client/src/auth/RequireAdminAuth.jsx` | ✅ |
+| 2c | 将 `Admin.jsx` 迁入 `modules/family-war`，保留房间、玩家、历史对局、手动刷新和 5 秒自动刷新 | `admin-client/src/modules/family-war/AdminPage.jsx` | ✅ |
+| 2d | 将 `WordConfig.jsx` 迁入 `modules/family-war`，保留章节/单词配置、图片状态、缺失同步、候选翻页、确认换图、缓存刷新和 TTS | `admin-client/src/modules/family-war/WordConfigPage.jsx` | ✅ |
+| 2e | 抽出 family-war 管理 API 封装，集中维护 `/api/admin/*` 和 `/api/images/*` 地址；保持服务端请求方法、请求体和响应结构不变 | `admin-client/src/modules/family-war/api.js` | ✅ |
+| 2f | 调整页面导航以适配 `/admin` Browser Router，确保管理首页、family-war 状态页与词库管理之间往返正常 | `admin-client/src/App.jsx`, `admin-client/src/modules/family-war/*.jsx` | ✅ |
+| 2g | 增加最小管理布局，为后续多应用入口预留导航区域；本版本只展示 `family-war`，不提前实现空的跨应用框架功能 | `admin-client/src/layout/AdminLayout.jsx` | ✅ |
 
 **兼容要求**
 
