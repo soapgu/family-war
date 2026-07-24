@@ -807,12 +807,14 @@ v3.3 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 4a | 增加 `/api/family-war/` location，将前缀剥离后转发到服务端 `/api/`，传递 Host、真实 IP 和转发协议等必要请求头 | Nginx `family-war.conf` 或相关站点配置 | ⬜ |
-| 4b | 增加 `/socket/family-war/` location，转发到服务端 `/socket.io/`，配置 HTTP/1.1、Upgrade、Connection、超时和必要请求头 | Nginx `family-war.conf` 或相关站点配置 | ⬜ |
-| 4c | 保留 `/family-war/api/` 与 `/family-war/socket.io/` 的原有代理规则，不增加重定向，不改变其匹配优先级和行为 | Nginx `family-war.conf` 或相关站点配置 | ⬜ |
-| 4d | 为旧入口保留可识别的访问记录或统计方式，用于后续版本判断是否可以安全移除；日志不得记录 JWT、Cookie 或敏感请求体 | Nginx 日志配置、运维说明 | ⬜ |
-| 4e | 在预发布环境执行 `nginx -t`，确认 location 匹配、`proxy_pass` 尾斜杠和配置语法正确后再重载 | 预发布环境 | ⬜ |
-| 4f | 在尚未部署 v3.3 前端时验证新入口可用、v3.2 页面与旧入口仍正常，形成 Nginx 变更前后对照记录 | 预发布环境、验收报告 | ⬜ |
+| 4a | 增加 `/api/family-war/` location，将前缀剥离后转发到服务端 `/api/`，传递 Host、真实 IP 和转发协议等必要请求头 | Nginx `family-war.conf` 或相关站点配置 | ✅ |
+| 4b | 增加 `/socket/family-war/` location，转发到服务端 `/socket.io/`，配置 HTTP/1.1、Upgrade、Connection、超时和必要请求头 | Nginx `family-war.conf` 或相关站点配置 | ✅ |
+| 4c | 保留 `/family-war/api/` 与 `/family-war/socket.io/` 的原有代理规则，不增加重定向，不改变其匹配优先级和行为 | Nginx `family-war.conf` 或相关站点配置 | ✅ |
+| 4d | 为旧入口保留可识别的访问记录或统计方式，用于后续版本判断是否可以安全移除；日志不得记录 JWT、Cookie 或敏感请求体 | Nginx 日志配置、运维说明 | ✅ |
+| 4e | 在预发布环境执行 `nginx -t`，确认 location 匹配、`proxy_pass` 尾斜杠和配置语法正确后再重载 | 预发布环境 | ✅ |
+| 4f | 在尚未部署 v3.3 前端时验证新入口可用、v3.2 页面与旧入口仍正常，形成 Nginx 变更前后对照记录 | 预发布环境、验收报告 | ✅* |
+
+\* 当前 Nginx 静态目录直接指向仓库 `build/`，Phase 2 的生产构建已同步更新预发布静态产物，无法再单独验证旧 v3.2 页面构建；本步骤改以游戏/管理页面 200、新旧 API 一致，以及旧 Socket.IO polling/WebSocket 真实连接证明兼容性。详见 `docs/acceptance/v3.3/phase-4-nginx-report.md`。
 
 ## Phase 5：预发布部署与完整验收
 
