@@ -9,21 +9,22 @@ class LoginPage {
   }
 
   async isLoggedIn() {
-    return await this.page.evaluate(async () => {
+    return await this.page.evaluate(async (apiPath) => {
       try {
-        const res = await fetch('/family-war/api/admin/status')
+        const res = await fetch(`${apiPath}/admin/status`)
         return res.ok
       } catch {
         return false
       }
-    })
+    }, this.config.apiPath)
   }
 
   async login() {
     await this.page.waitForSelector('.ant-modal', { timeout: 10000 })
     await this.page.fill('input[placeholder="请输入管理密码"]', this.config.adminPassword)
     const loginResponsePromise = this.page.waitForResponse(
-      (res) => res.url().includes('/api/admin/login') && res.request().method() === 'POST'
+      (res) => new URL(res.url()).pathname === `${this.config.apiPath}/admin/login`
+        && res.request().method() === 'POST'
     )
     await this.page.click('button:has-text("登录")')
     const loginResponse = await loginResponsePromise

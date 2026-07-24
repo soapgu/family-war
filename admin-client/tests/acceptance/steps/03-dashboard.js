@@ -11,12 +11,12 @@ module.exports = {
     await page.locator('text=后台管理').waitFor({ state: 'visible', timeout: 15000 })
     details.push('头部标题 "后台管理" 可见')
 
-    const statusApi = await page.evaluate(async () => {
-      const res = await fetch('/family-war/api/admin/status')
+    const statusApi = await page.evaluate(async (apiPath) => {
+      const res = await fetch(`${apiPath}/admin/status`)
       return res.ok ? (await res.json()) : null
-    })
-    if (!statusApi) throw new Error('GET /api/admin/status 响应异常')
-    details.push(`GET /api/admin/status OK — ${Object.keys(statusApi).join(', ')}`)
+    }, config.apiPath)
+    if (!statusApi) throw new Error(`GET ${config.apiPath}/admin/status 响应异常`)
+    details.push(`GET ${config.apiPath}/admin/status OK — ${Object.keys(statusApi).join(', ')}`)
 
     reporter.onStepPass(this.id, details)
   },

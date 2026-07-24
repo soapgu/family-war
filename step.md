@@ -792,14 +792,14 @@ v3.3 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | 将 acceptance 的 API 基址改为可配置项，预发布默认使用 `/api/family-war`，测试代码不得硬编码 `/family-war/api` | `admin-client/tests/acceptance/` | ⬜ |
-| 3b | 更新管理登录、状态检查、词库、图片和 TTS 用例，使全部管理 API 断言匹配 `/api/family-war/*` | `admin-client/tests/acceptance/` | ⬜ |
-| 3c | 更新浏览器网络断言：管理页面不得连接任何 Socket.IO；管理请求必须使用 `/api/family-war/*`，不得回退到 `/family-war/api/*` | `admin-client/tests/acceptance/` | ⬜ |
-| 3d | 增加通过 Nginx 新 path 建立 Socket.IO polling 连接的网关测试，验证连接、加入房间和至少一个既有事件往返 | `server/tests/` 或独立网关验收脚本 | ⬜ |
-| 3e | 增加通过 Nginx 新 path 建立纯 WebSocket 连接的网关测试，验证 Upgrade 成功和事件往返 | `server/tests/` 或独立网关验收脚本 | ⬜ |
-| 3f | 增加旧 `/family-war/socket.io/` 的 polling/WebSocket 兼容检查，证明 v3.2 客户端仍可连接 | 网关验收脚本 | ⬜ |
-| 3g | 增加新旧 API 入口的兼容检查：相同只读请求返回一致的状态码、关键响应头和业务结果 | 网关验收脚本 | ⬜ |
-| 3h | 增加图片链路验收：接口返回的相对地址经游戏端解析后请求 `/api/family-war/images/*` 并获得有效图片响应 | `client/` 测试、浏览器或网关验收脚本 | ⬜ |
+| 3a | 将 acceptance 的 API 基址改为可配置项，预发布默认使用 `/api/family-war`，测试代码不得硬编码 `/family-war/api` | `admin-client/tests/acceptance/` | ✅ |
+| 3b | 更新管理登录、状态检查、词库、图片和 TTS 用例，使全部管理 API 断言匹配 `/api/family-war/*` | `admin-client/tests/acceptance/` | ✅ |
+| 3c | 更新浏览器网络断言：管理页面不得连接任何 Socket.IO；管理请求必须使用 `/api/family-war/*`，不得回退到 `/family-war/api/*` | `admin-client/tests/acceptance/` | ✅ |
+| 3d | 增加通过 Nginx 新 path 建立 Socket.IO polling 连接的网关测试，验证连接、加入房间和至少一个既有事件往返 | `server/tests/` 或独立网关验收脚本 | ✅ |
+| 3e | 增加通过 Nginx 新 path 建立纯 WebSocket 连接的网关测试，验证 Upgrade 成功和事件往返 | `server/tests/` 或独立网关验收脚本 | ✅ |
+| 3f | 增加旧 `/family-war/socket.io/` 的 polling/WebSocket 兼容检查，证明 v3.2 客户端仍可连接 | 网关验收脚本 | ✅ |
+| 3g | 增加新旧 API 入口的兼容检查：相同只读请求返回一致的状态码、关键响应头和业务结果 | 网关验收脚本 | ✅ |
+| 3h | 增加图片链路验收：接口返回的相对地址经游戏端解析后请求 `/api/family-war/images/*` 并获得有效图片响应 | `client/` 测试、浏览器或网关验收脚本 | ✅ |
 
 ## Phase 4：增加 Nginx 标准入口并保留双路径
 

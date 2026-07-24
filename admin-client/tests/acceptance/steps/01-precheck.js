@@ -29,13 +29,13 @@ module.exports = {
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000)
-      const res = await fetch(config.apiBaseURL + '/api/health', { signal: controller.signal })
+      const res = await fetch(config.apiBaseURL + '/health', { signal: controller.signal })
       clearTimeout(timeoutId)
       const body = await res.json()
       if (body.status !== 'ok') throw new Error(`health 异常: ${JSON.stringify(body)}`)
-      details.push(`GET /api/health → ${JSON.stringify(body)}`)
+      details.push(`GET ${config.apiPath}/health → ${JSON.stringify(body)}`)
     } catch (err) {
-      throw new Error(`/api/health 不可达: ${err.message}`)
+      throw new Error(`${config.apiPath}/health 不可达: ${err.message}`)
     }
 
     // 独立管理站点渲染
@@ -50,7 +50,7 @@ module.exports = {
     }
     await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
     const loginResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/admin/login')
+      (response) => new URL(response.url()).pathname === `${config.apiPath}/admin/login`
         && response.request().method() === 'POST'
     )
     await page.click('button:has-text("登录")')

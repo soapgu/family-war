@@ -21,4 +21,8 @@ for (const key of required) {
   }
 }
 
+const apiURL = new URL(config.apiBaseURL)
+config.apiBaseURL = config.apiBaseURL.replace(/\/+$/, '')
+config.apiPath = apiURL.pathname.replace(/\/+$/, '')
+
 module.exports = config

@@ -10,7 +10,7 @@ function defaultState() {
     gitCommit: '',
     adminBaseURL: '',
     apiBaseURL: '',
-    planVersion: 'Phase 6',
+    planVersion: 'v3.3 Phase 3',
     completed: [],
     current: null,
     failed: [],

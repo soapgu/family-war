@@ -29,7 +29,8 @@ module.exports = {
 
     try {
       const candidatesResponsePromise = page.waitForResponse(
-        (response) => response.url().includes('/api/admin/word-images/candidates/')
+        (response) => new URL(response.url()).pathname
+          .startsWith(`${config.apiPath}/admin/word-images/candidates/`)
       )
       await changeBtn.click()
 
@@ -68,7 +69,8 @@ module.exports = {
         throw new Error('确认换图按钮不可用')
       }
       const confirmResponsePromise = page.waitForResponse(
-        (response) => response.url().includes('/api/admin/word-images/confirm/')
+        (response) => new URL(response.url()).pathname
+          .startsWith(`${config.apiPath}/admin/word-images/confirm/`)
       )
       await confirmBtn.click()
       details.push('已点击确认换图')

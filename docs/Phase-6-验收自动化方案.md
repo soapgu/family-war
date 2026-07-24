@@ -6,7 +6,8 @@
 > - v3.2 已将整套 Playwright 验收代码迁移到 `admin-client/tests/acceptance/`；
 > - 迁移范围包括 runner、Page Object、steps、lib、恢复机制、输出目录和 `@playwright/test` 依赖；
 > - runner 仍可准备 `server/config.local.js`、重启 PM2 并恢复词库与图片数据，但这些属于管理端端到端验收的环境编排；
-> - 页面和 API 分别使用 `ACCEPTANCE_ADMIN_URL`、`ACCEPTANCE_API_URL`，不再要求未使用的 Socket.IO 验收参数。
+> - v3.3 起，`ACCEPTANCE_API_URL` 表示完整标准 API 基址，不再表示游戏页面前缀；
+> - Socket.IO 与新旧网关兼容验收由 `server/tests/gateway.js` 承担，管理端仍不安装 Socket.IO 客户端。
 
 ## 1. 当前目标与范围
 
@@ -87,7 +88,7 @@ npx playwright install chromium
 | 环境变量 | 用途 |
 |---|---|
 | `ACCEPTANCE_ADMIN_URL` | 管理端浏览器地址，例如 `http://localhost:8080/admin` |
-| `ACCEPTANCE_API_URL` | 健康检查和认证探针地址 |
+| `ACCEPTANCE_API_URL` | 完整标准 API 基址，例如 `http://localhost:8080/api/family-war` |
 | `ACCEPTANCE_ADMIN_PASSWORD` | 验收期间使用的管理员密码，允许传入空字符串 |
 
 可选环境变量：
@@ -108,12 +109,12 @@ npx playwright install chromium
 cd /Users/guhui/Githubs/family-war
 
 ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
-ACCEPTANCE_API_URL=http://localhost:8080/family-war \
+ACCEPTANCE_API_URL=http://localhost:8080/api/family-war \
 ACCEPTANCE_ADMIN_PASSWORD=123456 \
 npm run test:acceptance -- --reset
 ```
 
-浏览器通过 nginx 的独立 `/admin` 站点访问，API 仍通过 `/family-war` 访问，不使用 Vite 开发地址代替预发布环境。
+浏览器通过 nginx 的独立 `/admin` 站点访问，API 通过标准 `/api/family-war` 入口访问，不使用 Vite 开发地址代替预发布环境。
 
 ## 4. runner 当前行为
 
@@ -219,7 +220,7 @@ step.timeoutMs || config.stepTimeoutOverride || 60000
 1. 将现有 `server/config.local.js` 内容保存在内存。
 2. 临时写入 `auth.adminPassword`。
 3. 执行 `pm2 restart family-war-server`。
-4. 等待 `/api/health` 正常。
+4. 等待 `/api/family-war/health` 正常。
 5. 使用错误密码探针确认密码保护已经生效。
 6. 执行验收。
 7. 在全局 `finally` 中恢复原文件、重启 PM2 并等待健康检查。
@@ -230,7 +231,7 @@ step.timeoutMs || config.stepTimeoutOverride || 60000
 
 ```bash
 ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
-ACCEPTANCE_API_URL=http://localhost:8080/family-war \
+ACCEPTANCE_API_URL=http://localhost:8080/api/family-war \
 ACCEPTANCE_ADMIN_PASSWORD= \
 npm run test:acceptance:restore
 ```
@@ -242,9 +243,9 @@ npm run test:acceptance:restore
 `ensureAuthenticated()`：
 
 1. 打开 `/admin/family-war`。
-2. 请求 `/family-war/api/admin/status` 检查当前 Context 是否已认证。
+2. 请求 `/api/family-war/admin/status` 检查当前 Context 是否已认证。
 3. 未认证时等待登录弹窗，填写密码。
-4. 监听 `POST /api/admin/login`。
+4. 监听 `POST /api/family-war/admin/login`。
 5. 非 2xx 时立即报告 HTTP 状态和服务端错误。
 6. 成功后等待弹窗在 10 秒内关闭。
 
@@ -318,7 +319,7 @@ npm run test:acceptance:restore
 |---|---|
 | 5a | PM2 进程在线、健康接口、独立管理站点 `#root` 渲染、管理员登录弹窗、正确密码登录和管理首页可见 |
 | 5b | 首次登录、登出、Cookie 清除、刷新后重新出现弹窗、错误密码提示、正确密码重新登录、Cookie 重新设置 |
-| 5c | 管理页标题可见；浏览器内请求 `/api/admin/status` 成功并返回状态字段 |
+| 5c | 管理页标题可见；浏览器内请求 `/api/family-war/admin/status` 成功并返回状态字段 |
 | 5d | 词库页面加载、章节/单词数量、选择首个可操作单词、切换并保存、刷新验证持久化、恢复原状态、文件级兜底恢复 |
 | 5e | 打开首个单词的候选弹窗、记录候选接口状态、要求至少 2 张候选、选择最后一张、确认接口状态、图片文件哈希变化、原图恢复及哈希复核 |
 | 5f | 1366×768、1440×900、1920×1080 下截图；检测可见元素造成的水平溢出；检查后台标题、词库管理按钮、刷新按钮和至少一张统计卡片 |
@@ -364,8 +365,34 @@ npm run test:acceptance:restore
 同时确认：
 
 - `report.md` 中 5a–5f 均为 ✅。
-- 浏览器网络记录中没有 `/socket.io` 或 `/family-war/socket.io` 请求，所有管理 API 均通过 `/family-war/api/`。
+- 浏览器网络记录中没有 `/socket.io`、`/family-war/socket.io` 或 `/socket/family-war/` 请求，所有管理 API 均通过 `/api/family-war/`。
 - 5e 报告包含候选接口和确认接口 HTTP 200、图片哈希变化以及恢复哈希校验。
 - 5f 报告包含三组电脑分辨率均无溢出且关键元素可见。
 - `recovery.json` 不存在或其中 `pending` 为空。
 - `config.local.js` 已恢复，PM2 服务已回到验收前配置。
+
+## 11. v3.3 公网网关验收
+
+网关验收脚本位于 `server/tests/gateway.js`，使用服务端已有的
+`socket.io-client` 开发依赖，不向 `admin-client` 引入 Socket.IO。
+
+离线检查不访问预发布环境：
+
+```bash
+npm run test:gateway:check
+```
+
+Phase 4 增加新 Nginx location 后执行真实验收：
+
+```bash
+GATEWAY_BASE_URL=http://localhost:8080 npm run test:gateway
+```
+
+脚本验证：
+
+- `/api/family-war/health` 与 `/family-war/api/health` 均直接返回，状态码、Content-Type 和业务响应一致；
+- `/socket/family-war/` 与 `/family-war/socket.io/` 均支持 polling-only 和 WebSocket-only；
+- 每种 Socket.IO 组合均完成连接、加入房间和 `room:state` 事件往返；
+- 通过标准 Socket.IO 入口启动默写，取得服务端 `/api/images/*` 相对地址；
+- 将相对图片地址映射为 `/api/family-war/images/*` 后获得 200 和图片 Content-Type；
+- API 和图片入口不依赖 301/302 重定向。

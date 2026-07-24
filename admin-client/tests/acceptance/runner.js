@@ -61,7 +61,7 @@ async function waitForHealth(url, maxRetries = 30, delay = 1000, checkPassword =
         const options = {
           hostname: new URL(apiBase).hostname,
           port: new URL(apiBase).port,
-          path: new URL(apiBase).pathname + '/api/admin/login',
+          path: new URL(apiBase).pathname + '/admin/login',
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
         }
@@ -148,13 +148,30 @@ function checkSetup() {
     }
   }
   require.resolve('@playwright/test')
+  assertAdminNetworkBoundary(
+    ['http://localhost:8080/api/family-war/admin/status'],
+    '/api/family-war',
+  )
+  for (const invalidURL of [
+    'http://localhost:8080/family-war/api/admin/status',
+    'http://localhost:8080/socket/family-war/?EIO=4',
+    'http://localhost:8080/family-war/socket.io/?EIO=4',
+  ]) {
+    let rejected = false
+    try {
+      assertAdminNetworkBoundary([invalidURL], '/api/family-war')
+    } catch {
+      rejected = true
+    }
+    if (!rejected) throw new Error(`管理端网络边界未拒绝：${invalidURL}`)
+  }
   console.log(`验收测试结构检查通过：${STEP_FILES.length} 个步骤，服务端路径与 Playwright 依赖可用`)
 }
 
-function assertAdminNetworkBoundary(requestURLs) {
+function assertAdminNetworkBoundary(requestURLs, apiPath) {
   const socketRequests = requestURLs.filter((url) => {
     const parsed = new URL(url)
-    return parsed.pathname.includes('/socket.io')
+    return parsed.pathname.includes('/socket.io') || parsed.pathname.startsWith('/socket/')
   })
   if (socketRequests.length > 0) {
     throw new Error(`管理端发起了 Socket.IO 请求：${socketRequests.join(', ')}`)
@@ -162,10 +179,12 @@ function assertAdminNetworkBoundary(requestURLs) {
 
   const invalidAdminAPIs = requestURLs.filter((url) => {
     const pathname = new URL(url).pathname
-    return pathname.includes('/api/admin/') && !pathname.startsWith('/family-war/api/')
+    const isAdminAPI = pathname.includes('/api/admin/')
+      || pathname.includes('/api/family-war/admin/')
+    return isAdminAPI && !pathname.startsWith(`${apiPath}/admin/`)
   })
   if (invalidAdminAPIs.length > 0) {
-    throw new Error(`管理 API 未使用 /family-war/api/：${invalidAdminAPIs.join(', ')}`)
+    throw new Error(`管理 API 未使用 ${apiPath}/：${invalidAdminAPIs.join(', ')}`)
   }
 }
 
@@ -205,7 +224,7 @@ async function main() {
   if (hasPassword) {
     try { backupAndSetAdminPassword(config.adminPassword) } catch (e) { console.error('写入 config.local.js 失败:', e.message) }
     pm2Restart()
-    await waitForHealth(config.apiBaseURL + '/api/health')
+    await waitForHealth(config.apiBaseURL + '/health')
   }
 
   if (onlyRestore) {
@@ -231,7 +250,7 @@ async function main() {
     state.gitCommit = stateLib.getGitCommit()
     state.adminBaseURL = config.adminBaseURL
     state.apiBaseURL = config.apiBaseURL
-    state.planVersion = 'Phase 6'
+    state.planVersion = 'v3.3 Phase 3'
     state.startedAt = new Date().toISOString()
     console.log('新建运行指纹')
   } else {
@@ -290,7 +309,7 @@ async function main() {
           }
           const stepContext = { state, page, config, reporter, context }
           await step.run(stepContext)
-          assertAdminNetworkBoundary(requestURLs)
+          assertAdminNetworkBoundary(requestURLs, config.apiPath)
         }
 
         await runStepWithTimeout(step.id, run(), step.timeoutMs || stepTimeout)
@@ -318,7 +337,7 @@ async function main() {
     if (hasPassword) {
       pm2Restart()
       // 恢复原始 config.local.js 后无密码，skip password probe
-      await waitForHealth(config.apiBaseURL + '/api/health', 15, 1000, false)
+      await waitForHealth(config.apiBaseURL + '/health', 15, 1000, false)
     }
     reporter.finish(new Date())
 
