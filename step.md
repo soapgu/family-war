@@ -491,12 +491,12 @@ Socket.IO：  /family-war/socket.io
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 1a | 新建 `admin-client` package，版本设为 `3.2.0`，配置 React 19、Ant Design v5、React Router v6、Vitest 和 Testing Library；不安装 `socket.io-client`，Playwright 在 Phase 5 随验收套件迁入 | `admin-client/package.json`, `admin-client/package-lock.json` | ⬜ |
-| 1b | 新建 Vite 配置：生产 `base` 为 `/admin/`，开发端口为 `3001`，`/api` 代理到 `http://localhost:4000` | `admin-client/vite.config.js` | ⬜ |
-| 1c | 配置管理端独立构建输出到自身 `build/`，不得写入或复制到 `client/build/` | `admin-client/vite.config.js` | ⬜ |
-| 1d | 建立 HTML 入口、React 入口、最小全局样式和 Vitest 环境；管理端样式独立维护，不从 `client/src` 跨目录导入 | `admin-client/index.html`, `admin-client/src/index.jsx`, `admin-client/src/index.css`, `admin-client/src/setup-vitest.js` | ⬜ |
-| 1e | 建立应用入口和 Browser Router，`basename="/admin"`；`/` 为管理首页，`/family-war` 为状态页，`/family-war/word-config` 为词库管理页，未知路由回到管理首页 | `admin-client/src/App.jsx` | ⬜ |
-| 1f | 验证空壳管理端可在 `:3001` 启动、测试和构建，构建文件引用路径均以 `/admin/` 开头 | `admin-client/` | ⬜ |
+| 1a | 新建 `admin-client` package，版本设为 `3.2.0`，配置 React 19、Ant Design v5、React Router v6、Vitest 和 Testing Library；不安装 `socket.io-client`，Playwright 在 Phase 5 随验收套件迁入 | `admin-client/package.json`, `admin-client/package-lock.json` | ✅ |
+| 1b | 新建 Vite 配置：生产 `base` 为 `/admin/`，开发端口为 `3001`，`/api` 代理到 `http://localhost:4000` | `admin-client/vite.config.js` | ✅ |
+| 1c | 配置管理端独立构建输出到自身 `build/`，不得写入或复制到 `client/build/` | `admin-client/vite.config.js` | ✅ |
+| 1d | 建立 HTML 入口、React 入口、最小全局样式和 Vitest 环境；管理端样式独立维护，不从 `client/src` 跨目录导入 | `admin-client/index.html`, `admin-client/src/index.jsx`, `admin-client/src/index.css`, `admin-client/src/setup-vitest.js` | ✅ |
+| 1e | 建立应用入口和 Browser Router，`basename="/admin"`；`/` 为管理首页，`/family-war` 为状态页，`/family-war/word-config` 为词库管理页，未知路由回到管理首页 | `admin-client/src/App.jsx` | ✅ |
+| 1f | 验证空壳管理端可在 `:3001` 启动、测试和构建，构建文件引用路径均以 `/admin/` 开头 | `admin-client/` | ✅ |
 
 **设计约束**
 
