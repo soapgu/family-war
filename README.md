@@ -1,4 +1,4 @@
-# Family War 🎮 v3.1
+# Family War 🎮 v3.2
 
 一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）、**算术达人**（全员抢答）和 v3.0 **爱拼才会赢**（英文默写），并支持机器人对局。
 
@@ -128,7 +128,7 @@ flowchart TD
 
 ```
 family-war/
-├── client/                                   # React 前端 (端口 3000)
+├── client/                                   # 游戏前端 (端口 3000)
 │   ├── public/
 │   │   ├── favicon.svg
 │   │   └── logo.svg
@@ -137,9 +137,7 @@ family-war/
 │   │   ├── __tests__/                          # Vitest + React Testing Library
 │   │   ├── pages/
 │   │   │   ├── Home.jsx                       # 首页：输入昵称、加入房间
-│   │   │   ├── Room.jsx                       # 房间：选角色、切模式、游戏入口
-│   │   │   ├── Admin.jsx                      # 后台：房间状态 + 对局记录
-│   │   │   └── WordConfig.jsx                 # 词库管理：章节/单词启用 + 图片同步/手动选图 + 语音播放（v3.0 新增）
+│   │   │   └── Room.jsx                       # 房间：选角色、切模式、游戏入口
 │   │   ├── components/
 │   │   │   ├── RoleCard.jsx                   # 角色卡片（空闲/选中/对战中）
 │   │   │   ├── GameBoard.jsx                  # RPS 对战面板
@@ -158,6 +156,15 @@ family-war/
 │   │   └── index.jsx
 │   ├── jsconfig.json
 │   ├── vite.config.js                         # Vite、代理、构建和测试配置
+│   └── package.json
+├── admin-client/                              # 独立管理前端 (端口 3001)
+│   ├── src/
+│   │   ├── auth/                              # 管理员登录状态与路由保护
+│   │   ├── layout/                            # 平台管理布局
+│   │   ├── modules/family-war/                # 状态页、词库页和 API 封装
+│   │   └── __tests__/                         # 管理端 Vitest 测试
+│   ├── tests/acceptance/                      # Playwright 预发布验收
+│   ├── vite.config.js                         # `/admin/` 构建与开发代理
 │   └── package.json
 ├── server/                         # Koa 后端 (端口 4000)
 │   ├── __tests__/
@@ -181,16 +188,15 @@ family-war/
 │   │       └── admin.js            # Koa REST 管理接口
 │   ├── jsconfig.json               # VSCode JS 类型提示
 │   └── package.json
-└── package.json                    # 顶层 concurrent 启动
+├── scripts/verify-builds.js                   # 两个前端构建隔离校验
+└── package.json                               # 三个 package 的统一编排
 ```
 
 ## 前端架构
 
 ```
-App (BrowserRouter)
-├── /admin → Admin
-├── /admin/word-config → WordConfig
-└── * → GameApp (状态容器)
+游戏 client（/family-war/）
+└── GameApp (状态容器)
     ├── roomState = null  →  Home
     │   └── onEnter(nickname) → emit room:join → setRoomState
     └── roomState ≠ null  →  Room
@@ -199,11 +205,17 @@ App (BrowserRouter)
     ├── gameType === 'arithmetic' → ArithmeticBoard → ArithmeticMatchResult
     ├── gameType === 'spelling'   → SpellingBoard → MatchResult（暂用通用排名）
     └── onBack() → setRoomState(null) 返回首页
+
+管理 admin-client（/admin/）
+├── /                         → 管理首页
+├── /family-war              → Family War 状态
+└── /family-war/word-config  → 词库与图片管理
 ```
 
 - Home 和 Room 之间没有 URL 切换，由 `GameApp` 的 state 控制渲染
 - 刷新页面时 state 丢失，回退到 Home 界面，不产生死页面
 - `socket.io` 客户端是模块级单例，不受 React 生命周期影响
+- 管理端独立构建，不安装或连接 Socket.IO
 
 ## 游戏流程
 
@@ -254,7 +266,7 @@ App (BrowserRouter)
 | 出题 | 首题随 `game:start` 下发，后续题走 `game:question`；自动朗读一次并可手动重播 | 题目包含 `ttsText`、填空、词长和图片 URL |
 | 抢答 | 根据图片、英式发音和字母格输入完整单词；首位答对者得 1 分 | `socket.emit('game:answer', { questionId, answer })` |
 | 结算 | 展示最终排名，并可展开回顾每题单词、填空提示和各玩家答案 | 客户端收到 `game:matchResult` |
-| 管理能力 | 可配置章节/单词、同步图片、手动选图和试听英式发音 | `/admin/word-config` |
+| 管理能力 | 可配置章节/单词、同步图片、手动选图和试听英式发音 | `/admin/family-war/word-config` |
 | 重赛 | 结算页重新发起默写挑战，服务端沿用房间当前难度并重新读取参赛角色 | `socket.emit('game:challenge', { mode: 'spelling' })` |
 
 ## 游戏规则
@@ -292,7 +304,7 @@ App (BrowserRouter)
 | 抢答 | 首位答对者得 1 分，其余玩家不得分 |
 | 机器人 | 根据难度自动提交（简单 40s / 普通 30s / 困难 20s），超时无人答对则机器人得 1 分 |
 | 赛制 | 先得 5 分者获胜，游戏结束 |
-| 词库 | 管理员可通过 `/admin/word-config` 选择启用的章节和单词 |
+| 词库 | 管理员可通过 `/admin/family-war/word-config` 选择启用的章节和单词 |
 | 断线 | 玩家断线不影响默写游戏继续（仍在局中不扣分） |
 
 ### 通用规则
@@ -497,9 +509,7 @@ MatchResult.jsx
 
 ## 后台管理
 
-无数据库，当前提供纯监控页面 + 词库管理接口：
-
-> 当前管理接口没有身份认证，CORS 也未限制来源，仅适合可信局域网。安全加固计划见 `step.md` 的“后续 TODO：管理接口安全加固”。
+无数据库，独立管理端位于 `/admin/`，当前提供管理员 JWT Cookie 登录、状态监控和词库管理。v3.2 保持现有 `/family-war/api/admin/*` 公网 API 路径不变。
 
 - 当前房间状态（谁在线、选了谁、是否对战中）
 - 已完成对局记录（存在内存数组中）
@@ -517,16 +527,18 @@ MatchResult.jsx
 
 | 项目 | 说明 |
 |------|------|
-| 框架 | 服务端 Jest v29；客户端 Vitest v3 + jsdom |
+| 框架 | 服务端 Jest v29；游戏端和管理端 Vitest v3 + jsdom；管理端 Playwright |
 | 服务端单元测试 | `server/__tests__/roomManager.test.js`、`gameManager.test.js`、`unsplashClient.test.js`、`wordBank.test.js` |
 | 服务端集成测试 | `server/tests/integration.js`（真实 Socket 连接走完整流程） |
-| 前端单元测试 | `client/src/__tests__/*.test.jsx`（Vitest + React Testing Library + Antd） |
+| 游戏端单元测试 | `client/src/__tests__/*.test.jsx` |
+| 管理端单元测试 | `admin-client/src/__tests__/*.test.jsx` |
+| 预发布验收 | `admin-client/tests/acceptance/` |
 | 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
 
 ### 运行测试
 
 ```bash
-# 服务端和客户端单元测试（根目录并行运行）
+# 服务端、游戏端和管理端单元测试（根目录并行运行）
 npm test
 
 # 服务端单元测试（watch 模式）
@@ -537,6 +549,18 @@ npm run test:integration
 
 # 前端单元测试
 npm test --prefix client
+
+# 管理端单元测试
+npm test --prefix admin-client
+
+# Acceptance 配置与依赖检查（不连接预发布）
+npm run test:acceptance:check
+
+# 预发布完整验收
+ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
+ACCEPTANCE_API_URL=http://localhost:8080/family-war \
+ACCEPTANCE_ADMIN_PASSWORD= \
+npm run test:acceptance -- --reset
 ```
 
 ### 测试覆盖
@@ -580,11 +604,13 @@ npm test --prefix client
 
 | 服务 | 端口 |
 |------|------|
-| client (React) | 3000 |
+| client 游戏端 (React) | 3000 |
+| admin-client 管理端 (React) | 3001 |
 | server (Koa) | 4000 |
 
 - **server**: 4000（Koa + Socket.IO）
 - **client**: 3000（React 开发服务器）
+- **admin-client**: 3001（独立管理开发服务器）
 - 开发环境下 socket.io 客户端通过 `window.location.hostname` 动态拼接服务器地址，支持局域网 IP 访问；当前 CORS 全开放，仅适合可信局域网
 - `/api` 和 `/socket.io` 由 Vite 开发服务器代理到 4000
 
@@ -655,7 +681,7 @@ pm2 save       # 保存当前进程列表
 
 ### Nginx 配置
 
-**目标**：添加 `/family-war` 路由，代理静态文件和 API/WebSocket 到预发布后端。
+**目标**：提供 `/family-war/` 游戏站点和独立 `/admin/` 管理站点，并将 API/WebSocket 代理到预发布后端。
 
 **实施内容**
 
@@ -669,7 +695,7 @@ pm2 save       # 保存当前进程列表
 **Nginx 配置**：
 
 ```nginx
-# 301 redirect /family-war -> /family-war/
+# redirect /family-war -> /family-war/
 location = /family-war {
     return 302 /family-war/;
 }
@@ -697,13 +723,25 @@ location /family-war/socket.io/ {
     proxy_set_header Host $http_host;
     proxy_set_header X-Real-IP $remote_addr;
 }
+
+# 独立管理站点 + BrowserRouter SPA fallback
+location = /admin {
+    return 302 /admin/;
+}
+
+location /admin/ {
+    alias /Users/guhui/Githubs/family-war/admin-client/build/;
+    index index.html;
+    try_files $uri $uri/ /admin/index.html;
+}
 ```
 
 ### 环境对照
 
 | 层级 | 开发环境 | 预发布环境 |
 |------|----------|------------|
-| 前端服务 | Vite dev server `:3000`（热更新） | Nginx `:8080/family-war/`（静态文件） |
+| 游戏前端 | Vite `:3000` | Nginx `:8080/family-war/` |
+| 管理前端 | Vite `:3001` | Nginx `:8080/admin/` |
 | 后端进程 | nodemon `:4000`（自动重启） | PM2 `:4010`（手动重启） |
 | API 入口 | `http://localhost:3000/api/*`（Vite 代理） | `http://localhost:8080/family-war/api/*`（nginx 反代） |
 | Socket.IO | 直连 `http://{host}:4000` | nginx 反代 `/family-war/socket.io` → `:4010` |

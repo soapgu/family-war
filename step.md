@@ -643,17 +643,17 @@ admin-client/tests/acceptance/       管理端 Playwright 浏览器验收
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 6a | 执行完整生产构建，确认游戏和管理端产物分别位于 `client/build/` 与 `admin-client/build/`，PM2 服务配置不变 | `client/build/`, `admin-client/build/`, `server/ecosystem.config.js` | ⬜ |
-| 6b | 验证 `/family-war/` 游戏首页、房间加入和 Socket.IO 连接正常 | 预发布环境 | ⬜ |
-| 6c | 增加 `/admin` 到 `/admin/` 的跳转和 `/admin/` 独立静态站点配置，使用 `admin-client/build/` 并为 Browser Router 配置 SPA 回退；执行 `nginx -t` 后重载 | Nginx `family-war.conf` 或独立 `admin.conf` | ⬜ |
-| 6d | 验证 `/admin/` 登录、刷新保持、登出、自动刷新和 family-war 词库管理正常 | 预发布环境 | ⬜ |
-| 6e | 验证直接刷新 `/admin/family-war/` 和 `/admin/family-war/word-config` 正常，浏览器前进/后退正常 | 预发布环境 | ⬜ |
-| 6f | 检查管理端网络和控制台：无 Socket.IO 请求、无资源 404、无错误 API 路径和未处理异常 | 预发布环境 | ⬜ |
-| 6g | 回归 `/family-war/`、`/family-war/api/` 和 `/family-war/socket.io`，确认新增 `/admin/` location 未改变现有匹配行为 | 预发布环境 | ⬜ |
-| 6h | 对已部署的预发布环境执行管理端完整 `test:acceptance`，确认测试数据在成功、失败或中断后均已恢复 | `admin-client/tests/acceptance/`, 预发布环境 | ⬜ |
-| 6i | acceptance 验收通过后，按现有发布流程将 v3.2 部署到正式环境；本阶段不新增生产环境只读冒烟检查 | 现有正式发布流程 | ⬜ |
-| 6j | 更新项目结构、开发命令、构建命令、管理入口和部署说明 | `README.md`, `AGENTS.md` | ⬜ |
-| 6k | 更新路线图状态和 v3.2 发布说明；明确 v3.3 才开始修改公网 API 和 Socket.IO 路径 | `road-map.md`, `docs/RELEASE.md` 或版本发布说明 | ⬜ |
+| 6a | 执行完整生产构建，确认游戏和管理端产物分别位于 `client/build/` 与 `admin-client/build/`，PM2 服务配置不变 | `client/build/`, `admin-client/build/`, `server/ecosystem.config.js` | ✅ |
+| 6b | 验证 `/family-war/` 游戏首页、房间加入和 Socket.IO 连接正常 | 预发布环境 | ✅ |
+| 6c | 增加 `/admin` 到 `/admin/` 的跳转和 `/admin/` 独立静态站点配置，使用 `admin-client/build/` 并为 Browser Router 配置 SPA 回退；执行 `nginx -t` 后重载 | Nginx `family-war.conf` 或独立 `admin.conf` | ✅ |
+| 6d | 验证 `/admin/` 登录、刷新保持、登出、自动刷新和 family-war 词库管理正常 | 预发布环境 | ✅ |
+| 6e | 验证直接刷新 `/admin/family-war/` 和 `/admin/family-war/word-config` 正常，浏览器前进/后退正常 | 预发布环境 | ✅ |
+| 6f | 检查管理端网络和控制台：无 Socket.IO 请求、无资源 404、无错误 API 路径和未处理异常 | 预发布环境 | ✅ |
+| 6g | 回归 `/family-war/`、`/family-war/api/` 和 `/family-war/socket.io`，确认新增 `/admin/` location 未改变现有匹配行为 | 预发布环境 | ✅ |
+| 6h | 对已部署的预发布环境执行管理端完整 `test:acceptance`，确认测试数据在成功、失败或中断后均已恢复 | `admin-client/tests/acceptance/`, 预发布环境 | ✅ |
+| 6i | acceptance 验收通过后，按现有发布流程将 v3.2 部署到正式环境；本阶段不新增生产环境只读冒烟检查 | 现有正式发布流程 | ✅ |
+| 6j | 更新项目结构、开发命令、构建命令、管理入口和部署说明 | `README.md`, `AGENTS.md` | ✅ |
+| 6k | 更新路线图状态和 v3.2 发布说明；明确 v3.3 才开始修改公网 API 和 Socket.IO 路径 | `road-map.md`, `docs/RELEASE.md` 或版本发布说明 | ✅ |
 
 ### v3.2 最终验收条件
 

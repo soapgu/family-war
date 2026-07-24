@@ -16,9 +16,9 @@
     "test:client": "npm test --prefix client",
     "test:admin": "npm test --prefix admin-client",
     "test:integration": "npm run test:integration --prefix server",
-    "test:acceptance": "npm run test:acceptance --prefix admin-client",
-    "test:acceptance:restore": "npm run test:acceptance:restore --prefix admin-client",
-    "test:acceptance:check": "npm run test:acceptance:check --prefix admin-client"
+    "test:acceptance": "npm --prefix admin-client run test:acceptance --",
+    "test:acceptance:restore": "npm --prefix admin-client run test:acceptance:restore",
+    "test:acceptance:check": "npm --prefix admin-client run test:acceptance:check"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

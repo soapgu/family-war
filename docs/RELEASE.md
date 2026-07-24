@@ -1,5 +1,16 @@
 # 发布流程
 
+## v3.2.0 发布摘要
+
+- 新增独立 `admin-client`，管理页面从游戏客户端拆分；
+- 新增 `/admin/` 管理站点及 Browser Router 深层路由回退；
+- 游戏端不再包含管理路由，打开管理端不再建立 Socket.IO 连接；
+- 根目录统一编排 server、client 和 admin-client 的开发、测试与构建；
+- Playwright 管理验收迁入 `admin-client/tests/acceptance/`；
+- 保持服务端代码、管理认证协议、`/family-war/api/` 和 `/family-war/socket.io` 不变；
+- 服务端 255 项、游戏端 79 项、管理端 22 项和 Socket.IO 集成 95 项测试通过；
+- 预发布 acceptance 6/6 通过，测试词库和图片均已恢复。
+
 ## 前置条件
 
 - 安装 `gh` CLI：`brew install gh`

@@ -1,10 +1,11 @@
 # family-war — agent guide
 
-## two packages, one root
+## three packages, one root
 
 ```
-root package.json  (concurrently orchestrates both)
+root package.json  (concurrently orchestrates all three)
 ├── client/   React 19 + Vite + Antd v5 + Socket.IO client (port :3000)
+├── admin-client/ React 19 + Vite + Antd v5, no Socket.IO (port :3001)
 └── server/   Koa + Socket.IO + Jest + nodemon (port :4000)
 ```
 
@@ -12,17 +13,24 @@ root package.json  (concurrently orchestrates both)
 
 | what | command | notes |
 |------|---------|-------|
-| dev (both) | `npm run dev` | concurrently server + client |
+| dev (all) | `npm run dev` | concurrently server + client + admin-client |
 | server only | `npm run server` | nodemon |
 | client only | `npm run client` | Vite dev server |
+| admin only | `npm run admin` | Vite dev server |
+| all builds | `npm run build` | client + admin-client |
+| verify builds | `npm run build:verify` | checks isolated build outputs |
 | client build | `npm run build --prefix client` | outputs to `client/build/` |
+| admin build | `npm run build --prefix admin-client` | outputs to `admin-client/build/` |
 | client preview | `npm run preview --prefix client` | preview production build |
-| all unit tests | `npm test` | server Jest + client Vitest concurrently |
+| all unit tests | `npm test` | server Jest + client/admin Vitest concurrently |
 | server unit | `npm test --prefix server` | |
 | server unit watch | `npm run test:watch --prefix server` | |
 | server integration | `npm run test:integration` | plain Node script, real sockets, port :4001 |
 | client unit | `npm test --prefix client` | Vitest |
 | client unit watch | `npm run test:watch --prefix client` | |
+| admin unit | `npm test --prefix admin-client` | Vitest |
+| acceptance check | `npm run test:acceptance:check` | no staging access |
+| acceptance | `npm run test:acceptance -- --reset` | requires acceptance env vars |
 | Unsplash API tests | `npm run test:unsplash --prefix server` | requires `UNSPLASH_ACCESS_KEY` env |
 | sync Unsplash images | `npm run unsplash:sync --prefix server` | `--keep` to save locally |
 | release | `gh release create vX --title "vX" --notes-file /tmp/NOTES.md` | annotated tags, see `docs/RELEASE.md` |
@@ -34,6 +42,7 @@ root package.json  (concurrently orchestrates both)
 - **Client socket URL** — dev: `http://{hostname}:4000`; production: `/` with socket path `/family-war/socket.io`
 - **Vite proxy** (`client/vite.config.js`): forwards `/api` → `:4000`, `/socket.io` → `:4000` (ws)
 - **Vite base** is `/family-war/` for production (nginx reverse proxy)
+- **Admin Vite base** is `/admin/`; its production output is `admin-client/build/`
 - **Three game modes**: RPS (1v1), 算术 (arithmetic, all-vs-all), 默写 (spelling, all-vs-all with TTS + Unsplash images)
 - **Spelling mode** uses `server/src/data/words.json` word bank (每章包含 `context` 字段配文章节上下文，用于 Unsplash 搜索退选); difficulty levels: `easy` / `normal` / `hard`
 - **Room ID** hardcoded to `'default'`; `roomId` param on events is a design预留
@@ -45,6 +54,7 @@ root package.json  (concurrently orchestrates both)
 - Integration test (`server/tests/integration.js`): plain Node script using real Socket.IO connections on port **4001**. Server must not already be running on that port.
 - Unsplash tests (`server/__tests__/unsplashClient.test.js`) require `UNSPLASH_ACCESS_KEY` env var — 3 tests fail without it (expected).
 - Client tests import `useSocket` — automock via `__mocks__/useSocket.js` in same directory.
+- Playwright acceptance belongs to `admin-client/tests/acceptance/`; the server package has no browser-test dependency.
 - `setup-vitest.js` mocks `matchMedia`, `AudioContext`, suppresses React Router Future Flag warnings.
 - Server: Jest v29; Client: Vitest v3 + jsdom.
 
@@ -52,6 +62,7 @@ root package.json  (concurrently orchestrates both)
 
 - Roles: `爸爸`, `妈妈`, `儿子`, `机器人`
 - BGM: `<audio>` elements with mp3 in `client/public/`. UI sfx: Web Audio API oscillator synthesis (in `Room.js`)
-- Routing: `/admin` → `<Admin/>`, everything else → `<GameApp/>` (state-controlled, no URL for room)
+- Game client only renders `<GameApp/>`; Home/Room remains state-controlled with no room URL.
+- Admin BrowserRouter uses basename `/admin` with `/`, `/family-war`, and `/family-war/word-config`.
 - Plain JS (no TypeScript). `jsconfig.json` for VSCode intellisense.
 - All JSX source files use `.jsx` extension (Vite requirement).
