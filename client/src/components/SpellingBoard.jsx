@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Image, Tag, Typography } from 'antd'
 import { SoundOutlined } from '@ant-design/icons'
 import useSocket from '../hooks/useSocket'
+import { FAMILY_WAR_API_BASE, joinServicePath } from '../config/services'
 import MatchResult from './MatchResult'
 import ScoreboardPanel from './ScoreboardPanel'
 
@@ -9,19 +10,17 @@ const SPEECH_RESTART_DELAY = 50
 const AUTO_SPEECH_REPEAT_COUNT = 3
 const AUTO_SPEECH_REPEAT_PAUSE = 450
 const VOICE_LOAD_TIMEOUT = 1500
-const PUBLIC_BASE = import.meta.env.DEV
-  ? ''
-  : (import.meta.env.BASE_URL || '').replace(/\/$/, '')
-
 const DIFFICULTY_LABELS = {
   easy: '简单',
   normal: '普通',
   hard: '困难',
 }
 
-function resolveImageUrl(url) {
-  if (!url) return ''
-  return url.startsWith('/api/') ? `${PUBLIC_BASE}${url}` : url
+export function resolveImageUrl(url, apiBase = FAMILY_WAR_API_BASE) {
+  if (typeof url !== 'string' || !url) return ''
+  if (url === apiBase || url.startsWith(`${apiBase}/`)) return url
+  if (!url.startsWith('/api/')) return url
+  return joinServicePath(apiBase, url.slice('/api/'.length))
 }
 
 function getBlankCount(blanks = '') {

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
 import useSocket from '../hooks/useSocket'
-import SpellingBoard from '../components/SpellingBoard'
+import SpellingBoard, { resolveImageUrl } from '../components/SpellingBoard'
 
 vi.mock('../hooks/useSocket')
 
@@ -55,6 +55,32 @@ afterEach(() => {
 function renderBoard(props = {}) {
   return render(<SpellingBoard gameInfo={GAME_INFO} onFinish={vi.fn()} {...props} />)
 }
+
+describe('resolveImageUrl', () => {
+  it('将服务端内部图片路径映射到指定公网 API 基址', () => {
+    expect(resolveImageUrl('/api/images/art%20room.jpg', '/api/family-war'))
+      .toBe('/api/family-war/images/art%20room.jpg')
+  })
+
+  it('保留已经使用标准公网 API 基址的图片路径', () => {
+    expect(resolveImageUrl('/api/family-war/images/cat?t=1', '/api/family-war'))
+      .toBe('/api/family-war/images/cat?t=1')
+  })
+
+  it('保留绝对地址和普通相对地址', () => {
+    expect(resolveImageUrl('https://images.example/cat.jpg', '/api/family-war'))
+      .toBe('https://images.example/cat.jpg')
+    expect(resolveImageUrl('//images.example/cat.jpg', '/api/family-war'))
+      .toBe('//images.example/cat.jpg')
+    expect(resolveImageUrl('images/cat.jpg', '/api/family-war')).toBe('images/cat.jpg')
+  })
+
+  it('将空值和非字符串值解析为空地址', () => {
+    expect(resolveImageUrl('', '/api/family-war')).toBe('')
+    expect(resolveImageUrl(null, '/api/family-war')).toBe('')
+    expect(resolveImageUrl({ path: '/api/images/cat' }, '/api/family-war')).toBe('')
+  })
+})
 
 it('渲染首题、难度、图片和填空字母格', () => {
   renderBoard()

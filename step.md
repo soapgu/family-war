@@ -778,13 +778,13 @@ v3.3 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 2a | 将管理状态、登录、登出、词库、图片同步、候选图片和 TTS 请求统一切换到新的 API 基址 | `admin-client/src/api/`, `admin-client/src/auth/` | ⬜ |
-| 2b | 保持管理端请求的 credentials、401 处理和刷新登录状态逻辑不变，验证 `/admin/` 页面通过 `/api/family-war/admin/*` 使用原有 JWT Cookie | `admin-client/src/` | ⬜ |
-| 2c | 将游戏端生产 Socket.IO path 切换为 `/socket/family-war/`；服务地址仍使用当前 origin，不改变事件协议或连接生命周期 | `client/src/hooks/useSocket.js`, `client/src/config/` | ⬜ |
-| 2d | 修改默写图片 URL 解析：服务端返回 `/api/images/*` 时转换为 `${API_BASE}/images/*`，不得再转换为 `/family-war/api/images/*` | `client/src/components/SpellingBoard.jsx`, `client/src/config/` | ⬜ |
-| 2e | 补充绝对 URL、内部 `/api/*` URL、已是标准公网 URL、空值和非法值的图片解析测试，避免二次加前缀 | `client/src/components/*.test.*` | ⬜ |
-| 2f | 更新管理端和游戏端现有请求 mock、快照及断言；开发环境的实际代理入口仍为 `/api/*` 和 `/socket.io/*` | `client/src/**/*.test.*`, `admin-client/src/**/*.test.*` | ⬜ |
-| 2g | 执行两个前端单元测试和生产构建，检查构建产物引用新 API/Socket.IO 路径且不再引用旧生产路径 | `client/`, `admin-client/` | ⬜ |
+| 2a | 将管理状态、登录、登出、词库、图片同步、候选图片和 TTS 请求统一切换到新的 API 基址 | `admin-client/src/api/`, `admin-client/src/auth/` | ✅ |
+| 2b | 保持管理端请求的 credentials、401 处理和刷新登录状态逻辑不变，验证 `/admin/` 页面通过 `/api/family-war/admin/*` 使用原有 JWT Cookie | `admin-client/src/` | ✅ |
+| 2c | 将游戏端生产 Socket.IO path 切换为 `/socket/family-war/`；服务地址仍使用当前 origin，不改变事件协议或连接生命周期 | `client/src/hooks/useSocket.js`, `client/src/config/` | ✅ |
+| 2d | 修改默写图片 URL 解析：服务端返回 `/api/images/*` 时转换为 `${API_BASE}/images/*`，不得再转换为 `/family-war/api/images/*` | `client/src/components/SpellingBoard.jsx`, `client/src/config/` | ✅ |
+| 2e | 补充绝对 URL、内部 `/api/*` URL、已是标准公网 URL、空值和非法值的图片解析测试，避免二次加前缀 | `client/src/components/*.test.*` | ✅ |
+| 2f | 更新管理端和游戏端现有请求 mock、快照及断言；开发环境的实际代理入口仍为 `/api/*` 和 `/socket.io/*` | `client/src/**/*.test.*`, `admin-client/src/**/*.test.*` | ✅ |
+| 2g | 执行两个前端单元测试和生产构建，检查构建产物引用新 API/Socket.IO 路径且不再引用旧生产路径 | `client/`, `admin-client/` | ✅ |
 
 ## Phase 3：扩充网关与浏览器自动化验收
 
