@@ -572,11 +572,11 @@ admin-client/src/
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 4a | 根目录新增 `admin` 命令，并将 `dev` 扩展为同时启动 server、client、admin-client，终端名称和颜色可区分 | `package.json` | ⬜ |
-| 4b | 根目录新增 `build`，分别构建游戏端和管理端，最终生成 `client/build/index.html` 与 `admin-client/build/index.html` | `package.json` | ⬜ |
-| 4c | 根目录 `test` 扩展为服务端、游戏端和管理端测试；保留独立 package 测试命令 | `package.json` | ⬜ |
-| 4d | 增加可重复的完整构建校验，确认任一前端重新构建都不会修改或删除另一个前端的产物 | `package.json`, `client/vite.config.js`, `admin-client/vite.config.js` | ⬜ |
-| 4e | 统一根、游戏端、管理端和服务端发布版本号为 `3.2.0`；仅更新版本元数据，不改变服务端行为 | `package.json`, `package-lock.json`, `client/package.json`, `client/package-lock.json`, `admin-client/package.json`, `admin-client/package-lock.json`, `server/package.json`, `server/package-lock.json` | ⬜ |
+| 4a | 根目录新增 `admin` 命令，并将 `dev` 扩展为同时启动 server、client、admin-client，终端名称和颜色可区分 | `package.json` | ✅ |
+| 4b | 根目录新增 `build`，分别构建游戏端和管理端，最终生成 `client/build/index.html` 与 `admin-client/build/index.html` | `package.json` | ✅ |
+| 4c | 根目录 `test` 扩展为服务端、游戏端和管理端测试；保留独立 package 测试命令 | `package.json` | ✅ |
+| 4d | 增加可重复的完整构建校验，确认任一前端重新构建都不会修改或删除另一个前端的产物 | `package.json`, `client/vite.config.js`, `admin-client/vite.config.js` | ✅ |
+| 4e | 统一根、游戏端、管理端和服务端发布版本号为 `3.2.0`；仅更新版本元数据，不改变服务端行为 | `package.json`, `package-lock.json`, `client/package.json`, `client/package-lock.json`, `admin-client/package.json`, `admin-client/package-lock.json`, `server/package.json`, `server/package-lock.json` | ✅ |
 
 **构建验收**
 
