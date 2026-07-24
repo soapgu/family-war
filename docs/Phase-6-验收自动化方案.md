@@ -1,5 +1,13 @@
 # Phase 6：管理员验收测试自动化方案
 
+> 版本归属说明：
+>
+> - v3.1 已发布实现仍位于 `server/tests/acceptance/`，本文后续章节记录的是该版本当前可执行的目录和命令；
+> - v3.2 拆分 `admin-client` 时，由于全部 Playwright 场景均以管理员页面为测试对象，整套验收代码将迁移到 `admin-client/tests/acceptance/`；
+> - 迁移范围包括 runner、Page Object、steps、lib、恢复机制、输出目录和 `@playwright/test` 依赖；
+> - runner 仍可准备 `server/config.local.js`、重启 PM2 并恢复词库与图片数据，但这些属于管理端端到端验收的环境编排；
+> - v3.2 实施完成后，本文将整体更新为新目录、新命令以及独立的 `ACCEPTANCE_ADMIN_URL`、`ACCEPTANCE_API_URL` 配置，不再要求未使用的 Socket.IO 验收参数。
+
 ## 1. 当前目标与范围
 
 Phase 6 将 Phase 5 的管理员浏览器验收场景（5a–5f）实现为 Playwright 自动化流程，用于预发布环境的重复验收、失败记录和中断后的数据恢复。

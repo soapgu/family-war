@@ -444,3 +444,239 @@ BaseGameMode
 pm2 startup    # 生成自启脚本（需要 sudo，按提示执行）
 pm2 save       # 保存当前进程列表
 ```
+
+---
+
+## v3.2 升级计划
+
+### 概览
+
+v3.2 将现有管理页面从游戏 `client` 中迁出，新建独立的 `admin-client` 前端项目。迁移后，游戏前端只负责房间和游戏，管理前端作为未来平台管理入口的雏形，当前只包含 `family-war` 管理模块。
+
+本版本主要调整前端源码、测试和构建编排，并增加一段独立管理站点所需的 Nginx 静态文件配置。明确保持以下内容不变：
+
+- 不修改 `server/` 业务代码和内部路由；
+- 不修改 `/api/admin/*` 管理接口协议；
+- 不修改现有管理员密码、JWT、`admin_token` Cookie 和认证流程；
+- 不迁移公网 API 与 Socket.IO 路径；
+- 不实现微信登录、平台普通用户、家庭档案或 RBAC；
+- 不处理 v3.1 延期的游戏断线角色和对局恢复事项。
+
+目标目录：
+
+```text
+family-war/
+├── client/          # 只包含游戏前端
+├── admin-client/    # 独立管理前端
+├── server/          # 本版本不改
+└── package.json     # 统一编排三个 package
+```
+
+生产环境目标路径：
+
+```text
+游戏：       /family-war/
+管理首页：   /admin/
+词库管理：   /admin/family-war/word-config
+管理 API：   /family-war/api/admin/*
+图片 API：   /family-war/api/images/*
+Socket.IO：  /family-war/socket.io
+```
+
+管理端使用独立的 `admin-client/build/` 构建目录，由新增的 `/admin/` Nginx location 提供静态文件和 SPA 回退。管理页面与游戏页面从 v3.2 起即拥有独立 URL 和部署目录。
+
+### Phase 1：建立 `admin-client` 工程骨架
+
+目标：创建可独立启动、测试和构建的 Vite + React 管理前端，并先确定不会影响游戏构建产物的输出规则。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1a | 新建 `admin-client` package，版本设为 `3.2.0`，配置 React 19、Ant Design v5、React Router v6、Vitest 和 Testing Library；不安装 `socket.io-client`，Playwright 在 Phase 5 随验收套件迁入 | `admin-client/package.json`, `admin-client/package-lock.json` | ⬜ |
+| 1b | 新建 Vite 配置：生产 `base` 为 `/admin/`，开发端口为 `3001`，`/api` 代理到 `http://localhost:4000` | `admin-client/vite.config.js` | ⬜ |
+| 1c | 配置管理端独立构建输出到自身 `build/`，不得写入或复制到 `client/build/` | `admin-client/vite.config.js` | ⬜ |
+| 1d | 建立 HTML 入口、React 入口、最小全局样式和 Vitest 环境；管理端样式独立维护，不从 `client/src` 跨目录导入 | `admin-client/index.html`, `admin-client/src/index.jsx`, `admin-client/src/index.css`, `admin-client/src/setup-vitest.js` | ⬜ |
+| 1e | 建立应用入口和 Browser Router，`basename="/admin"`；`/` 为管理首页，`/family-war` 为状态页，`/family-war/word-config` 为词库管理页，未知路由回到管理首页 | `admin-client/src/App.jsx` | ⬜ |
+| 1f | 验证空壳管理端可在 `:3001` 启动、测试和构建，构建文件引用路径均以 `/admin/` 开头 | `admin-client/` | ⬜ |
+
+**设计约束**
+
+- `admin-client` 是独立 package，不允许从 `client/src` 直接导入组件、工具或样式；
+- 管理端不依赖游戏 Socket.IO 单例；
+- `client` 和 `admin-client` 分别只写入自己的 `build/`；
+- 两个前端可以独立构建，完整生产构建不依赖特定先后顺序；
+- 开发环境通过管理端 Vite 代理访问原有 `/api/*`，不要求后端开放新的 CORS 范围。
+
+### Phase 2：迁移管理页面和认证
+
+目标：将现有管理能力等价迁移到 `admin-client`，保持接口、Cookie 和用户操作不变。
+
+建议模块结构：
+
+```text
+admin-client/src/
+├── app/
+├── auth/
+│   ├── AdminAuthContext.jsx
+│   └── RequireAdminAuth.jsx
+├── layout/
+├── modules/
+│   └── family-war/
+│       ├── api.js
+│       ├── AdminPage.jsx
+│       └── WordConfigPage.jsx
+└── config/
+    └── services.js
+```
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 2a | 建立 `family-war` 服务配置；开发环境 API Base 为空字符串，生产环境暂时为 `/family-war`，页面不再直接从 Vite Public Base 推导 API 地址 | `admin-client/src/config/services.js` | ⬜ |
+| 2b | 将现有 `RequireAuth` 迁为管理端认证组件，保留 status 探测、密码登录、401 重新登录、登出状态和 `admin_token` Cookie 行为 | `admin-client/src/auth/AdminAuthContext.jsx`, `admin-client/src/auth/RequireAdminAuth.jsx` | ⬜ |
+| 2c | 将 `Admin.jsx` 迁入 `modules/family-war`，保留房间、玩家、历史对局、手动刷新和 5 秒自动刷新 | `admin-client/src/modules/family-war/AdminPage.jsx` | ⬜ |
+| 2d | 将 `WordConfig.jsx` 迁入 `modules/family-war`，保留章节/单词配置、图片状态、缺失同步、候选翻页、确认换图、缓存刷新和 TTS | `admin-client/src/modules/family-war/WordConfigPage.jsx` | ⬜ |
+| 2e | 抽出 family-war 管理 API 封装，集中维护 `/api/admin/*` 和 `/api/images/*` 地址；保持服务端请求方法、请求体和响应结构不变 | `admin-client/src/modules/family-war/api.js` | ⬜ |
+| 2f | 调整页面导航以适配 `/admin` Browser Router，确保管理首页、family-war 状态页与词库管理之间往返正常 | `admin-client/src/App.jsx`, `admin-client/src/modules/family-war/*.jsx` | ⬜ |
+| 2g | 增加最小管理布局，为后续多应用入口预留导航区域；本版本只展示 `family-war`，不提前实现空的跨应用框架功能 | `admin-client/src/layout/AdminLayout.jsx` | ⬜ |
+
+**兼容要求**
+
+- 管理端所有请求继续命中现有 Koa `/api/admin/*` 和 `/api/images/*`；
+- `fetch` 继续使用同源 Cookie，不在前端读取或保存 JWT；
+- 当前 `GET /api/admin/status` 同时承担认证探测和状态查询的行为暂不调整；
+- 管理员认证继续使用现有 `jwtSecret`，不增加平台用户密钥或微信认证配置；
+- 管理端页面迁移不改变词库文件、图片缓存及服务端内存状态。
+
+### Phase 3：精简游戏 `client`
+
+目标：从游戏前端彻底移除管理页面和认证依赖，使游戏入口成为纯游戏应用。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 3a | 从游戏 `App.jsx` 删除 Admin、WordConfig、RequireAuth 和路由导入，移除 `/admin`、`/admin/word-config` 路由 | `client/src/App.jsx` | ⬜ |
+| 3b | 删除游戏入口的 Browser Router 包装；保留 Ant Design App 容器并直接渲染游戏应用 | `client/src/App.jsx` | ⬜ |
+| 3c | 删除已经迁移的管理页面、认证组件、管理 API 工具及其旧测试文件 | `client/src/pages/Admin.jsx`, `client/src/pages/WordConfig.jsx`, `client/src/components/RequireAuth.jsx`, `client/src/utils/api.js`, `client/src/__tests__/Admin.test.jsx`, `client/src/__tests__/WordConfig.test.jsx`, `client/src/__tests__/RequireAuth.test.jsx` | ⬜ |
+| 3d | 检查并清理游戏端不再使用的 `react-router-dom` 等依赖；Ant Design 若仍被游戏 UI 使用则保留 | `client/package.json`, `client/package-lock.json` | ⬜ |
+| 3e | 补充游戏 App 回归测试，确认渲染游戏首页时仍使用 Socket.IO，而源码和构建产物中不再包含管理页面入口 | `client/src/__tests__/App.test.jsx` | ⬜ |
+| 3f | 全局搜索确认 `client/src` 不再出现 Admin、WordConfig、RequireAuth 和 `/admin` 路由引用 | `client/src/` | ⬜ |
+
+**边界说明**
+
+- 本版本不改变游戏端现有模块级 Socket.IO 单例；
+- 游戏端加载时仍会正常连接 Socket.IO；
+- v3.2 解决的是管理页面不再加载游戏 Socket.IO，而不是重构游戏连接生命周期；
+- 不能为了代码复用新建同时被两个前端直接引用的源码目录，避免重新耦合构建配置。
+
+### Phase 4：根项目编排与生产构建
+
+目标：让三个 package 的日常命令清晰可用，并保证游戏端和管理端各自在独立目录中生成生产构建。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 4a | 根目录新增 `admin` 命令，并将 `dev` 扩展为同时启动 server、client、admin-client，终端名称和颜色可区分 | `package.json` | ⬜ |
+| 4b | 根目录新增 `build`，分别构建游戏端和管理端，最终生成 `client/build/index.html` 与 `admin-client/build/index.html` | `package.json` | ⬜ |
+| 4c | 根目录 `test` 扩展为服务端、游戏端和管理端测试；保留独立 package 测试命令 | `package.json` | ⬜ |
+| 4d | 增加可重复的完整构建校验，确认任一前端重新构建都不会修改或删除另一个前端的产物 | `package.json`, `client/vite.config.js`, `admin-client/vite.config.js` | ⬜ |
+| 4e | 统一根、游戏端、管理端和服务端发布版本号为 `3.2.0`；仅更新版本元数据，不改变服务端行为 | `package.json`, `package-lock.json`, `client/package.json`, `client/package-lock.json`, `admin-client/package.json`, `admin-client/package-lock.json`, `server/package.json`, `server/package-lock.json` | ⬜ |
+
+**构建验收**
+
+完整构建后至少存在：
+
+```text
+client/build/index.html
+client/build/assets/
+admin-client/build/index.html
+admin-client/build/assets/
+```
+
+并满足：
+
+- 游戏 `index.html` 只引用 `/family-war/` 下的游戏资源；
+- 管理 `index.html` 只引用 `/admin/` 下的管理资源；
+- 再次执行完整构建不会残留旧的哈希资源；
+- 管理端构建产物不包含 Socket.IO 客户端代码；
+- 游戏和管理端产物之间不存在复制、嵌套或交叉写入。
+
+### Phase 5：测试迁移与自动化验收
+
+目标：保持管理功能现有测试覆盖，将所有以管理页面为对象的 Playwright 验收代码整体归入 `admin-client`，并验证拆分后的运行时网络边界。
+
+目标测试边界：
+
+```text
+server/__tests__/                    服务端单元测试
+server/tests/integration.js          Socket.IO 服务集成测试
+client/src/__tests__/                游戏前端单元测试
+admin-client/src/__tests__/          管理前端单元测试
+admin-client/tests/acceptance/       管理端 Playwright 浏览器验收
+```
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 5a | 将 Admin 页面测试迁入管理端，覆盖标题、空状态、统计和刷新行为 | `admin-client/src/__tests__/AdminPage.test.jsx` | ⬜ |
+| 5b | 将 RequireAuth 测试迁入管理端，覆盖未登录、登录成功/失败、401、登出和 Cookie 同源请求流程 | `admin-client/src/__tests__/RequireAdminAuth.test.jsx` | ⬜ |
+| 5c | 将 WordConfig 测试迁入管理端，保持现有词库开关、保存、同步、候选图和换图覆盖 | `admin-client/src/__tests__/WordConfigPage.test.jsx` | ⬜ |
+| 5d | 增加路由测试，覆盖 `/admin/`、`/admin/family-war/`、`/admin/family-war/word-config`、未知路径回退和页面间导航 | `admin-client/src/__tests__/App.test.jsx` | ⬜ |
+| 5e | 将 `server/tests/acceptance/` 整体迁移到 `admin-client/tests/acceptance/`，包含 runner、Page Object、steps、lib、恢复机制和报告输出目录，迁移过程中保持异常与中断后的数据恢复能力 | `server/tests/acceptance/` → `admin-client/tests/acceptance/` | ⬜ |
+| 5f | 将 `@playwright/test` 从服务端依赖迁到管理端；管理端增加 `test:acceptance`、`test:acceptance:restore`，根目录增加统一委托命令 | `server/package.json`, `server/package-lock.json`, `admin-client/package.json`, `admin-client/package-lock.json`, `package.json` | ⬜ |
+| 5g | 修改 runner 的路径解析：从仓库根目录显式定位 `server/config.local.js`、词库配置和图片目录；不得依赖验收代码仍位于 `server/` | `admin-client/tests/acceptance/runner.js`, `admin-client/tests/acceptance/lib/cleanup.js` | ⬜ |
+| 5h | 分离管理页面与 API 验收地址：新增 `ACCEPTANCE_ADMIN_URL`（`/admin`）并保留独立 `ACCEPTANCE_API_URL`（v3.2 仍为 `/family-war`）；删除管理验收未使用的 `socketURL` 和 `ACCEPTANCE_SOCKET_PATH` | `admin-client/tests/acceptance/test-config.js`, `admin-client/tests/acceptance/runner.js` | ⬜ |
+| 5i | 更新 Playwright 页面入口和选择器，通过 Browser Router 访问 `/admin/family-war/` 与 `/admin/family-war/word-config` | `admin-client/tests/acceptance/pages/`, `admin-client/tests/acceptance/steps/`, `admin-client/tests/acceptance/lib/auth.js` | ⬜ |
+| 5j | 增加浏览器网络断言：管理端不得请求 `/socket.io` 或 `/family-war/socket.io`，管理请求仍通过 `/family-war/api/*` | `admin-client/tests/acceptance/` | ⬜ |
+| 5k | 整理运行产物：临时状态、备份和普通运行截图加入 `.gitignore`；需要随版本保留的正式验收报告另存到版本化文档目录 | `.gitignore`, `admin-client/tests/acceptance/output/`, `docs/acceptance/v3.2/`（如需） | ⬜ |
+| 5l | 更新验收自动化方案中的目录、命令、环境变量、恢复路径和运行示例 | `docs/Phase-6-验收自动化方案.md` | ⬜ |
+| 5m | 执行服务端、游戏端、管理端全部单元测试，执行 Socket.IO 集成测试、管理端 Playwright 验收和生产构建 | `server/`, `client/`, `admin-client/` | ⬜ |
+
+**测试边界**
+
+- 服务端既有单元测试和 Socket.IO 集成测试原则上不需要修改断言；
+- 仅因管理前端入口变化而更新验收测试 URL，不改变后端请求预期；
+- 管理端单元测试不得继续依赖游戏端的 `useSocket` mock；
+- 测试必须证明管理端没有加载或连接 Socket.IO，而不只是页面上没有游戏组件。
+- Playwright runner 虽会准备服务端配置、重启 PM2 和恢复词库/图片数据，但这些属于管理端端到端验收的环境编排，不改变测试所有权；
+- 验收套件不得拆成管理端用例与服务端恢复脚本两部分，避免跨 package 相互调用和恢复流程分散；
+- 未来覆盖平台首页、多个前端和多个后端的跨系统验收出现后，再考虑建立仓库级 `tests/e2e/`。
+
+### Phase 6：预发布验收与文档收尾
+
+目标：在保持现有游戏、API 和 Socket.IO 配置不变的基础上，为管理端增加独立 Nginx 静态站点，完成预发布验收和版本文档。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 6a | 执行完整生产构建，确认游戏和管理端产物分别位于 `client/build/` 与 `admin-client/build/`，PM2 服务配置不变 | `client/build/`, `admin-client/build/`, `server/ecosystem.config.js` | ⬜ |
+| 6b | 验证 `/family-war/` 游戏首页、房间加入和 Socket.IO 连接正常 | 预发布环境 | ⬜ |
+| 6c | 增加 `/admin` 到 `/admin/` 的跳转和 `/admin/` 独立静态站点配置，使用 `admin-client/build/` 并为 Browser Router 配置 SPA 回退；执行 `nginx -t` 后重载 | Nginx `family-war.conf` 或独立 `admin.conf` | ⬜ |
+| 6d | 验证 `/admin/` 登录、刷新保持、登出、自动刷新和 family-war 词库管理正常 | 预发布环境 | ⬜ |
+| 6e | 验证直接刷新 `/admin/family-war/` 和 `/admin/family-war/word-config` 正常，浏览器前进/后退正常 | 预发布环境 | ⬜ |
+| 6f | 检查管理端网络和控制台：无 Socket.IO 请求、无资源 404、无错误 API 路径和未处理异常 | 预发布环境 | ⬜ |
+| 6g | 回归 `/family-war/`、`/family-war/api/` 和 `/family-war/socket.io`，确认新增 `/admin/` location 未改变现有匹配行为 | 预发布环境 | ⬜ |
+| 6h | 更新项目结构、开发命令、构建命令、管理入口和部署说明 | `README.md`, `AGENTS.md` | ⬜ |
+| 6i | 更新路线图状态和 v3.2 发布说明；明确 v3.3 才开始修改公网 API 和 Socket.IO 路径 | `road-map.md`, `docs/RELEASE.md` 或版本发布说明 | ⬜ |
+
+### v3.2 最终验收条件
+
+- 仓库包含独立且可单独运行的 `admin-client`；
+- 游戏 `client` 不再包含管理页面、管理认证组件和管理路由；
+- `/admin/` 使用 `admin-client/build/` 中独立的 HTML、JS 和 CSS 产物；
+- 管理端打开、深层路由刷新和 Browser Router 导航正常；
+- 管理员登录、JWT Cookie、登出和 401 处理与 v3.1 行为一致；
+- 管理状态、词库配置、图片同步、候选图片和 TTS 功能与迁移前一致；
+- 管理端不安装、不打包、不请求 Socket.IO；
+- 管理端 Playwright 验收套件、依赖和运行命令归属 `admin-client`，服务端不再承担浏览器测试依赖；
+- 游戏端现有 Socket.IO 行为和三种游戏玩法不变；
+- 后端代码、内部路由、API 协议和 PM2 配置不变；Nginx 只增加独立 `/admin/` 静态站点；
+- 根目录可以统一启动、测试和构建三个 package；
+- 完整构建可以重复执行，且两个前端构建产物彼此独立；
+- 服务端、游戏端、管理端单元测试全部通过；
+- Socket.IO 集成测试、浏览器验收和生产构建通过；
+- README、`road-map.md` 和验收文档与实际行为一致。
+
+### 明确延期到后续版本
+
+- `/api/family-war/` 公网 API 路径迁移；
+- `/socket/family-war/` Socket.IO 路径迁移；
+- 管理认证接口从应用业务接口中解耦；
+- 多管理员账号、权限和审计；
+- 微信认证、平台普通用户、家庭关系和儿童档案；
+- 游戏 Socket.IO 连接生命周期重构；
+- 页面刷新后的游戏身份、角色和对局恢复。
