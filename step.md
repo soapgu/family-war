@@ -846,7 +846,7 @@ v3.3 不包含：
 | 6e | 新入口验证通过后部署 v3.3 前端产物，按预发布清单完成游戏、管理、图片、polling 和 WebSocket 验收 | 正式环境、发布记录 | ✅ |
 | 6f | 发布 v3.3.0 Git tag 和 GitHub Release，发布说明列出新标准路径、兼容路径、回滚方式和无后端协议变更 | `docs/RELEASE.md`、GitHub Release | ✅ |
 | 6g | 在约定观察周期内统计旧 API 与 Socket.IO 入口的非敏感访问量，区分真实客户端、监控和扫描流量 | Nginx 访问统计、运维记录 | 🔄 |
-| 6h | 根据观察结果为后续版本单独提出旧入口下线计划；v3.3 内不得直接删除兼容入口 | `road-map.md`、后续版本计划 | ⬜ |
+| 6h | 根据观察结果为后续版本单独提出旧入口下线计划；v3.3 内不得直接删除兼容入口 | `road-map.md`、后续版本计划 | ✅ |
 
 ## v3.3 最终验收条件
 
@@ -866,9 +866,196 @@ v3.3 不包含：
 
 ## 明确延期到后续版本
 
-- 删除 `/family-war/api/*` 与 `/family-war/socket.io/*` 兼容入口；
+- 在 v3.5 删除 `/family-war/api/*` 与 `/family-war/socket.io/*` 兼容入口，执行前必须通过 v3.3—v3.4 访问日志观察门槛；
 - 修改服务端内部 `/api/*` 或 `/socket.io/` 路径；
 - 将 family-war 管理认证迁移到统一身份服务；
 - 多管理员、角色权限、审计和细粒度授权；
 - 微信认证、平台普通用户、家庭关系和儿童档案；
 - 平台首页和其他业务系统的公网路径迁移。
+
+---
+
+# v3.4：平台管理框架完善实施计划
+
+> 规划版本：v3.4.0
+>
+> 前置版本：v3.3.0
+>
+> 目标：在现有独立 `admin-client` 基础上，把已经存在的平台首页、管理布局和 family-war 模块整理为可扩展的管理框架，为后续接入其他应用管理模块建立稳定约定。
+>
+> 核心边界：本版本只调整管理前端及其自动化，不修改 family-war 后端业务协议，不实施管理员认证解耦，不删除 v3.3 兼容入口。
+
+## 1. 当前基础与目标结构
+
+v3.3 已具备：
+
+- `/admin/` 独立站点和 Browser Router；
+- `AdminLayout` 顶层布局；
+- `/admin/` 应用入口页；
+- `modules/family-war` 业务模块；
+- 管理员登录保护和 family-war API 封装；
+- 管理端 Playwright acceptance。
+
+v3.4 目标结构：
+
+```text
+admin-client/src/
+├── app/
+│   ├── AdminApp.jsx             # Router、Provider 和顶层错误边界
+│   ├── appRegistry.js           # 应用元数据与入口注册
+│   └── routes.jsx               # 平台和模块路由集中装配
+├── auth/                        # 保持现有管理员认证协议
+├── components/
+│   ├── AppEntryCard.jsx         # 应用入口卡片
+│   ├── PageHeader.jsx           # 页面标题、面包屑和操作区
+│   └── RequestState.jsx         # 加载、空状态和错误展示
+├── layout/
+│   └── AdminLayout.jsx          # 平台导航和内容容器
+├── modules/
+│   └── family-war/
+│       ├── index.js             # 模块公开入口与路由元数据
+│       ├── api.js
+│       ├── AdminPage.jsx
+│       └── WordConfigPage.jsx
+└── pages/
+    ├── AdminHomePage.jsx
+    └── NotFoundPage.jsx
+```
+
+目录名称可在实施时按实际代码简化，但必须保留“平台外壳不直接导入模块页面细节、模块通过公开入口注册”的边界。
+
+## 2. 本版本范围
+
+v3.4 包含：
+
+- 建立应用注册表，统一应用名称、说明、图标、入口路径和导航信息；
+- 从 `App.jsx` 拆出平台首页和集中路由装配；
+- 让首页卡片、顶部导航和面包屑从同一份应用元数据生成；
+- 为 family-war 模块建立公开入口，减少平台层跨目录引用内部页面；
+- 统一平台级加载、空状态、请求失败、404 和不可恢复错误展示；
+- 规范模块 API 配置、错误转换和 401 处理边界；
+- 扩充管理端单元测试与 Playwright acceptance；
+- 保持 `/admin/`、`/admin/family-war/` 和词库页面 URL 不变。
+
+v3.4 不包含：
+
+- 新增其他应用的真实管理页面或伪造占位业务；
+- 修改 Koa 路由、响应结构、JWT Secret、Cookie 名称或管理员登录协议；
+- 引入多管理员、RBAC、审计或统一认证后端；
+- 微信认证、普通用户、家庭关系或儿童档案；
+- 删除 `/family-war/api/*` 或 `/family-war/socket.io/*` 兼容入口；
+- 修改游戏前端、Socket.IO 事件或游戏状态恢复。
+
+## 3. 设计约束
+
+- `appRegistry` 只保存可序列化元数据和模块公开入口，不保存鉴权令牌或运行状态；
+- 平台首页和导航不得分别维护应用列表；
+- 平台层不得直接调用 family-war API；
+- family-war 模块不得反向依赖平台首页；
+- 认证 Provider 仍位于模块路由之外，保证所有管理模块使用同一管理员会话；
+- 业务请求继续使用 `/api/family-war/*`，管理端不得引入 Socket.IO；
+- 未知 `/admin/*` 地址显示明确的 404 页面，不再静默跳回首页；
+- 现有深层链接和浏览器前进、后退、刷新行为必须保持。
+
+## Phase 1：冻结平台与模块边界
+
+目标：根据现有代码建立可测试的应用注册和路由契约，避免重构过程中改变 URL 或认证行为。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1a | 盘点 `App.jsx`、`AdminLayout`、认证组件和 family-war 模块之间的直接依赖，记录保留 URL、页面标题和导航行为 | `admin-client/src/`, 现有测试 | ⬜ |
+| 1b | 定义应用注册项字段：稳定 ID、显示名称、说明、入口路径、导航标签、图标和模块路由；禁止包含敏感配置 | `admin-client/src/app/appRegistry.js` | ⬜ |
+| 1c | 定义模块公开入口，只从 `modules/family-war/index.js` 导出路由和平台需要的元数据，不暴露内部实现文件 | `admin-client/src/modules/family-war/index.js` | ⬜ |
+| 1d | 为注册表增加唯一 ID、唯一路径、合法绝对管理路径和必填字段校验测试 | `admin-client/src/app/*.test.*` | ⬜ |
+| 1e | 冻结 `/admin/`、`/admin/family-war/`、`/admin/family-war/word-config` 的路由回归测试 | `admin-client/src/App.test.jsx` | ⬜ |
+
+## Phase 2：拆分应用装配与平台首页
+
+目标：让顶层应用只负责 Provider 和路由装配，平台首页由注册表驱动。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 2a | 将 `AdminHomePage` 从 `App.jsx` 拆入独立页面组件，不改变现有文案和入口 URL | `admin-client/src/pages/AdminHomePage.jsx`, `admin-client/src/App.jsx` | ⬜ |
+| 2b | 建立集中路由装配文件，从 family-war 模块公开入口生成模块路由 | `admin-client/src/app/routes.jsx`, `admin-client/src/modules/family-war/index.js` | ⬜ |
+| 2c | 精简 `App.jsx`，只保留 Browser Router、Ant Design Provider、认证边界和顶层路由入口 | `admin-client/src/App.jsx`, `admin-client/src/app/AdminApp.jsx` | ⬜ |
+| 2d | 将应用入口卡片抽成复用组件，由注册表生成首页内容；没有已注册应用时显示明确空状态 | `admin-client/src/components/AppEntryCard.jsx`, `admin-client/src/pages/AdminHomePage.jsx` | ⬜ |
+| 2e | 增加首页渲染、注册应用导航、空注册表和模块路由装配测试 | `admin-client/src/**/*.test.*` | ⬜ |
+
+## Phase 3：完善平台导航与页面层级
+
+目标：让管理端具备稳定的平台导航、当前位置反馈和异常路由处理。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 3a | 让 `AdminLayout` 的导航项由应用注册表生成，首页、模块页和模块子页选择状态保持正确 | `admin-client/src/layout/AdminLayout.jsx`, `admin-client/src/app/appRegistry.js` | ⬜ |
+| 3b | 增加统一页面头部，支持页面标题、面包屑、说明和右侧操作区，替换页面内重复标题结构 | `admin-client/src/components/PageHeader.jsx`, `admin-client/src/modules/family-war/` | ⬜ |
+| 3c | 为桌面宽度完善内容最大宽度、导航溢出和长标题布局；不扩大到手机端适配 | `admin-client/src/index.css`, `admin-client/src/layout/` | ⬜ |
+| 3d | 增加明确的 `/admin/*` 404 页面，提供返回管理首页操作；不得自动重定向掩盖错误链接 | `admin-client/src/pages/NotFoundPage.jsx`, 路由配置 | ⬜ |
+| 3e | 补充导航选中、面包屑、前进后退、深层链接和 404 页面测试 | `admin-client/src/**/*.test.*` | ⬜ |
+
+## Phase 4：统一请求状态与模块错误边界
+
+目标：在不改变后端协议的前提下，让未来模块获得一致的加载和失败体验。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 4a | 盘点 family-war 页面现有 loading、空数据、401、普通 4xx/5xx 和网络错误展示，定义平台级状态组件接口 | `admin-client/src/modules/family-war/`, `admin-client/src/components/` | ⬜ |
+| 4b | 建立复用的加载、空状态和可重试错误组件，允许模块提供自己的说明和重试动作 | `admin-client/src/components/RequestState.jsx` | ⬜ |
+| 4c | 统一 API 请求错误对象，保留 HTTP 状态和服务端错误信息；401 继续交由现有认证流程处理 | `admin-client/src/config/`, `admin-client/src/modules/family-war/api.js`, `admin-client/src/auth/` | ⬜ |
+| 4d | 为顶层路由增加错误边界，捕获渲染异常并提供安全返回首页操作，不展示堆栈或敏感响应 | `admin-client/src/app/`, `admin-client/src/components/` | ⬜ |
+| 4e | 将 family-war 状态页和词库页接入统一状态组件，保持保存、换图、TTS 和恢复逻辑不变 | `admin-client/src/modules/family-war/` | ⬜ |
+| 4f | 增加成功、空数据、网络失败、401、500、重试和渲染异常测试 | `admin-client/src/**/*.test.*` | ⬜ |
+
+## Phase 5：自动化验收与兼容观察
+
+目标：证明平台框架重构没有改变认证、family-war 管理功能或公网路径，并完成 v3.5 清理前的第二个观察周期。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 5a | 更新 Playwright Page Object 和定位器，减少对旧页面内部 DOM 层级的依赖 | `admin-client/tests/acceptance/pages/` | ⬜ |
+| 5b | 增加应用首页卡片、平台导航、面包屑、404、前进后退和深层路由刷新验收 | `admin-client/tests/acceptance/steps/` | ⬜ |
+| 5c | 回归管理员登录、刷新保持、登出、401、family-war 状态、词库、图片和 TTS | `admin-client/tests/acceptance/` | ⬜ |
+| 5d | 保持管理端网络边界断言：只请求 `/api/family-war/*`，不得请求任何 Socket.IO 或旧 API 路径 | `admin-client/tests/acceptance/runner.js` | ⬜ |
+| 5e | 执行管理端全部单元测试、acceptance 离线检查、生产构建和构建隔离验证 | `admin-client/`, 根项目脚本 | ⬜ |
+| 5f | 在预发布环境执行完整 acceptance，确认测试数据和管理员配置在成功、失败或中断后恢复 | 预发布环境、验收报告 | ⬜ |
+| 5g | 汇总 v3.3—v3.4 旧 API/Socket.IO 访问日志，排除验收、监控和扫描流量，形成 v3.5 是否允许清理的结论 | Nginx 兼容日志、`docs/acceptance/v3.4/` | ⬜ |
+| 5h | 继续运行新旧网关兼容测试；v3.4 仍不得删除旧 location | `server/tests/gateway.js`, Nginx 配置 | ⬜ |
+
+## Phase 6：版本发布与文档收尾
+
+目标：发布不改变后端协议的管理框架版本，并把旧入口清理的最终执行责任交给 v3.5。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 6a | 将根项目和三个 package 版本统一更新为 `3.4.0`，同步 lockfile | 各级 `package.json`, `package-lock.json` | ⬜ |
+| 6b | 执行服务端、游戏端、管理端全部测试、Socket.IO 集成测试和完整生产构建 | 根项目、三个 package | ⬜ |
+| 6c | 部署管理端生产构建，验证 `/admin/`、family-war 模块、深层路由和 404 页面 | 正式环境 | ⬜ |
+| 6d | 确认服务端、游戏端、Nginx 标准入口及兼容入口没有行为变更 | 正式环境、网关验收 | ⬜ |
+| 6e | 更新项目结构、模块注册约定、测试命令、路线图和 v3.4 发布说明 | `README.md`, `AGENTS.md`, `road-map.md`, `docs/RELEASE.md` | ⬜ |
+| 6f | 发布 v3.4.0 Git tag 和 GitHub Release，说明该版本不包含认证后端改造或旧入口删除 | Git、GitHub Release | ⬜ |
+| 6g | 在 v3.5 计划中记录旧入口清理清单、观察门槛、回滚要求和 Socket.IO 禁止重定向规则 | `step.md`, `road-map.md` | ⬜ |
+
+## v3.4 最终验收条件
+
+- 管理首页、导航和模块路由由同一份应用注册表驱动；
+- 平台层不直接调用 family-war API，也不直接依赖模块内部页面文件；
+- `/admin/`、`/admin/family-war/` 和词库深层链接保持不变；
+- 未知管理 URL 显示明确 404 页面，不再静默跳回首页；
+- 首页、导航、面包屑、加载、空状态和错误展示使用统一组件；
+- 管理员登录、JWT Cookie、401 和登出行为与 v3.3 一致；
+- family-war 状态、词库、图片和 TTS 功能与 v3.3 一致；
+- 管理端继续只使用 `/api/family-war/*`，不安装或连接 Socket.IO；
+- Koa 路由、Socket.IO、游戏前端和 PM2 行为没有修改；
+- v3.3 标准入口与旧兼容入口均继续通过网关验收；
+- 管理端单元测试、全量回归、生产构建和 Playwright acceptance 全部通过；
+- v3.3—v3.4 兼容日志已形成可供 v3.5 使用的清理结论。
+
+## 明确归入 v3.5
+
+- 管理员认证接口从 family-war 业务状态接口中解耦；
+- 管理员 Cookie、会话失效和登录限流的进一步完善；
+- 多管理员账号、权限和审计能力；
+- 删除 `/family-war/api/*` 兼容入口；
+- 删除 `/family-war/socket.io/*` 兼容入口，不使用 HTTP 重定向；
+- 更新网关测试和回滚说明，使其反映旧入口正式下线；
+- 上述清理必须以 v3.3—v3.4 访问日志中不存在真实旧客户端为前置条件。
