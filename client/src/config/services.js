@@ -9,12 +9,19 @@ export function joinServicePath(basePath, resourcePath) {
   return resource ? `${base}/${resource}` : (base || '/')
 }
 
-export function createServiceConfig({ isDev }) {
+export function createServiceConfig({ isDev, publicBase }) {
   return Object.freeze({
+    PUBLIC_BASE: normalizeBasePath(publicBase),
     FAMILY_WAR_API_BASE: isDev ? '/api' : '/api/family-war',
+    FAMILY_WAR_SOCKET_PATH: isDev ? '/socket.io' : '/socket/family-war/',
   })
 }
 
-export const { FAMILY_WAR_API_BASE } = createServiceConfig({
+export const {
+  PUBLIC_BASE,
+  FAMILY_WAR_API_BASE,
+  FAMILY_WAR_SOCKET_PATH,
+} = createServiceConfig({
   isDev: import.meta.env.DEV,
+  publicBase: import.meta.env.BASE_URL,
 })

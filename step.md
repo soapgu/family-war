@@ -682,3 +682,191 @@ admin-client/tests/acceptance/       管理端 Playwright 浏览器验收
 - 微信认证、平台普通用户、家庭关系和儿童档案；
 - 游戏 Socket.IO 连接生命周期重构；
 - 页面刷新后的游戏身份、角色和对局恢复。
+
+---
+
+# v3.3：公网资源路径规范化实施计划
+
+> 规划版本：v3.3.0
+>
+> 前置版本：v3.2.0
+>
+> 目标：将 family-war 的公网 API 与 Socket.IO 路径从页面目录中解耦，形成可供整个体系继续扩展的统一资源路径；后端内部路由和协议保持不变。
+>
+> 核心策略：先增加新入口并保留旧入口，再切换前端，确认兼容入口无实际流量后由后续版本决定是否移除。
+
+## 1. 路径契约
+
+### 1.1 v3.3 完成后的公网路径
+
+| 类型 | v3.2 路径 | v3.3 标准路径 | v3.3 处理方式 |
+|------|-----------|---------------|----------------|
+| 游戏页面 | `/family-war/` | `/family-war/` | 保持不变 |
+| 管理页面 | `/admin/` | `/admin/` | 保持不变 |
+| HTTP API | `/family-war/api/*` | `/api/family-war/*` | 前端切换到新路径，旧路径继续兼容 |
+| Socket.IO | `/family-war/socket.io/*` | `/socket/family-war/*` | 游戏端切换到新路径，旧路径继续兼容 |
+
+### 1.2 Nginx 与服务端内部路径映射
+
+| 公网入口 | Nginx 转发目标 | 服务端是否修改 |
+|----------|----------------|----------------|
+| `/api/family-war/*` | `/api/*` | 否，Koa 继续使用现有 `/api/*` 路由 |
+| `/socket/family-war/*` | `/socket.io/*` | 否，Socket.IO 继续使用现有 `/socket.io/` path |
+| `/family-war/api/*` | `/api/*` | 否，作为 v3.3 兼容入口保留 |
+| `/family-war/socket.io/*` | `/socket.io/*` | 否，作为 v3.3 兼容入口保留 |
+
+路径约束：
+
+- 页面、API 和 Socket.IO 分属 `/family-war/`、`/api/family-war/`、`/socket/family-war/` 三个命名空间；
+- 新旧 API 路径由 Nginx 直接反向代理，不使用浏览器重定向；
+- Socket.IO 新旧路径均直接代理，禁止通过 301/302 改写；
+- `/socket/family-war/` 必须同时支持 HTTP long-polling 和 WebSocket Upgrade；
+- 服务端返回的 `/api/images/*` 属于内部 API 语义，游戏端必须转换为公网 API 基址，不能再拼接页面基址；
+- 所有公网基址均集中配置，业务组件和验收测试不得自行硬编码生产路径。
+
+## 2. 本版本范围
+
+v3.3 包含：
+
+- 为游戏端拆分页面基址、API 基址和 Socket.IO path；
+- 将管理端生产 API 基址切换为 `/api/family-war`；
+- 规范服务端相对图片 URL 在浏览器端的解析；
+- 增加新 Nginx API 与 Socket.IO location，同时保留 v3.2 兼容入口；
+- 增加新旧 API 路径、Socket.IO polling/WebSocket 和图片资源的自动化验收；
+- 更新生产构建、预发布、正式发布、回滚和兼容观察流程。
+
+v3.3 不包含：
+
+- 修改 Koa 的 `/api/*` 路由或 Socket.IO 的内部 `/socket.io/` path；
+- 修改请求、响应、事件名称、JWT、Cookie 或管理员认证流程；
+- 移除 v3.2 的旧 API、Socket.IO 公网入口；
+- 建设统一身份平台、微信认证、权限模型或审计系统；
+- 建设平台首页或迁移游戏页面路径。
+
+## 3. 发布与回滚原则
+
+发布必须遵循以下顺序：
+
+1. 完成代码、配置和自动化测试准备，但不先让生产前端引用新入口；
+2. 在预发布环境增加新 Nginx location，同时保留并验证旧入口；
+3. 部署 v3.3 前端产物，使游戏端和管理端切换到新入口；
+4. 完成新入口完整验收和旧入口兼容回归；
+5. 按同样顺序发布正式环境。
+
+回滚原则：
+
+- v3.3 不删除旧入口，因此前端回滚到 v3.2 构建产物时无需同步回滚后端；
+- 若新前端异常，优先恢复 v3.2 的 `client/build/` 和 `admin-client/build/`；
+- 若新增 Nginx location 异常，可在恢复 v3.2 前端后移除新 location，但不得先移除旧入口；
+- 本版本无数据迁移，也不改变 JWT Cookie，回滚不需要转换数据或强制管理员重新登录。
+
+## Phase 1：冻结路径契约与建立配置边界
+
+目标：先把页面路径、API 基址和 Socket.IO path 变成独立配置，防止后续业务代码继续依赖字符串拼接。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1a | 盘点游戏端、管理端、Nginx、测试和文档中的 `/family-war/api`、`/family-war/socket.io`、`/api`、`/socket.io` 硬编码，形成迁移清单 | `client/`, `admin-client/`, `server/`, Nginx 配置、文档 | ✅ |
+| 1b | 在游戏端集中定义页面基址、API 基址和 Socket.IO path；开发环境分别保持 `/family-war/` 或 Vite base、`/api`、`/socket.io`，生产环境使用 `/family-war/`、`/api/family-war`、`/socket/family-war/` | `client/src/config/`、`client/vite.config.js` | ✅ |
+| 1c | 统一管理端 API 基址语义：基址本身包含 `/api`，接口方法只追加 `/admin/*` 等业务路径；生产值改为 `/api/family-war` | `admin-client/src/config/services.js`, `admin-client/src/api/` | ✅ |
+| 1d | 为路径连接增加统一规则，处理首尾斜杠，避免生成双斜杠、漏斜杠或把相对 URL 错当成页面资源 | `client/src/config/`, `admin-client/src/config/` | ✅ |
+| 1e | 为开发和生产配置增加单元测试，证明三个基址相互独立且最终 URL 符合路径契约 | `client/src/**/*.test.*`, `admin-client/src/**/*.test.*` | ✅ |
+
+## Phase 2：切换前端 API、图片与 Socket.IO 路径
+
+目标：让两个前端只通过标准公网入口访问服务，同时保持现有功能和认证行为不变。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 2a | 将管理状态、登录、登出、词库、图片同步、候选图片和 TTS 请求统一切换到新的 API 基址 | `admin-client/src/api/`, `admin-client/src/auth/` | ⬜ |
+| 2b | 保持管理端请求的 credentials、401 处理和刷新登录状态逻辑不变，验证 `/admin/` 页面通过 `/api/family-war/admin/*` 使用原有 JWT Cookie | `admin-client/src/` | ⬜ |
+| 2c | 将游戏端生产 Socket.IO path 切换为 `/socket/family-war/`；服务地址仍使用当前 origin，不改变事件协议或连接生命周期 | `client/src/hooks/useSocket.js`, `client/src/config/` | ⬜ |
+| 2d | 修改默写图片 URL 解析：服务端返回 `/api/images/*` 时转换为 `${API_BASE}/images/*`，不得再转换为 `/family-war/api/images/*` | `client/src/components/SpellingBoard.jsx`, `client/src/config/` | ⬜ |
+| 2e | 补充绝对 URL、内部 `/api/*` URL、已是标准公网 URL、空值和非法值的图片解析测试，避免二次加前缀 | `client/src/components/*.test.*` | ⬜ |
+| 2f | 更新管理端和游戏端现有请求 mock、快照及断言；开发环境的实际代理入口仍为 `/api/*` 和 `/socket.io/*` | `client/src/**/*.test.*`, `admin-client/src/**/*.test.*` | ⬜ |
+| 2g | 执行两个前端单元测试和生产构建，检查构建产物引用新 API/Socket.IO 路径且不再引用旧生产路径 | `client/`, `admin-client/` | ⬜ |
+
+## Phase 3：扩充网关与浏览器自动化验收
+
+目标：在变更网关前准备可重复执行的证据，覆盖 HTTP、polling、WebSocket、图片和管理认证。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 3a | 将 acceptance 的 API 基址改为可配置项，预发布默认使用 `/api/family-war`，测试代码不得硬编码 `/family-war/api` | `admin-client/tests/acceptance/` | ⬜ |
+| 3b | 更新管理登录、状态检查、词库、图片和 TTS 用例，使全部管理 API 断言匹配 `/api/family-war/*` | `admin-client/tests/acceptance/` | ⬜ |
+| 3c | 更新浏览器网络断言：管理页面不得连接任何 Socket.IO；管理请求必须使用 `/api/family-war/*`，不得回退到 `/family-war/api/*` | `admin-client/tests/acceptance/` | ⬜ |
+| 3d | 增加通过 Nginx 新 path 建立 Socket.IO polling 连接的网关测试，验证连接、加入房间和至少一个既有事件往返 | `server/tests/` 或独立网关验收脚本 | ⬜ |
+| 3e | 增加通过 Nginx 新 path 建立纯 WebSocket 连接的网关测试，验证 Upgrade 成功和事件往返 | `server/tests/` 或独立网关验收脚本 | ⬜ |
+| 3f | 增加旧 `/family-war/socket.io/` 的 polling/WebSocket 兼容检查，证明 v3.2 客户端仍可连接 | 网关验收脚本 | ⬜ |
+| 3g | 增加新旧 API 入口的兼容检查：相同只读请求返回一致的状态码、关键响应头和业务结果 | 网关验收脚本 | ⬜ |
+| 3h | 增加图片链路验收：接口返回的相对地址经游戏端解析后请求 `/api/family-war/images/*` 并获得有效图片响应 | `client/` 测试、浏览器或网关验收脚本 | ⬜ |
+
+## Phase 4：增加 Nginx 标准入口并保留双路径
+
+目标：先让新入口可用，再允许前端切换；任何阶段都不打断 v3.2 客户端。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 4a | 增加 `/api/family-war/` location，将前缀剥离后转发到服务端 `/api/`，传递 Host、真实 IP 和转发协议等必要请求头 | Nginx `family-war.conf` 或相关站点配置 | ⬜ |
+| 4b | 增加 `/socket/family-war/` location，转发到服务端 `/socket.io/`，配置 HTTP/1.1、Upgrade、Connection、超时和必要请求头 | Nginx `family-war.conf` 或相关站点配置 | ⬜ |
+| 4c | 保留 `/family-war/api/` 与 `/family-war/socket.io/` 的原有代理规则，不增加重定向，不改变其匹配优先级和行为 | Nginx `family-war.conf` 或相关站点配置 | ⬜ |
+| 4d | 为旧入口保留可识别的访问记录或统计方式，用于后续版本判断是否可以安全移除；日志不得记录 JWT、Cookie 或敏感请求体 | Nginx 日志配置、运维说明 | ⬜ |
+| 4e | 在预发布环境执行 `nginx -t`，确认 location 匹配、`proxy_pass` 尾斜杠和配置语法正确后再重载 | 预发布环境 | ⬜ |
+| 4f | 在尚未部署 v3.3 前端时验证新入口可用、v3.2 页面与旧入口仍正常，形成 Nginx 变更前后对照记录 | 预发布环境、验收报告 | ⬜ |
+
+## Phase 5：预发布部署与完整验收
+
+目标：在预发布环境切换两个前端，验证标准入口、旧入口兼容和全部既有业务。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 5a | 执行根项目完整生产构建，确认游戏端和管理端产物独立生成，服务端产物、PM2 配置和内部路由未变化 | 根 `package.json`, `client/build/`, `admin-client/build/`, `server/` | ⬜ |
+| 5b | 部署 v3.3 游戏端和管理端产物到预发布环境，不修改服务端版本或运行参数 | 预发布环境 | ⬜ |
+| 5c | 验证 `/family-war/` 加载、刷新、加入房间和三种游戏模式正常，网络请求使用 `/socket/family-war/` | 预发布环境 | ⬜ |
+| 5d | 分别执行 Socket.IO polling-only 和 WebSocket-only 验收，确认握手、升级、断线重连及事件通信正常 | 预发布环境、网关验收脚本 | ⬜ |
+| 5e | 验证默写模式实际图片请求使用 `/api/family-war/images/*`，无 `/family-war/api/images/*`、404、混合内容或跨域错误 | 预发布环境 | ⬜ |
+| 5f | 验证 `/admin/` 登录、刷新保持、登出、401、词库、图片同步、候选图片和 TTS，网络请求全部使用 `/api/family-war/*` | 预发布环境 | ⬜ |
+| 5g | 执行管理端完整 Playwright acceptance，确认测试数据在成功、失败或中断后均恢复 | `admin-client/tests/acceptance/`, 预发布环境 | ⬜ |
+| 5h | 运行新旧 API 和 Socket.IO 兼容测试，确认 v3.2 客户端所依赖的旧入口仍可使用 | 预发布环境、网关验收脚本 | ⬜ |
+| 5i | 检查浏览器控制台、Nginx 错误日志和服务端日志，确认无错误路径、代理循环、异常 30x、握手失败或新增 4xx/5xx | 预发布环境、验收报告 | ⬜ |
+| 5j | 演练前端回滚：恢复 v3.2 构建后不改后端即可通过旧 API 和 Socket.IO 入口运行，再恢复 v3.3 构建 | 预发布环境、回滚记录 | ⬜ |
+
+## Phase 6：正式发布、版本收尾与兼容观察
+
+目标：复用预发布已验证的顺序发布正式环境，并为将来移除旧入口留下可靠依据。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 6a | 更新根项目、游戏端、管理端和服务端的版本元数据为 `3.3.0`，同步 lockfile；服务端仅保持版本一致，不修改运行逻辑 | `package.json`, `package-lock.json`, `client/`, `admin-client/`, `server/` | ⬜ |
+| 6b | 更新路径架构、环境配置、开发代理、Nginx 示例、部署顺序和回滚说明 | `README.md`, `AGENTS.md`, `docs/ROUTING-MIGRATION-PLAN.md`, 部署文档 | ⬜ |
+| 6c | 更新路线图，将 v3.3 标记为已完成，并记录旧入口仍处于兼容期、移除条件尚未满足 | `road-map.md` | ⬜ |
+| 6d | 在正式环境先增加并验证新 Nginx API 与 Socket.IO location，确认旧入口保持可用 | 正式环境 | ⬜ |
+| 6e | 新入口验证通过后部署 v3.3 前端产物，按预发布清单完成游戏、管理、图片、polling 和 WebSocket 验收 | 正式环境、发布记录 | ⬜ |
+| 6f | 发布 v3.3.0 Git tag 和 GitHub Release，发布说明列出新标准路径、兼容路径、回滚方式和无后端协议变更 | `docs/RELEASE.md`、GitHub Release | ⬜ |
+| 6g | 在约定观察周期内统计旧 API 与 Socket.IO 入口的非敏感访问量，区分真实客户端、监控和扫描流量 | Nginx 访问统计、运维记录 | ⬜ |
+| 6h | 根据观察结果为后续版本单独提出旧入口下线计划；v3.3 内不得直接删除兼容入口 | `road-map.md`、后续版本计划 | ⬜ |
+
+## v3.3 最终验收条件
+
+- `/family-war/` 和 `/admin/` 页面路径保持不变；
+- 管理端所有生产 API 请求使用 `/api/family-war/*`；
+- 游戏端生产 Socket.IO 请求使用 `/socket/family-war/`；
+- 游戏端页面基址、API 基址和 Socket.IO path 独立配置；
+- 默写图片通过 `/api/family-war/images/*` 正常加载，不再依赖 `/family-war/api/images/*`；
+- `/socket/family-war/` 的 polling 和 WebSocket 均通过真实 Nginx 网关验收；
+- 管理端不建立 Socket.IO 连接，管理员登录和 JWT Cookie 行为与 v3.2 一致；
+- Koa `/api/*` 路由、Socket.IO `/socket.io/` 内部 path、事件协议和 PM2 配置没有行为变更；
+- `/family-war/api/*` 和 `/family-war/socket.io/*` 在 v3.3 中继续可用；
+- 新旧入口间不存在浏览器 301/302 迁移，Socket.IO 不依赖重定向；
+- 服务端、游戏端和管理端单元测试、集成测试、生产构建及预发布 acceptance 全部通过；
+- 已完成前端回滚演练，恢复 v3.2 构建时不需要回滚服务端；
+- 文档、发布说明和实际 Nginx/前端配置一致。
+
+## 明确延期到后续版本
+
+- 删除 `/family-war/api/*` 与 `/family-war/socket.io/*` 兼容入口；
+- 修改服务端内部 `/api/*` 或 `/socket.io/` 路径；
+- 将 family-war 管理认证迁移到统一身份服务；
+- 多管理员、角色权限、审计和细粒度授权；
+- 微信认证、平台普通用户、家庭关系和儿童档案；
+- 平台首页和其他业务系统的公网路径迁移。
