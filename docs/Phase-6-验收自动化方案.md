@@ -4,7 +4,8 @@
 >
 > - v3.1 已发布实现位于 `server/tests/acceptance/`；
 > - v3.2 已将整套 Playwright 验收代码迁移到 `admin-client/tests/acceptance/`；
-> - 迁移范围包括 runner、Page Object、steps、lib、恢复机制、输出目录和 `@playwright/test` 依赖；
+> - 迁移范围包括 runner、Page Object、steps、lib、恢复机制、输出目录；
+> - `@playwright/test` 现统一安装在根 `node_modules`，两子包（admin-client / client）共用；
 > - runner 仍可准备 `server/config.local.js`、重启 PM2 并恢复词库与图片数据，但这些属于管理端端到端验收的环境编排；
 > - v3.3 起，`ACCEPTANCE_API_URL` 表示完整标准 API 基址，不再表示游戏页面前缀；
 > - Socket.IO 与新旧网关兼容验收由 `server/tests/gateway.js` 承担，管理端仍不安装 Socket.IO 客户端。
@@ -73,11 +74,11 @@ admin-client/tests/acceptance/recovery/recovery.json
 
 ### 3.1 依赖
 
-Playwright 安装在 `admin-client` 包：
+Playwright 共用根 `node_modules`，两子包不再各自安装 `@playwright/test`。
 
 ```bash
-npm install --prefix admin-client
-cd admin-client
+# 首次使用前在仓库根目录安装浏览器
+cd /Users/guhui/Githubs/family-war
 npx playwright install chromium
 ```
 

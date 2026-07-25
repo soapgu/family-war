@@ -30,8 +30,10 @@ root package.json  (concurrently orchestrates all three)
 | client unit | `npm test --prefix client` | Vitest |
 | client unit watch | `npm run test:watch --prefix client` | |
 | admin unit | `npm test --prefix admin-client` | Vitest |
-| acceptance check | `npm run test:acceptance:check` | no staging access |
-| acceptance | `npm run test:acceptance -- --reset` | requires acceptance env vars |
+| admin acceptance | `npm run test:acceptance -- --reset` | requires `ACCEPTANCE_ADMIN_URL` / `ACCEPTANCE_API_URL` / `ACCEPTANCE_ADMIN_PASSWORD` |
+| admin acceptance check | `npm run test:acceptance:check` | offline structure check |
+| client acceptance | `npm run test:acceptance:client` | requires `npm run dev` running; accepts `CLIENT_BASE_URL` env |
+| client acceptance check | `npm run test:acceptance --prefix client -- --check` | offline structure check |
 | Unsplash API tests | `npm run test:unsplash --prefix server` | requires `UNSPLASH_ACCESS_KEY` env |
 | sync Unsplash images | `npm run unsplash:sync --prefix server` | `--keep` to save locally |
 | release | `gh release create vX --title "vX" --notes-file /tmp/NOTES.md` | annotated tags, see `docs/RELEASE.md` |
@@ -56,7 +58,7 @@ root package.json  (concurrently orchestrates all three)
 - Integration test (`server/tests/integration.js`): plain Node script using real Socket.IO connections on port **4001**. Server must not already be running on that port.
 - Unsplash tests (`server/__tests__/unsplashClient.test.js`) require `UNSPLASH_ACCESS_KEY` env var — 3 tests fail without it (expected).
 - Client tests import `useSocket` — automock via `__mocks__/useSocket.js` in same directory.
-- Playwright acceptance belongs to `admin-client/tests/acceptance/`; the server package has no browser-test dependency.
+- Playwright acceptance: `admin-client/tests/acceptance/` (admin UI) and `client/tests/acceptance/` (game UI); the server package has no browser-test dependency. Playwright is installed at root `node_modules/` shared by both sub-packages.
 - `setup-vitest.js` mocks `matchMedia`, `AudioContext`, suppresses React Router Future Flag warnings.
 - Server: Jest v29; Client: Vitest v3 + jsdom.
 

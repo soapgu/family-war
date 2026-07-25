@@ -527,12 +527,13 @@ MatchResult.jsx
 
 | 项目 | 说明 |
 |------|------|
-| 框架 | 服务端 Jest v29；游戏端和管理端 Vitest v3 + jsdom；管理端 Playwright |
+| 框架 | 服务端 Jest v29；游戏端和管理端 Vitest v3 + jsdom；Playwright（共用根 node_modules） |
 | 服务端单元测试 | `server/__tests__/roomManager.test.js`、`gameManager.test.js`、`unsplashClient.test.js`、`wordBank.test.js` |
 | 服务端集成测试 | `server/tests/integration.js`（真实 Socket 连接走完整流程） |
 | 游戏端单元测试 | `client/src/__tests__/*.test.jsx` |
 | 管理端单元测试 | `admin-client/src/__tests__/*.test.jsx` |
-| 预发布验收 | `admin-client/tests/acceptance/` |
+| 管理端预发布验收 | `admin-client/tests/acceptance/` |
+| 游戏端验收测试 | `client/tests/acceptance/` |
 | 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
 
 ### 运行测试
@@ -558,6 +559,15 @@ npm run test:acceptance:check
 
 # 公网 API、Socket.IO 和图片网关验收
 GATEWAY_BASE_URL=http://localhost:8080 npm run test:gateway
+
+# 游戏端验收测试（需先启动 npm run dev）
+npm run test:acceptance:client
+
+# 指定 Nginx 代理地址
+CLIENT_BASE_URL=http://localhost:8080/family-war/ npm run test:acceptance:client
+
+# 有头模式调试
+HEADED=1 npm run test:acceptance:client
 
 # 预发布完整验收
 ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
