@@ -18,6 +18,13 @@
     "test": "vitest --run",
     "test:watch": "vitest"
   },
+  "scriptsDescription": {
+    "start": "启动游戏端 Vite 开发服务，默认监听 3000，并使用开发代理访问 API 和 Socket.IO。",
+    "build": "生成游戏端生产构建到 client/build/，生产页面基址为 /family-war/。",
+    "preview": "本地预览 client/build/ 中的 Vite 生产构建。",
+    "test": "以非监听模式执行全部游戏端 Vitest 单元测试。",
+    "test:watch": "以监听模式运行游戏端 Vitest，源码变化后自动重测。"
+  },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@vitejs/plugin-react": "^4.4.2",

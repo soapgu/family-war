@@ -22,6 +22,26 @@
     "test:acceptance:restore": "npm --prefix admin-client run test:acceptance:restore",
     "test:acceptance:check": "npm --prefix admin-client run test:acceptance:check && npm run test:gateway:check"
   },
+  "scriptsDescription": {
+    "dev": "同时启动服务端、游戏端和管理端开发服务，输出使用不同颜色区分。",
+    "server": "只启动服务端 nodemon 开发进程，默认监听 4000。",
+    "client": "只启动游戏端 Vite 开发服务，默认监听 3000。",
+    "admin": "只启动管理端 Vite 开发服务，默认监听 3001。",
+    "build": "并行构建游戏端和管理端生产产物。",
+    "build:client": "只构建游戏端，产物写入 client/build/。",
+    "build:admin": "只构建管理端，产物写入 admin-client/build/。",
+    "build:verify": "重复执行组合及单独构建，验证两个前端的产物目录相互隔离。",
+    "test": "并行执行服务端 Jest、游戏端 Vitest 和管理端 Vitest 单元测试。",
+    "test:server": "只执行服务端 Jest 单元测试。",
+    "test:client": "只执行游戏端 Vitest 单元测试。",
+    "test:admin": "只执行管理端 Vitest 单元测试。",
+    "test:integration": "启动 4001 端口的临时真实服务，执行完整 Socket.IO 游戏流程。",
+    "test:gateway": "通过 GATEWAY_BASE_URL 验证新旧 API、Socket.IO polling/WebSocket 和图片公网链路。",
+    "test:gateway:check": "只检查网关验收脚本结构与依赖，不连接实际网关。",
+    "test:acceptance": "运行管理端 Playwright 验收；通常追加 -- --reset 并提供 ACCEPTANCE_* 环境变量。",
+    "test:acceptance:restore": "只执行未完成验收留下的词库、图片等数据恢复。",
+    "test:acceptance:check": "离线检查管理端 Playwright 验收和网关验收的目录、步骤与依赖。"
+  },
   "devDependencies": {
     "concurrently": "^8.2.2"
   }
