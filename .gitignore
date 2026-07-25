@@ -9,3 +9,4 @@ server/src/data/word-config.json
 admin-client/tests/acceptance/output/
 admin-client/tests/acceptance/recovery/backups/
 admin-client/tests/acceptance/recovery/recovery.json
+client/tests/acceptance/output/
