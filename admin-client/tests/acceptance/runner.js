@@ -29,10 +29,20 @@ let configLocalBackup = null  // 内存备份，避免文件系统竞争
 
 const DEFAULT_STEP_TIMEOUT = 60000
 
+/** 重启服务端进程，使临时认证配置生效。 */
 function pm2Restart() {
   execSync('pm2 restart family-war-server', { stdio: 'inherit' })
 }
 
+/**
+ * 轮询健康端点，并可选验证管理员密码保护已生效。
+ *
+ * @param {string} url 健康检查地址。
+ * @param {number} [maxRetries=30] 最大重试次数。
+ * @param {number} [delay=1000] 重试间隔（毫秒）。
+ * @param {boolean} [checkPassword=true] 是否同时探测密码保护。
+ * @returns {Promise<void>}
+ */
 async function waitForHealth(url, maxRetries = 30, delay = 1000, checkPassword = true) {
   const http = require('http')
   const apiBase = config.apiBaseURL
@@ -54,7 +64,7 @@ async function waitForHealth(url, maxRetries = 30, delay = 1000, checkPassword =
       await new Promise(r => setTimeout(r, delay))
       continue
     }
-    // 健康通过后验证密码保护是否生效
+    // 健康检查通过后，再确认新进程已经加载密码配置。
     if (passwordSet && checkPassword) {
       const loginBody = await new Promise((resolve, reject) => {
         const postData = JSON.stringify({ password: 'probe-wrong' })
@@ -88,6 +98,11 @@ async function waitForHealth(url, maxRetries = 30, delay = 1000, checkPassword =
   throw new Error(`服务等待超时 ${maxRetries * delay}ms: ${url}`)
 }
 
+/**
+ * 在内存中备份本地配置，并临时写入验收密码。
+ *
+ * @param {string} password 管理员密码。
+ */
 function backupAndSetAdminPassword(password) {
   if (!fs.existsSync(CONFIG_LOCAL_PATH)) return
   configLocalBackup = fs.readFileSync(CONFIG_LOCAL_PATH, 'utf-8')
@@ -102,6 +117,7 @@ function backupAndSetAdminPassword(password) {
   console.log(`已写入 ${CONFIG_LOCAL_PATH} (auth.adminPassword)`)
 }
 
+/** 从内存备份恢复本地配置文件。 */
 function restoreConfigLocal() {
   if (!configLocalBackup) {
     console.log('无内存备份，跳过恢复')
@@ -112,17 +128,32 @@ function restoreConfigLocal() {
   console.log('已恢复 config.local.js')
 }
 
+/** 尽力恢复配置；清理失败只记录错误，不遮盖原始测试结果。 */
 function cleanConfigLocal() {
   try { restoreConfigLocal() } catch (e) { console.error('恢复失败:', e.message) }
 }
 
+/** 单个验收步骤超过截止时间时抛出的错误。 */
 class StepTimeoutError extends Error {
+  /**
+   * @param {string} id 步骤 ID。
+   * @param {number} ms 超时时间。
+   */
   constructor(id, ms) {
     super(`步骤 ${id} 超时 (${ms}ms)`)
     this.name = 'StepTimeoutError'
   }
 }
 
+/**
+ * 为步骤 Promise 增加超时边界。
+ *
+ * @template T
+ * @param {string} id 步骤 ID。
+ * @param {Promise<T>} promise 步骤任务。
+ * @param {number} ms 超时时间。
+ * @returns {Promise<T>}
+ */
 function runStepWithTimeout(id, promise, ms) {
   let timer
   const timeoutPromise = new Promise((_, reject) => {
@@ -131,6 +162,7 @@ function runStepWithTimeout(id, promise, ms) {
   return Promise.race([promise.finally(() => clearTimeout(timer)), timeoutPromise])
 }
 
+/** 离线检查步骤文件、服务端路径、Playwright 依赖和网络边界规则。 */
 function checkSetup() {
   const requiredPaths = [
     CONFIG_LOCAL_PATH,
@@ -142,6 +174,7 @@ function checkSetup() {
     throw new Error(`验收测试依赖路径缺失：\n${missing.join('\n')}`)
   }
   for (const file of STEP_FILES) {
+    /** @type {import('./types').AcceptanceStep} */
     const step = require(path.join(STEPS_DIR, file))
     if (!step.id || typeof step.run !== 'function') {
       throw new Error(`验收步骤格式无效：${file}`)
@@ -168,6 +201,12 @@ function checkSetup() {
   console.log(`验收测试结构检查通过：${STEP_FILES.length} 个步骤，服务端路径与 Playwright 依赖可用`)
 }
 
+/**
+ * 约束管理端只能访问规范的管理 API，且不得建立 Socket.IO 连接。
+ *
+ * @param {string[]} requestURLs 页面发出的请求地址。
+ * @param {string} apiPath 允许的 API 路径前缀。
+ */
 function assertAdminNetworkBoundary(requestURLs, apiPath) {
   const socketRequests = requestURLs.filter((url) => {
     const parsed = new URL(url)
@@ -190,6 +229,7 @@ function assertAdminNetworkBoundary(requestURLs, apiPath) {
 
 let sigintCount = 0
 
+/** 解析命令参数并编排完整的验收、续跑、报告和清理流程。 */
 async function main() {
   const args = process.argv.slice(2)
   if (CHECK_ONLY) {
@@ -219,7 +259,7 @@ async function main() {
 
   const stepTimeout = config.stepTimeoutOverride || DEFAULT_STEP_TIMEOUT
 
-  // 如果设置了管理员密码，临时覆写 config.local.js 并重启
+  // 如果设置了管理员密码，临时覆写 config.local.js 并重启。
   const hasPassword = config.adminPassword && config.adminPassword !== ''
   if (hasPassword) {
     try { backupAndSetAdminPassword(config.adminPassword) } catch (e) { console.error('写入 config.local.js 失败:', e.message) }
@@ -241,6 +281,7 @@ async function main() {
     }
   }
 
+  /** @type {import('./types').AcceptanceState | null} */
   let state
   if (!reset) {
     state = stateLib.load(config)
@@ -271,8 +312,10 @@ async function main() {
 
   const reporter = reporterLib.create(OUTPUT_DIR)
 
-  // 加载步骤模块并过滤已完成步骤
+  // 加载步骤模块，并跳过当前运行指纹下已经完成的步骤。
+  /** @type {(import('./types').AcceptanceStep & { file: string })[]} */
   const steps = STEP_FILES.map((f) => {
+    /** @type {import('./types').AcceptanceStep} */
     const mod = require(path.join(STEPS_DIR, f))
     return { file: f, ...mod }
   }).filter((mod) => !state.completed.includes(mod.id))
@@ -299,6 +342,7 @@ async function main() {
 
       const context = await browser.newContext({ ignoreHTTPSErrors: true })
       const page = await context.newPage()
+      /** @type {string[]} */
       const requestURLs = []
       page.on('request', (request) => requestURLs.push(request.url()))
 
@@ -307,6 +351,7 @@ async function main() {
           if (step.requiresAuth) {
             await ensureAuthenticated(page, config)
           }
+          /** @type {import('./types').StepContext} */
           const stepContext = { state, page, config, reporter, context }
           await step.run(stepContext)
           assertAdminNetworkBoundary(requestURLs, config.apiPath)

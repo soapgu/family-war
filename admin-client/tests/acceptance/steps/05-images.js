@@ -1,7 +1,8 @@
 const path = require('path')
 const cleanup = require('../lib/cleanup')
 
-module.exports = {
+/** @type {import('../types').AcceptanceStep} */
+const step = {
   id: '5e',
   name: '图片管理：浏览备选、确认替换、预览',
   requiresAuth: true,
@@ -34,7 +35,7 @@ module.exports = {
       )
       await changeBtn.click()
 
-      // 等待 Modal 出现
+      // 等待候选图片弹窗及对应接口响应。
       const modal = page.locator('.ant-modal')
       await modal.waitFor({ state: 'visible', timeout: 10000 })
       const modalTitle = await modal.locator('.ant-modal-title').innerText()
@@ -56,7 +57,7 @@ module.exports = {
         throw new Error(`至少需要 2 张候选图片，实际 ${candidateCount}`)
       }
 
-      // 选最后一张候选（尽量避当前图片）
+      // 选择最后一张候选，尽量避开当前使用的图片。
       const pickIdx = candidateCount - 1
       const pickTarget = candidateItems.nth(pickIdx)
       details.push(`候选图片可见: ${await pickTarget.isVisible()}`)
@@ -89,7 +90,7 @@ module.exports = {
         details.push(`换图结果: ${await toast.innerText()}`)
       }
 
-      // 验证新图片哈希与原始不同
+      // 通过文件哈希确认服务端确实替换了图片，而非只更新页面。
       const newHash = cleanup.sha256(imagePath)
       if (!newHash) throw new Error(`换图后图片文件不存在: ${imagePath}`)
       const fs = require('fs')
@@ -110,10 +111,10 @@ module.exports = {
       }
       throw error
     } finally {
-      // 恢复原图
+      // 无论步骤成功或失败，都恢复测试前的原图。
       await cleanup.restoreImage(backupEntry)
 
-      // 验证恢复后的哈希与原始一致
+      // 使用哈希校验恢复结果，避免静默留下被修改的测试数据。
       const restoredHash = cleanup.sha256(imagePath)
       if (restoredHash !== backupEntry.originalHash) {
         throw new Error(
@@ -128,3 +129,5 @@ module.exports = {
     reporter.onStepPass(this.id, details)
   },
 }
+
+module.exports = step

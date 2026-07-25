@@ -1,4 +1,5 @@
-module.exports = {
+/** @type {import('../types').AcceptanceStep} */
+const step = {
   id: '5c',
   name: '后台管理首页：面板展示完整性',
   requiresAuth: true,
@@ -11,6 +12,7 @@ module.exports = {
     await page.locator('text=后台管理').waitFor({ state: 'visible', timeout: 15000 })
     details.push('头部标题 "后台管理" 可见')
 
+    // 从页面环境请求状态接口，同时验证部署后的 API 路径。
     const statusApi = await page.evaluate(async (apiPath) => {
       const res = await fetch(`${apiPath}/admin/status`)
       return res.ok ? (await res.json()) : null
@@ -21,3 +23,5 @@ module.exports = {
     reporter.onStepPass(this.id, details)
   },
 }
+
+module.exports = step

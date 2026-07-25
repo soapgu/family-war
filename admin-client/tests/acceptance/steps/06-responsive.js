@@ -1,6 +1,7 @@
 const path = require('path')
 
-module.exports = {
+/** @type {import('../types').AcceptanceStep} */
+const step = {
   id: '5f',
   name: '响应式布局：1366×768、1440×900、1920×1080',
   requiresAuth: true,
@@ -8,6 +9,7 @@ module.exports = {
   async run({ state, page, config, reporter }) {
     reporter.onStepStart(this.id, this.name)
     const details = []
+    /** @type {{ w: number, h: number, label: string }[]} */
     const viewports = [
       { w: 1366, h: 768, label: '1366×768' },
       { w: 1440, h: 900, label: '1440×900' },
@@ -24,6 +26,7 @@ module.exports = {
 
       const violations = []
 
+      // 扫描所有元素，找出超出视口右边界的最大水平溢出量。
       const maxOverflowX = await page.evaluate(() => {
         let max = 0
         for (const el of document.querySelectorAll('*')) {
@@ -54,3 +57,5 @@ module.exports = {
     reporter.onStepPass(this.id, details)
   },
 }
+
+module.exports = step

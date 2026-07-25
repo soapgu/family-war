@@ -1,6 +1,7 @@
 const { execSync } = require('child_process')
 
-module.exports = {
+/** @type {import('../types').AcceptanceStep} */
+const step = {
   id: '5a',
   name: '预检查：环境健康、管理站点、API、登录',
   requiresAuth: false,
@@ -9,7 +10,7 @@ module.exports = {
     reporter.onStepStart(this.id, this.name)
     const details = []
 
-    // PM2 状态
+    // 确认后端进程处于在线状态，避免把部署问题误判为页面问题。
     try {
       const pm2Out = execSync('pm2 show family-war-server --no-color 2>/dev/null || true', {
         encoding: 'utf-8',
@@ -25,7 +26,7 @@ module.exports = {
       throw new Error(`PM2 检查失败: ${err.message}`)
     }
 
-    // API health
+    // 使用短超时探测 API 健康端点。
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000)
@@ -38,13 +39,13 @@ module.exports = {
       throw new Error(`${config.apiPath}/health 不可达: ${err.message}`)
     }
 
-    // 独立管理站点渲染
+    // 验证管理站点可以独立渲染，不依赖游戏端页面。
     await page.goto(config.adminBaseURL + '/', { waitUntil: 'networkidle' })
     const appNode = await page.locator('#root').innerHTML()
     if (!appNode || appNode.length === 0) throw new Error('管理站点渲染失败')
     details.push('独立管理站点渲染正常 (root render)')
 
-    // 管理员登录
+    // 完成真实登录并等待管理首页出现。
     if (await page.locator('.ant-modal').count() > 0) {
       details.push('未登录 → 弹出密码对话框')
     }
@@ -70,3 +71,5 @@ module.exports = {
     reporter.onStepPass(this.id, details)
   },
 }
+
+module.exports = step

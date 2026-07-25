@@ -1,13 +1,20 @@
+/** 管理员登录流程的页面对象。 */
 class LoginPage {
+  /**
+   * @param {import('@playwright/test').Page} page Playwright 页面。
+   * @param {import('../types').AcceptanceConfig} config 验收配置。
+   */
   constructor(page, config) {
     this.page = page
     this.config = config
   }
 
+  /** 打开需要管理员权限的页面。 */
   async goto() {
     await this.page.goto(this.config.adminBaseURL + '/family-war', { waitUntil: 'networkidle' })
   }
 
+  /** @returns {Promise<boolean>} 当前浏览器会话是否已登录。 */
   async isLoggedIn() {
     return await this.page.evaluate(async (apiPath) => {
       try {
@@ -19,6 +26,7 @@ class LoginPage {
     }, this.config.apiPath)
   }
 
+  /** 使用验收配置中的密码完成登录。 */
   async login() {
     await this.page.waitForSelector('.ant-modal', { timeout: 10000 })
     await this.page.fill('input[placeholder="请输入管理密码"]', this.config.adminPassword)
@@ -41,6 +49,7 @@ class LoginPage {
     )
   }
 
+  /** 打开页面，并在需要时自动登录。 */
   async ensureAuthenticated() {
     await this.goto()
     if (!(await this.isLoggedIn())) {
@@ -48,6 +57,7 @@ class LoginPage {
     }
   }
 
+  /** @param {string} path 截图输出路径。 */
   async screenshot(path) {
     await this.page.screenshot({ path, fullPage: true })
   }

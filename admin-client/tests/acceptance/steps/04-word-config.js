@@ -2,7 +2,8 @@ const { WordConfigPage } = require('../pages/WordConfigPage')
 const cleanup = require('../lib/cleanup')
 const path = require('path')
 
-module.exports = {
+/** @type {import('../types').AcceptanceStep} */
+const step = {
   id: '5d',
   name: '词库配置：浏览单词、开关切换、保存、刷新',
   requiresAuth: true,
@@ -26,7 +27,7 @@ module.exports = {
     const wordCount = await wcPage.getWordCount()
     details.push(`单词总行数: ${wordCount}`)
 
-    // 备份当前词库配置
+    // 修改前登记文件级备份，异常退出后也能恢复。
     await cleanup.backupWordConfig()
     await cleanup.registerRecovery({
       type: 'wordConfig',
@@ -34,7 +35,7 @@ module.exports = {
     })
     details.push('词库配置已备份')
 
-    // 找到第一个可操作的单词（独立变量，不复用循环变量）
+    // 找到第一个可操作的单词；限制单章扫描数量以控制执行时间。
     let target = null
     for (let ci = 0; ci < chapterCount && !target; ci++) {
       const chapterToggle = await wcPage.getChapterToggle(ci)
@@ -60,11 +61,11 @@ module.exports = {
     const { chapterIndex: ci, wordIndex: wi } = target
     details.push(`选中单词: "${target.word}" (章节 ${ci}, 索引 ${wi})`)
 
-    // 记录原始状态
+    // 记录原始状态，供持久化验证结束后恢复。
     const originalState = await wcPage.getWordSwitchState(ci, wi)
     details.push(`原始开关: ${originalState}`)
 
-    // 切换 → 保存 → 刷新 → 验证持久化
+    // 执行“切换 → 保存 → 刷新”，验证状态确实持久化到服务端。
     await wcPage.toggleWord(ci, wi)
     const toggledState = await wcPage.getWordSwitchState(ci, wi)
     details.push(`切换后: ${originalState} → ${toggledState}`)
@@ -80,7 +81,7 @@ module.exports = {
     const saveResult = await wcPage.getSaveResult()
     details.push(`保存配置结果: ${saveResult || '无消息'}`)
 
-    // 刷新后检查状态持久化
+    // 刷新数据后再次读取开关状态。
     await wcPage.clickRefresh()
     await page.waitForTimeout(500)
     const refreshedState = await wcPage.getWordSwitchState(ci, wi)
@@ -89,7 +90,7 @@ module.exports = {
     }
     details.push(`刷新后状态保持: ${refreshedState} — 持久化验证通过`)
 
-    // 恢复原始状态
+    // 通过 UI 恢复原始状态并保存。
     await wcPage.toggleWord(ci, wi)
     const restoreState = await wcPage.getWordSwitchState(ci, wi)
     if (restoreState !== originalState) {
@@ -100,13 +101,14 @@ module.exports = {
     await wcPage.clickSave()
     details.push('原始配置已保存恢复')
 
-    // 从文件级备份恢复整个 word-config → 确保完全干净
+    // 最后用文件级备份兜底恢复，确保没有遗漏的配置变化。
     const backupPath = path.join(__dirname, '..', 'recovery', 'backups', 'word-config-backup.json')
     await cleanup.restoreWordConfig(backupPath)
     await cleanup.removeRecovery('wordConfig')
     details.push('从文件备份完整恢复词库配置')
 
-      reporter.onStepPass(this.id, details)
-      return
+    reporter.onStepPass(this.id, details)
   },
 }
+
+module.exports = step

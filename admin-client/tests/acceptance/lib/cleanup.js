@@ -8,6 +8,7 @@ const SERVER_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'server')
 const IMAGES_DIR = path.join(SERVER_DIR, 'public', 'images')
 const WORD_CONFIG_SRC = path.join(SERVER_DIR, 'src', 'data', 'word-config.json')
 
+/** @returns {import('../types').RecoveryData} */
 function loadRecovery() {
   try {
     return JSON.parse(fs.readFileSync(RECOVERY_FILE, 'utf-8'))
@@ -16,6 +17,7 @@ function loadRecovery() {
   }
 }
 
+/** @param {import('../types').RecoveryData} data */
 function saveRecovery(data) {
   fs.mkdirSync(RECOVERY_DIR, { recursive: true })
   const tmp = RECOVERY_FILE + '.tmp'
@@ -23,11 +25,17 @@ function saveRecovery(data) {
   fs.renameSync(tmp, RECOVERY_FILE)
 }
 
+/** @returns {boolean} */
 function hasPending() {
   const r = loadRecovery()
   return r.pending.length > 0
 }
 
+/**
+ * 登记一项需要在测试结束时恢复的数据变更。
+ *
+ * @param {import('../types').RecoveryEntry} entry 恢复项。
+ */
 async function registerRecovery(entry) {
   const r = loadRecovery()
   if (!r.pending.find((e) => e.type === entry.type && e.word === entry.word)) {
@@ -36,6 +44,12 @@ async function registerRecovery(entry) {
   saveRecovery(r)
 }
 
+/**
+ * 删除已经完成的恢复登记。
+ *
+ * @param {import('../types').RecoveryEntry['type']} type 恢复类型。
+ * @param {string} [identifier] 图片单词标识。
+ */
 async function removeRecovery(type, identifier) {
   const r = loadRecovery()
   r.pending = r.pending.filter((e) => {
@@ -50,6 +64,11 @@ async function removeRecovery(type, identifier) {
   }
 }
 
+/**
+ * 并行执行全部待恢复项，并保留失败项供下次重试。
+ *
+ * @returns {Promise<{succeeded: import('../types').RecoveryEntry[], failed: import('../types').RecoveryEntry[]} | undefined>}
+ */
 async function restoreRegistered() {
   const r = loadRecovery()
   if (r.pending.length === 0) return
@@ -92,6 +111,7 @@ async function restoreRegistered() {
   return { succeeded, failed }
 }
 
+/** @returns {Promise<import('../types').WordConfigRecoveryEntry>} */
 async function backupWordConfig() {
   const backupDir = path.join(RECOVERY_DIR, 'backups')
   fs.mkdirSync(backupDir, { recursive: true })
@@ -102,12 +122,19 @@ async function backupWordConfig() {
   return { type: 'wordConfig', backupPath: dest }
 }
 
+/** @param {string} backupPath */
 async function restoreWordConfig(backupPath) {
   if (fs.existsSync(backupPath)) {
     fs.copyFileSync(backupPath, WORD_CONFIG_SRC)
   }
 }
 
+/**
+ * 备份指定单词的本地图片及原始哈希。
+ *
+ * @param {string} word 单词名。
+ * @returns {Promise<import('../types').ImageRecoveryEntry>}
+ */
 async function backupImage(word) {
   const filePath = path.join(IMAGES_DIR, `${word}.jpg`)
   const backupDir = path.join(RECOVERY_DIR, 'backups')
@@ -123,6 +150,7 @@ async function backupImage(word) {
   return { type: 'image', word, originalPath: filePath, backupPath, originalHash }
 }
 
+/** @param {import('../types').ImageRecoveryEntry} entry */
 async function restoreImage(entry) {
   if (entry.originalHash === '') {
     // 原图不存在 → 删除测试创建的文件
@@ -138,6 +166,12 @@ async function restoreImage(entry) {
   }
 }
 
+/**
+ * 计算文件的 SHA-256；文件不存在时返回空字符串。
+ *
+ * @param {string} filePath 文件路径。
+ * @returns {string}
+ */
 function sha256(filePath) {
   if (!fs.existsSync(filePath)) return ''
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex')

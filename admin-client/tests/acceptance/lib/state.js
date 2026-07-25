@@ -4,6 +4,11 @@ const { execSync } = require('child_process')
 
 const STATE_PATH = path.join(__dirname, '..', 'output', 'state.json')
 
+/**
+ * 创建一份尚未开始执行的默认状态。
+ *
+ * @returns {import('../types').AcceptanceState}
+ */
 function defaultState() {
   return {
     schemaVersion: 2,
@@ -18,6 +23,11 @@ function defaultState() {
   }
 }
 
+/**
+ * 获取当前 Git 短提交号，用作续跑指纹的一部分。
+ *
+ * @returns {string}
+ */
 function getGitCommit() {
   try {
     return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
@@ -26,6 +36,12 @@ function getGitCommit() {
   }
 }
 
+/**
+ * 加载与当前代码和环境匹配的续跑状态。
+ *
+ * @param {import('../types').AcceptanceConfig} config 验收配置。
+ * @returns {import('../types').AcceptanceState | null}
+ */
 function load(config) {
   try {
     const data = JSON.parse(fs.readFileSync(STATE_PATH, 'utf-8'))
@@ -45,6 +61,12 @@ function load(config) {
   }
 }
 
+/**
+ * 以临时文件加重命名的方式原子保存状态。
+ *
+ * @param {import('../types').AcceptanceState} data 待保存状态。
+ * @returns {void}
+ */
 function saveSync(data) {
   const dir = path.dirname(STATE_PATH)
   fs.mkdirSync(dir, { recursive: true })
