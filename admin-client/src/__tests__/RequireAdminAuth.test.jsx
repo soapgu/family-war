@@ -100,7 +100,7 @@ describe('RequireAdminAuth', () => {
       target: { value: 'secret' },
     })
     fireEvent.click(screen.getByRole('button', { name: /登录/ }))
-    expect(await screen.findByText('登录请求失败')).toBeInTheDocument()
+    expect(await screen.findByText('网络连接失败，请稍后重试')).toBeInTheDocument()
   })
 
   it('登出后重新显示登录窗口', async () => {

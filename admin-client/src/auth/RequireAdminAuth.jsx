@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Input, Modal, Typography } from 'antd'
 import { LockOutlined } from '@ant-design/icons'
 import { familyWarAdminApi } from '../modules/family-war/api'
+import { ApiRequestError } from '../config/request'
 import { AdminAuthProvider, useAdminLogout } from './AdminAuthContext'
 
 export default function RequireAdminAuth({ children }) {
@@ -17,14 +18,17 @@ export default function RequireAdminAuth({ children }) {
 
     async function checkAuth() {
       try {
-        const response = await familyWarAdminApi.getStatus()
+        await familyWarAdminApi.getStatus()
         if (!active) return
-        setAuthenticated(response.ok)
-        setShowLogin(!response.ok)
-      } catch {
+        setAuthenticated(true)
+        setShowLogin(false)
+      } catch (requestError) {
         if (!active) return
         setAuthenticated(false)
         setShowLogin(true)
+        if (requestError instanceof ApiRequestError && requestError.status !== 401) {
+          setError(requestError.message)
+        }
       }
     }
 
@@ -36,17 +40,12 @@ export default function RequireAdminAuth({ children }) {
     setLoading(true)
     setError('')
     try {
-      const response = await familyWarAdminApi.login(password)
-      if (response.ok) {
-        setAuthenticated(true)
-        setShowLogin(false)
-        setPassword('')
-      } else {
-        const data = await response.json().catch(() => ({}))
-        setError(data.error || '登录失败')
-      }
-    } catch {
-      setError('登录请求失败')
+      await familyWarAdminApi.login(password)
+      setAuthenticated(true)
+      setShowLogin(false)
+      setPassword('')
+    } catch (requestError) {
+      setError(requestError instanceof ApiRequestError ? requestError.message : '登录请求失败')
     } finally {
       setLoading(false)
     }

@@ -1,7 +1,8 @@
 import { FAMILY_WAR_API_BASE, joinServicePath } from '../../config/services'
+import { requestJson } from '../../config/request'
 
 function request(path, options) {
-  return fetch(joinServicePath(FAMILY_WAR_API_BASE, path), options)
+  return requestJson(joinServicePath(FAMILY_WAR_API_BASE, path), options)
 }
 
 function jsonRequest(path, method, body) {

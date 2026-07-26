@@ -4,6 +4,8 @@ import { Typography, Button, Tag, Card, Space } from 'antd'
 import { ReloadOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useAdminAuth } from '../../auth/AdminAuthContext'
 import PageHeader from '../../components/PageHeader'
+import RequestState from '../../components/RequestState'
+import { ApiRequestError } from '../../config/request'
 import { familyWarAdminApi } from './api'
 
 const ROLE_EMOJI = {
@@ -16,17 +18,22 @@ const ROLE_EMOJI = {
 function AdminPage() {
   const navigate = useNavigate()
   const { logout } = useAdminAuth()
-  const [data, setData] = useState({ rooms: [], matchHistory: [] })
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   const fetchStatus = useCallback(async () => {
+    setError('')
     try {
-      const res = await familyWarAdminApi.getStatus()
-      if (res.status === 401) { logout(); return }
-      if (res.ok) {
-        setData(await res.json())
+      setData(await familyWarAdminApi.getStatus())
+    } catch (requestError) {
+      if (requestError instanceof ApiRequestError && requestError.status === 401) {
+        logout()
+        return
       }
-    } catch {
-      // ignore
+      setError(requestError instanceof ApiRequestError ? requestError.message : '获取后台状态失败')
+    } finally {
+      setLoading(false)
     }
   }, [logout])
 
@@ -36,7 +43,8 @@ function AdminPage() {
     return () => clearInterval(timer)
   }, [fetchStatus])
 
-  const { rooms, matchHistory } = data
+  const rooms = data?.rooms || []
+  const matchHistory = data?.matchHistory || []
 
   async function handleLogout() {
     try {
@@ -63,6 +71,19 @@ function AdminPage() {
         ]}
       />
 
+      {loading && !data && (
+        <RequestState state="loading" description="正在加载 Family War 状态…" />
+      )}
+      {error && (
+        <RequestState
+          state="error"
+          title="后台状态加载失败"
+          description={error}
+          onRetry={fetchStatus}
+        />
+      )}
+      {data && (
+        <>
       <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
         <Card size="small" style={{ flex: 1 }}><Typography.Text strong>在线房间</Typography.Text><div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{rooms.length}</div></Card>
         <Card size="small" style={{ flex: 1 }}><Typography.Text strong>在线玩家</Typography.Text><div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{rooms.reduce((s, r) => s + r.players.length, 0)}</div></Card>
@@ -71,7 +92,9 @@ function AdminPage() {
 
       {/* Rooms */}
       <Typography.Title level={5} style={{ marginBottom: 12 }}>📡 房间状态</Typography.Title>
-      {rooms.length === 0 && <Typography.Text type="secondary">暂无活跃房间</Typography.Text>}
+      {rooms.length === 0 && (
+        <RequestState state="empty" title="暂无活跃房间" description="有玩家进入房间后会显示在这里。" />
+      )}
       {rooms.map((room) => (
         <Card key={room.id} size="small" title={<span>📦 {room.id}</span>} extra={room.game?.status === 'playing' ? <Tag color="orange">对战中</Tag> : <Tag>空闲</Tag>} style={{ marginBottom: 8 }}>
           {room.players.map((p) => (
@@ -87,7 +110,9 @@ function AdminPage() {
 
       {/* History */}
       <Typography.Title level={5} style={{ marginTop: 24, marginBottom: 12 }}>🏆 对局历史</Typography.Title>
-      {matchHistory.length === 0 && <Typography.Text type="secondary">暂无对局记录</Typography.Text>}
+      {matchHistory.length === 0 && (
+        <RequestState state="empty" title="暂无对局记录" description="完成比赛后会显示历史结果。" />
+      )}
       {[...matchHistory].reverse().map((m) => {
         const [a, b] = m.players
         return (
@@ -107,6 +132,8 @@ function AdminPage() {
           </Card>
         )
       })}
+        </>
+      )}
     </main>
   )
 }

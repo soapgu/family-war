@@ -36,7 +36,7 @@ describe('AdminPage', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { name: '后台管理' })).toBeInTheDocument()
-    expect(screen.getByText('在线房间')).toBeInTheDocument()
+    expect(await screen.findByText('在线房间')).toBeInTheDocument()
     expect(screen.getByText('在线玩家')).toBeInTheDocument()
     expect(screen.getByText('历史对局')).toBeInTheDocument()
     expect(await screen.findByText('暂无活跃房间')).toBeInTheDocument()
@@ -60,5 +60,27 @@ describe('AdminPage', () => {
     renderPage(logout)
 
     await waitFor(() => expect(logout).toHaveBeenCalledOnce())
+  })
+
+  it('网络失败时展示可重试状态并在重试后恢复', async () => {
+    fetch
+      .mockRejectedValueOnce(new TypeError('connection refused'))
+      .mockResolvedValueOnce(response({ rooms: [], matchHistory: [] }))
+
+    renderPage()
+
+    expect(await screen.findByText('网络连接失败，请稍后重试')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /重.*试/ }))
+
+    expect(await screen.findByText('在线房间')).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('500 响应展示服务端错误信息', async () => {
+    fetch.mockResolvedValueOnce(response({ error: '状态服务暂时不可用' }, 500))
+
+    renderPage()
+
+    expect(await screen.findByText('状态服务暂时不可用')).toBeInTheDocument()
   })
 })

@@ -113,6 +113,26 @@ select {
   justify-content: flex-end;
 }
 
+.request-state {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.request-state .ant-empty-description strong,
+.request-state .ant-empty-description small {
+  display: block;
+}
+
+.request-state .ant-empty-description small {
+  margin-top: 4px;
+  color: #8c8c8c;
+}
+
 .word-config-page {
   padding-bottom: 100px;
 }

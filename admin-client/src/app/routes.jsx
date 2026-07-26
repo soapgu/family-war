@@ -4,6 +4,7 @@ import AdminLayout from '../layout/AdminLayout'
 import { familyWarRoutes } from '../modules/family-war'
 import AdminHomePage from '../pages/AdminHomePage'
 import NotFoundPage from '../pages/NotFoundPage'
+import AppErrorBoundary from '../components/AppErrorBoundary'
 
 export default function AdminRoutes() {
   return (
@@ -11,7 +12,9 @@ export default function AdminRoutes() {
       <Route
         element={(
           <RequireAdminAuth>
-            <AdminLayout />
+            <AppErrorBoundary>
+              <AdminLayout />
+            </AppErrorBoundary>
           </RequireAdminAuth>
         )}
       >

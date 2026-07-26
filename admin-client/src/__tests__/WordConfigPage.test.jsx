@@ -24,12 +24,12 @@ function response(body, status = 200) {
   }
 }
 
-function renderPage(config = WORD_CONFIG) {
-  fetch.mockResolvedValueOnce(response(config))
+function renderPage(config = WORD_CONFIG, logout = vi.fn(), status = 200) {
+  fetch.mockResolvedValueOnce(response(config, status))
   return render(
     <MemoryRouter>
       <AntApp>
-        <AdminAuthProvider logout={vi.fn()}>
+        <AdminAuthProvider logout={logout}>
           <WordConfigPage />
         </AdminAuthProvider>
       </AntApp>
@@ -164,5 +164,23 @@ describe('WordConfigPage', () => {
     expect(utterance.text).toBe('classroom')
     expect(utterance.lang).toBe('en-GB')
     expect(utterance.rate).toBe(0.8)
+  })
+
+  it('空词库使用统一空状态', async () => {
+    renderPage({
+      chapters: [],
+      enabledChapters: [],
+      disabledWords: [],
+    })
+
+    expect(await screen.findByText('暂无词库章节')).toBeInTheDocument()
+    expect(screen.getByText('服务端当前没有可配置的默写章节。')).toBeInTheDocument()
+  })
+
+  it('词库请求返回 401 时交回认证流程', async () => {
+    const logout = vi.fn()
+    renderPage({ error: '未登录' }, logout, 401)
+
+    await waitFor(() => expect(logout).toHaveBeenCalledOnce())
   })
 })

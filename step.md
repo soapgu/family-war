@@ -999,12 +999,12 @@ v3.4 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 4a | 盘点 family-war 页面现有 loading、空数据、401、普通 4xx/5xx 和网络错误展示，定义平台级状态组件接口 | `admin-client/src/modules/family-war/`, `admin-client/src/components/` | ⬜ |
-| 4b | 建立复用的加载、空状态和可重试错误组件，允许模块提供自己的说明和重试动作 | `admin-client/src/components/RequestState.jsx` | ⬜ |
-| 4c | 统一 API 请求错误对象，保留 HTTP 状态和服务端错误信息；401 继续交由现有认证流程处理 | `admin-client/src/config/`, `admin-client/src/modules/family-war/api.js`, `admin-client/src/auth/` | ⬜ |
-| 4d | 为顶层路由增加错误边界，捕获渲染异常并提供安全返回首页操作，不展示堆栈或敏感响应 | `admin-client/src/app/`, `admin-client/src/components/` | ⬜ |
-| 4e | 将 family-war 状态页和词库页接入统一状态组件，保持保存、换图、TTS 和恢复逻辑不变 | `admin-client/src/modules/family-war/` | ⬜ |
-| 4f | 增加成功、空数据、网络失败、401、500、重试和渲染异常测试 | `admin-client/src/**/*.test.*` | ⬜ |
+| 4a | 盘点 family-war 页面现有 loading、空数据、401、普通 4xx/5xx 和网络错误展示，定义平台级状态组件接口 | `admin-client/src/modules/family-war/`, `admin-client/src/components/` | ✅ |
+| 4b | 建立复用的加载、空状态和可重试错误组件，允许模块提供自己的说明和重试动作 | `admin-client/src/components/RequestState.jsx` | ✅ |
+| 4c | 统一 API 请求错误对象，保留 HTTP 状态和服务端错误信息；401 继续交由现有认证流程处理 | `admin-client/src/config/`, `admin-client/src/modules/family-war/api.js`, `admin-client/src/auth/` | ✅ |
+| 4d | 为顶层路由增加错误边界，捕获渲染异常并提供安全返回首页操作，不展示堆栈或敏感响应 | `admin-client/src/app/`, `admin-client/src/components/` | ✅ |
+| 4e | 将 family-war 状态页和词库页接入统一状态组件，保持保存、换图、TTS 和恢复逻辑不变 | `admin-client/src/modules/family-war/` | ✅ |
+| 4f | 增加成功、空数据、网络失败、401、500、重试和渲染异常测试 | `admin-client/src/**/*.test.*` | ✅ |
 
 ## Phase 5：自动化验收与兼容观察
 

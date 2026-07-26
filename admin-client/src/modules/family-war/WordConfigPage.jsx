@@ -3,6 +3,8 @@ import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App, Modal, 
 import { ReloadOutlined, SyncOutlined, SoundOutlined } from '@ant-design/icons'
 import { useAdminAuth } from '../../auth/AdminAuthContext'
 import PageHeader from '../../components/PageHeader'
+import RequestState from '../../components/RequestState'
+import { ApiRequestError } from '../../config/request'
 import { familyWarAdminApi } from './api'
 
 const EMPTY_WORD_BANK_MESSAGE = '至少需要保留一个可用的默写单词'
@@ -49,6 +51,7 @@ function WordConfigPage() {
   }, [])
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -61,17 +64,28 @@ function WordConfigPage() {
   const [page, setPage] = useState(1)
   const [totalCandidates, setTotalCandidates] = useState(0)
 
+  const reportRequestError = useCallback((requestError, fallback) => {
+    if (requestError instanceof ApiRequestError && requestError.status === 401) {
+      logout()
+      return
+    }
+    message.error(requestError instanceof ApiRequestError ? requestError.message : fallback)
+  }, [logout, message])
+
   const fetchConfig = useCallback(async () => {
     setLoading(true)
+    setLoadError('')
     try {
-      const res = await familyWarAdminApi.getWordConfig()
-      if (res.status === 401) { logout(); return }
-      if (res.ok) {
-        setData(await res.json())
-        setHasUnsavedChanges(false)
+      setData(await familyWarAdminApi.getWordConfig())
+      setHasUnsavedChanges(false)
+    } catch (requestError) {
+      if (requestError instanceof ApiRequestError && requestError.status === 401) {
+        logout()
+        return
       }
-    } catch {
-      message.error('获取词库配置失败')
+      setLoadError(requestError instanceof ApiRequestError
+        ? requestError.message
+        : '获取词库配置失败')
     } finally {
       setLoading(false)
     }
@@ -138,18 +152,12 @@ function WordConfigPage() {
     setSaving(true)
     try {
       const body = { enabledChapters: data.enabledChapters, disabledWords: data.disabledWords }
-      const res = await familyWarAdminApi.saveWordConfig(body)
-      if (res.status === 401) { logout(); return }
-      if (res.ok) {
-        setHasUnsavedChanges(false)
-        setSavedNotify(true)
-        setTimeout(() => setSavedNotify(false), 2000)
-      } else {
-        const err = await res.json().catch(() => ({}))
-        message.error(err.error || '保存失败')
-      }
-    } catch {
-      message.error('保存请求失败')
+      await familyWarAdminApi.saveWordConfig(body)
+      setHasUnsavedChanges(false)
+      setSavedNotify(true)
+      setTimeout(() => setSavedNotify(false), 2000)
+    } catch (requestError) {
+      reportRequestError(requestError, '保存请求失败')
     } finally {
       setSaving(false)
     }
@@ -158,18 +166,11 @@ function WordConfigPage() {
   const handleSyncAll = async () => {
     setSyncing(true)
     try {
-      const res = await familyWarAdminApi.syncAllWordImages()
-      if (res.status === 401) { logout(); return }
-      if (res.ok) {
-        const status = await res.json()
-        updateImageStatuses(status.words || [])
-        message.success('同步完成')
-      } else {
-        const err = await res.json()
-        message.error(err.error || '同步失败')
-      }
-    } catch {
-      message.error('同步请求失败')
+      const status = await familyWarAdminApi.syncAllWordImages()
+      updateImageStatuses(status.words || [])
+      message.success('同步完成')
+    } catch (requestError) {
+      reportRequestError(requestError, '同步请求失败')
     } finally {
       setSyncing(false)
     }
@@ -178,18 +179,11 @@ function WordConfigPage() {
   const handleSyncMissing = async () => {
     setSyncing(true)
     try {
-      const res = await familyWarAdminApi.syncMissingWordImages()
-      if (res.status === 401) { logout(); return }
-      if (res.ok) {
-        const status = await res.json()
-        updateImageStatuses(status.words || [])
-        message.success('缺失图片同步完成')
-      } else {
-        const err = await res.json()
-        message.error(err.error || '同步失败')
-      }
-    } catch {
-      message.error('同步请求失败')
+      const status = await familyWarAdminApi.syncMissingWordImages()
+      updateImageStatuses(status.words || [])
+      message.success('缺失图片同步完成')
+    } catch (requestError) {
+      reportRequestError(requestError, '同步请求失败')
     } finally {
       setSyncing(false)
     }
@@ -200,19 +194,12 @@ function WordConfigPage() {
     setSelectingWord(word)
     setCandidatesLoading(true)
     try {
-      const res = await familyWarAdminApi.getWordImageCandidates(word, pageNum)
-      if (res.status === 401) { logout(); return }
-      if (res.ok) {
-        const data = await res.json()
-        setCandidates(data.candidates)
-        setTotalCandidates(data.total)
-        setPage(data.page)
-      } else {
-        const err = await res.json().catch(() => ({}))
-        message.error(err.error || '获取候选图片失败')
-      }
-    } catch {
-      message.error('获取候选图片请求失败')
+      const candidateData = await familyWarAdminApi.getWordImageCandidates(word, pageNum)
+      setCandidates(candidateData.candidates)
+      setTotalCandidates(candidateData.total)
+      setPage(candidateData.page)
+    } catch (requestError) {
+      reportRequestError(requestError, '获取候选图片请求失败')
     } finally {
       setCandidatesLoading(false)
     }
@@ -229,29 +216,23 @@ function WordConfigPage() {
     const photo = candidates.find(c => c.candidateId === selectedPhotoId)
     if (!photo) return
     try {
-      const res = await familyWarAdminApi.confirmWordImage(selectingWord, photo.candidateId)
-      if (res.status === 401) { logout(); return }
-      if (res.ok) {
-        message.success(`${selectingWord} 图片已更换`)
-        setSelectingWord(null)
-        setCandidates([])
-        setSelectedPhotoId(null)
-        setRefreshKey(k => k + 1)
-        setData((current) => current && ({
-          ...current,
-          chapters: current.chapters.map((chapter) => ({
-            ...chapter,
-            words: chapter.words.map((word) => (
-              word.word === selectingWord ? { ...word, synced: true } : word
-            )),
-          })),
-        }))
-      } else {
-        const err = await res.json().catch(() => ({}))
-        message.error(err.error || '确认换图失败')
-      }
-    } catch {
-      message.error('确认换图请求失败')
+      await familyWarAdminApi.confirmWordImage(selectingWord, photo.candidateId)
+      message.success(`${selectingWord} 图片已更换`)
+      setSelectingWord(null)
+      setCandidates([])
+      setSelectedPhotoId(null)
+      setRefreshKey(k => k + 1)
+      setData((current) => current && ({
+        ...current,
+        chapters: current.chapters.map((chapter) => ({
+          ...chapter,
+          words: chapter.words.map((word) => (
+            word.word === selectingWord ? { ...word, synced: true } : word
+          )),
+        })),
+      }))
+    } catch (requestError) {
+      reportRequestError(requestError, '确认换图请求失败')
     }
   }
 
@@ -279,10 +260,6 @@ function WordConfigPage() {
       if (utteranceRef.current === utterance) synth.speak(utterance)
     }, SPEECH_RESTART_DELAY)
   }, [message])
-
-  if (loading && !data) {
-    return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
-  }
 
   const activeWordCount = getActiveWordCount(data)
   const totalWordCount = data?.chapters.reduce((sum, chapter) => sum + chapter.words.length, 0) || 0
@@ -313,6 +290,18 @@ function WordConfigPage() {
           <Button icon={<ReloadOutlined />} onClick={fetchConfig} loading={loading}>刷新</Button>
         )}
       />
+
+      {loading && !data && (
+        <RequestState state="loading" description="正在加载词库配置…" />
+      )}
+      {loadError && (
+        <RequestState
+          state="error"
+          title="词库配置加载失败"
+          description={loadError}
+          onRetry={fetchConfig}
+        />
+      )}
 
       {data && (
         <Card style={{ marginBottom: 20 }}>
@@ -409,7 +398,11 @@ function WordConfigPage() {
       )}
 
       {data && data.chapters.length === 0 && (
-        <Typography.Text type="secondary">暂无词库章节</Typography.Text>
+        <RequestState
+          state="empty"
+          title="暂无词库章节"
+          description="服务端当前没有可配置的默写章节。"
+        />
       )}
 
       {data?.chapters.map((ch, ci) => {
