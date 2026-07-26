@@ -975,11 +975,11 @@ v3.4 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 2a | 将 `AdminHomePage` 从 `App.jsx` 拆入独立页面组件，不改变现有文案和入口 URL | `admin-client/src/pages/AdminHomePage.jsx`, `admin-client/src/App.jsx` | ⬜ |
-| 2b | 建立集中路由装配文件，从 family-war 模块公开入口生成模块路由 | `admin-client/src/app/routes.jsx`, `admin-client/src/modules/family-war/index.js` | ⬜ |
-| 2c | 精简 `App.jsx`，只保留 Browser Router、Ant Design Provider、认证边界和顶层路由入口 | `admin-client/src/App.jsx`, `admin-client/src/app/AdminApp.jsx` | ⬜ |
-| 2d | 将应用入口卡片抽成复用组件，由注册表生成首页内容；没有已注册应用时显示明确空状态 | `admin-client/src/components/AppEntryCard.jsx`, `admin-client/src/pages/AdminHomePage.jsx` | ⬜ |
-| 2e | 增加首页渲染、注册应用导航、空注册表和模块路由装配测试 | `admin-client/src/**/*.test.*` | ⬜ |
+| 2a | 将 `AdminHomePage` 从 `App.jsx` 拆入独立页面组件，不改变现有文案和入口 URL | `admin-client/src/pages/AdminHomePage.jsx`, `admin-client/src/App.jsx` | ✅ |
+| 2b | 建立集中路由装配文件，从 family-war 模块公开入口生成模块路由 | `admin-client/src/app/routes.jsx`, `admin-client/src/modules/family-war/index.js` | ✅ |
+| 2c | 精简 `App.jsx`，只保留 Browser Router、Ant Design Provider、认证边界和顶层路由入口 | `admin-client/src/App.jsx`, `admin-client/src/app/AdminApp.jsx` | ✅ |
+| 2d | 将应用入口卡片抽成复用组件，由注册表生成首页内容；没有已注册应用时显示明确空状态 | `admin-client/src/components/AppEntryCard.jsx`, `admin-client/src/pages/AdminHomePage.jsx` | ✅ |
+| 2e | 增加首页渲染、注册应用导航、空注册表和模块路由装配测试 | `admin-client/src/**/*.test.*` | ✅ |
 
 ## Phase 3：完善平台导航与页面层级
 
