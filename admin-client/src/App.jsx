@@ -2,8 +2,7 @@ import { App as AntApp, Button, Card, Space, Typography } from 'antd'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import RequireAdminAuth from './auth/RequireAdminAuth'
 import AdminLayout from './layout/AdminLayout'
-import AdminPage from './modules/family-war/AdminPage'
-import WordConfigPage from './modules/family-war/WordConfigPage'
+import { familyWarRoutes } from './modules/family-war'
 
 function AdminHomePage() {
   const navigate = useNavigate()
@@ -37,8 +36,9 @@ function AdminRoutes() {
         )}
       >
         <Route index element={<AdminHomePage />} />
-        <Route path="family-war" element={<AdminPage />} />
-        <Route path="family-war/word-config" element={<WordConfigPage />} />
+        {familyWarRoutes.map(({ id, path, Component }) => (
+          <Route key={id} path={path} element={<Component />} />
+        ))}
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

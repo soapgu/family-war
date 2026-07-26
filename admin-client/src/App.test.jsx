@@ -42,6 +42,7 @@ describe('Admin App', () => {
   })
 
   it.each([
+    ['/admin/', '管理首页'],
     ['/admin/family-war', '后台管理'],
     ['/admin/family-war/', '后台管理'],
     ['/admin/family-war/word-config', '词库管理'],

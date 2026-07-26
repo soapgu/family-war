@@ -963,11 +963,11 @@ v3.4 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 1a | 盘点 `App.jsx`、`AdminLayout`、认证组件和 family-war 模块之间的直接依赖，记录保留 URL、页面标题和导航行为 | `admin-client/src/`, 现有测试 | ⬜ |
-| 1b | 定义应用注册项字段：稳定 ID、显示名称、说明、入口路径、导航标签、图标和模块路由；禁止包含敏感配置 | `admin-client/src/app/appRegistry.js` | ⬜ |
-| 1c | 定义模块公开入口，只从 `modules/family-war/index.js` 导出路由和平台需要的元数据，不暴露内部实现文件 | `admin-client/src/modules/family-war/index.js` | ⬜ |
-| 1d | 为注册表增加唯一 ID、唯一路径、合法绝对管理路径和必填字段校验测试 | `admin-client/src/app/*.test.*` | ⬜ |
-| 1e | 冻结 `/admin/`、`/admin/family-war/`、`/admin/family-war/word-config` 的路由回归测试 | `admin-client/src/App.test.jsx` | ⬜ |
+| 1a | 盘点 `App.jsx`、`AdminLayout`、认证组件和 family-war 模块之间的直接依赖，记录保留 URL、页面标题和导航行为 | `admin-client/src/`, 现有测试 | ✅ |
+| 1b | 定义应用注册项字段：稳定 ID、显示名称、说明、入口路径、导航标签、图标和模块路由；禁止包含敏感配置 | `admin-client/src/app/appRegistry.js` | ✅ |
+| 1c | 定义模块公开入口，只从 `modules/family-war/index.js` 导出路由和平台需要的元数据，不暴露内部实现文件 | `admin-client/src/modules/family-war/index.js` | ✅ |
+| 1d | 为注册表增加唯一 ID、唯一路径、合法绝对管理路径和必填字段校验测试 | `admin-client/src/app/*.test.*` | ✅ |
+| 1e | 冻结 `/admin/`、`/admin/family-war/`、`/admin/family-war/word-config` 的路由回归测试 | `admin-client/src/App.test.jsx` | ✅ |
 
 ## Phase 2：拆分应用装配与平台首页
 
