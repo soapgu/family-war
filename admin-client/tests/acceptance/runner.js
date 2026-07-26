@@ -24,6 +24,7 @@ const STEP_FILES = [
   '04-word-config.js',
   '05-images.js',
   '06-responsive.js',
+  '07-platform-navigation.js',
 ]
 let configLocalBackup = null  // 内存备份，避免文件系统竞争
 
@@ -218,6 +219,7 @@ function assertAdminNetworkBoundary(requestURLs, apiPath) {
 
   const invalidAdminAPIs = requestURLs.filter((url) => {
     const pathname = new URL(url).pathname
+    if (pathname.startsWith('/family-war/api/')) return true
     const isAdminAPI = pathname.includes('/api/admin/')
       || pathname.includes('/api/family-war/admin/')
     return isAdminAPI && !pathname.startsWith(`${apiPath}/admin/`)
@@ -291,7 +293,7 @@ async function main() {
     state.gitCommit = stateLib.getGitCommit()
     state.adminBaseURL = config.adminBaseURL
     state.apiBaseURL = config.apiBaseURL
-    state.planVersion = 'v3.3 Phase 3'
+    state.planVersion = 'v3.4 Phase 5'
     state.startedAt = new Date().toISOString()
     console.log('新建运行指纹')
   } else {

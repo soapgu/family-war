@@ -66,7 +66,7 @@ function create(outputDir) {
     recalcSummary()
     fs.writeFileSync(jsonPath, JSON.stringify(report, null, 2), 'utf-8')
     const durationLine = report.durationMs != null ? `- **总耗时**: ${formatDuration(report.durationMs)}\n` : ''
-    const lines = ['# Phase 6 验收报告\n', durationLine].filter(Boolean)
+    const lines = ['# v3.4 Phase 5 验收报告\n', durationLine].filter(Boolean)
     for (const step of report.steps) {
       const icon = step.status === 'passed' ? '✅' : step.status === 'failed' ? '❌' : step.status === 'skipped' ? '⏭️' : '⬜'
       lines.push(`## ${step.id} ${icon} ${step.name}\n`)

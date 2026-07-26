@@ -12,6 +12,27 @@ const step = {
     reporter.onStepStart(this.id, this.name)
     const details = []
 
+    await page.addInitScript(() => {
+      window.__acceptanceSpoken = []
+      window.SpeechSynthesisUtterance = class {
+        constructor(text) {
+          this.text = text
+          this.lang = ''
+          this.rate = 1
+        }
+      }
+      Object.defineProperty(window.speechSynthesis, 'speak', {
+        configurable: true,
+        value: (utterance) => {
+          window.__acceptanceSpoken.push({
+            text: utterance.text,
+            lang: utterance.lang,
+            rate: utterance.rate,
+          })
+        },
+      })
+    })
+
     const wcPage = new WordConfigPage(page, config)
     await wcPage.navigate()
     details.push('进入词库管理页面')
@@ -60,6 +81,15 @@ const step = {
 
     const { chapterIndex: ci, wordIndex: wi } = target
     details.push(`选中单词: "${target.word}" (章节 ${ci}, 索引 ${wi})`)
+
+    await wcPage.playWord(target.word)
+    await page.waitForFunction(
+      (word) => window.__acceptanceSpoken?.some((entry) => (
+        entry.text === word && entry.lang === 'en-GB' && entry.rate === 0.8
+      )),
+      target.word,
+    )
+    details.push(`英式 TTS 已播放 "${target.word}"（en-GB, rate=0.8）`)
 
     // 记录原始状态，供持久化验证结束后恢复。
     const originalState = await wcPage.getWordSwitchState(ci, wi)

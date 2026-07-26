@@ -1012,14 +1012,14 @@ v3.4 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 5a | 更新 Playwright Page Object 和定位器，减少对旧页面内部 DOM 层级的依赖 | `admin-client/tests/acceptance/pages/` | ⬜ |
-| 5b | 增加应用首页卡片、平台导航、面包屑、404、前进后退和深层路由刷新验收 | `admin-client/tests/acceptance/steps/` | ⬜ |
-| 5c | 回归管理员登录、刷新保持、登出、401、family-war 状态、词库、图片和 TTS | `admin-client/tests/acceptance/` | ⬜ |
-| 5d | 保持管理端网络边界断言：只请求 `/api/family-war/*`，不得请求任何 Socket.IO 或旧 API 路径 | `admin-client/tests/acceptance/runner.js` | ⬜ |
-| 5e | 执行管理端全部单元测试、acceptance 离线检查、生产构建和构建隔离验证 | `admin-client/`, 根项目脚本 | ⬜ |
-| 5f | 在预发布环境执行完整 acceptance，确认测试数据和管理员配置在成功、失败或中断后恢复 | 预发布环境、验收报告 | ⬜ |
-| 5g | 汇总 v3.3—v3.4 旧 API/Socket.IO 访问日志，排除验收、监控和扫描流量，形成 v3.5 是否允许清理的结论 | Nginx 兼容日志、`docs/acceptance/v3.4/` | ⬜ |
-| 5h | 继续运行新旧网关兼容测试；v3.4 仍不得删除旧 location | `server/tests/gateway.js`, Nginx 配置 | ⬜ |
+| 5a | 更新 Playwright Page Object 和定位器，减少对旧页面内部 DOM 层级的依赖 | `admin-client/tests/acceptance/pages/` | ✅ |
+| 5b | 增加应用首页卡片、平台导航、面包屑、404、前进后退和深层路由刷新验收 | `admin-client/tests/acceptance/steps/` | ✅ |
+| 5c | 回归管理员登录、刷新保持、登出、401、family-war 状态、词库、图片和 TTS | `admin-client/tests/acceptance/` | ✅ |
+| 5d | 保持管理端网络边界断言：只请求 `/api/family-war/*`，不得请求任何 Socket.IO 或旧 API 路径 | `admin-client/tests/acceptance/runner.js` | ✅ |
+| 5e | 执行管理端全部单元测试、acceptance 离线检查、生产构建和构建隔离验证 | `admin-client/`, 根项目脚本 | ✅ |
+| 5f | 在预发布环境执行完整 acceptance，确认测试数据和管理员配置在成功、失败或中断后恢复 | 预发布环境、验收报告 | ✅ |
+| 5g | 汇总 v3.3—v3.4 旧 API/Socket.IO 访问日志，排除验收、监控和扫描流量，形成 v3.5 是否允许清理的结论 | Nginx 兼容日志、`docs/acceptance/v3.4/` | ✅ |
+| 5h | 继续运行新旧网关兼容测试；v3.4 仍不得删除旧 location | `server/tests/gateway.js`, Nginx 配置 | ✅ |
 
 ## Phase 6：版本发布与文档收尾
 

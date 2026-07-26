@@ -28,13 +28,14 @@ class LoginPage {
 
   /** 使用验收配置中的密码完成登录。 */
   async login() {
-    await this.page.waitForSelector('.ant-modal', { timeout: 10000 })
-    await this.page.fill('input[placeholder="请输入管理密码"]', this.config.adminPassword)
+    const dialog = this.page.getByRole('dialog', { name: '管理员登录' })
+    await dialog.waitFor({ state: 'visible', timeout: 10000 })
+    await dialog.getByPlaceholder('请输入管理密码').fill(this.config.adminPassword)
     const loginResponsePromise = this.page.waitForResponse(
       (res) => new URL(res.url()).pathname === `${this.config.apiPath}/admin/login`
         && res.request().method() === 'POST'
     )
-    await this.page.click('button:has-text("登录")')
+    await dialog.getByRole('button', { name: /登录/ }).click()
     const loginResponse = await loginResponsePromise
     if (!loginResponse.ok()) {
       const body = await loginResponse.json().catch(() => ({}))

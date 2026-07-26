@@ -16,18 +16,22 @@ class AdminDashboard {
 
   /** @returns {Promise<boolean>} 管理首页标题是否可见。 */
   async isVisible() {
-    return await this.page.isVisible('text=后台管理')
+    return await this.page.getByRole('heading', { name: '后台管理', exact: true }).isVisible()
   }
 
-  /** @returns {Promise<string[]>} 当前可见的折叠面板名称。 */
-  async getVisiblePanels() {
-    const panels = await this.page.$$('.ant-collapse-item')
-    const names = []
-    for (const panel of panels) {
-      const h = await panel.$('.ant-collapse-header')
-      if (h) names.push(await h.innerText())
-    }
-    return names
+  /** @returns {import('@playwright/test').Locator} */
+  refreshButton() {
+    return this.page.getByRole('button', { name: /刷新/ })
+  }
+
+  /** @returns {import('@playwright/test').Locator} */
+  wordConfigButton() {
+    return this.page.getByRole('button', { name: '词库管理', exact: true })
+  }
+
+  /** @returns {import('@playwright/test').Locator} */
+  logoutButton() {
+    return this.page.getByRole('button', { name: /登出/ })
   }
 
   /** @param {string} path 截图输出路径。 */

@@ -12,6 +12,8 @@ class WordConfigPage {
   /** 打开词库配置页面。 */
   async navigate() {
     await this.page.goto(this.config.adminBaseURL + '/family-war/word-config', { waitUntil: 'networkidle' })
+    await this.page.getByRole('heading', { name: '词库管理', exact: true })
+      .waitFor({ state: 'visible' })
   }
 
   /**
@@ -90,6 +92,13 @@ class WordConfigPage {
     return await names.nth(wordIndex).innerText()
   }
 
+  /**
+   * @param {string} word 单词。
+   */
+  async playWord(word) {
+    await this.page.getByRole('button', { name: `播放 ${word}` }).click()
+  }
+
   /** @returns {Promise<string | null>} 禁用原因提示。 */
   async getDisabledText() {
     const el = this.page.locator('.ant-alert-message')
@@ -99,13 +108,13 @@ class WordConfigPage {
 
   /** 保存当前词库配置。 */
   async clickSave() {
-    await this.page.click('button:has-text("保存配置")')
+    await this.page.getByRole('button', { name: '保存配置', exact: true }).click()
     await this.page.waitForTimeout(500)
   }
 
   /** 从服务端刷新词库配置。 */
   async clickRefresh() {
-    await this.page.click('button:has-text("刷新")')
+    await this.page.getByRole('button', { name: /刷新/ }).click()
     await this.page.waitForTimeout(500)
   }
 
