@@ -11,14 +11,21 @@ const ROUNDS = [
 ]
 
 test.describe.serial('RPS 双人对战', () => {
+  let ctxA
+  let ctxB
   let pageA
   let pageB
 
   test.beforeAll(async ({ browser }) => {
-    const ctxA = await browser.newContext()
-    const ctxB = await browser.newContext()
+    ctxA = await browser.newContext()
+    ctxB = await browser.newContext()
     pageA = await ctxA.newPage()
     pageB = await ctxB.newPage()
+  })
+
+  test.afterAll(async () => {
+    await ctxA.close()
+    await ctxB.close()
   })
 
   test('01 - 两人进入房间', async ({}) => {

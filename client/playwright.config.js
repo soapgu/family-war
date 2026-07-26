@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 60000,
   expect: { timeout: 15000 },
+  workers: 1,
   outputDir: 'tests/e2e/test-results',
   use: {
     baseURL: process.env.CLIENT_BASE_URL || 'http://localhost:3000/family-war/',

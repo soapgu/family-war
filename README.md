@@ -540,7 +540,7 @@ MatchResult.jsx
 | 游戏端单元测试 | `client/src/__tests__/*.test.jsx` |
 | 管理端单元测试 | `admin-client/src/__tests__/*.test.jsx` |
 | 管理端预发布验收 | `admin-client/tests/acceptance/` |
-| 游戏端验收测试 | `client/tests/acceptance/` |
+| 游戏端 E2E 测试 | `client/tests/e2e/`（@playwright/test 标准方式） |
 | 类型 | `@types/jest` + `jsconfig.json` 提供 VSCode 智能提示 |
 
 ### 运行测试
@@ -567,14 +567,20 @@ npm run test:acceptance:check
 # 公网 API、Socket.IO 和图片网关验收
 GATEWAY_BASE_URL=http://localhost:8080 npm run test:gateway
 
-# 游戏端验收测试（需先启动 npm run dev）
-npm run test:acceptance:client
-
-# 指定 Nginx 代理地址
-CLIENT_BASE_URL=http://localhost:8080/family-war/ npm run test:acceptance:client
+# 游戏端 E2E 测试（需先启动 npm run dev，单 worker 串行防房间冲突）
+npm run test:e2e
 
 # 有头模式调试
-HEADED=1 npm run test:acceptance:client
+npm run test:e2e:headed
+
+# 列举测试用例
+npm run test:e2e:check
+
+# 查看 HTML 报告
+npm run test:e2e:report
+
+# 指定 Nginx 代理地址
+CLIENT_BASE_URL=http://localhost:8080/family-war/ npm run test:e2e
 
 # 预发布完整验收
 ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \

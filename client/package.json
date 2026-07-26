@@ -17,10 +17,10 @@
     "preview": "vite preview",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:acceptance": "node tests/acceptance/runner.js",
     "test:e2e": "playwright test --config playwright.config.js",
     "test:e2e:headed": "HEADED=1 playwright test --config playwright.config.js",
-    "test:e2e:report": "open e2e-report/index.html"
+    "test:e2e:check": "playwright test --config playwright.config.js --list",
+    "test:e2e:report": "open tests/e2e/e2e-report/index.html"
   },
   "scriptsDescription": {
     "start": "启动游戏端 Vite 开发服务，默认监听 3000，并使用开发代理访问 API 和 Socket.IO。",
@@ -28,9 +28,9 @@
     "preview": "本地预览 client/build/ 中的 Vite 生产构建。",
     "test": "以非监听模式执行全部游戏端 Vitest 单元测试。",
     "test:watch": "以监听模式运行游戏端 Vitest，源码变化后自动重测。",
-    "test:acceptance": "运行游戏端 Playwright 验收测试（custom runner），需要服务端和客户端已启动。（默认 http://localhost:3000/family-war/，设 CLIENT_BASE_URL 可切换）",
-    "test:e2e": "运行游戏端 Playwright E2E 测试（标准 @playwright/test），需要服务端和客户端已启动。",
+    "test:e2e": "运行游戏端 Playwright E2E 测试，需要先启动 npm run dev。",
     "test:e2e:headed": "有头模式运行 Playwright E2E 测试，方便调试。",
+    "test:e2e:check": "列出 E2E 测试用例列表，不实际运行。",
     "test:e2e:report": "在浏览器中打开 E2E HTML 测试报告。"
   },
   "devDependencies": {

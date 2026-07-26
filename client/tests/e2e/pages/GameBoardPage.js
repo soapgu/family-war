@@ -20,9 +20,6 @@ export class GameBoardPage {
   }
 
   async waitForMatchResult() {
-    await Promise.race([
-      this.page.getByText('恭喜你获得比赛胜利！').waitFor({ state: 'visible', timeout: 15000 }),
-      this.page.getByText('比赛结束').waitFor({ state: 'visible', timeout: 15000 }),
-    ])
+    await this.page.getByRole('button', { name: '返回房间' }).waitFor({ state: 'visible', timeout: 15000 })
   }
 }
