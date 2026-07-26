@@ -1,4 +1,4 @@
-# Family War 🎮 v3.2
+# Family War 🎮 v3.4
 
 一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）、**算术达人**（全员抢答）和 v3.0 **爱拼才会赢**（英文默写），并支持机器人对局。
 
@@ -159,9 +159,12 @@ family-war/
 │   └── package.json
 ├── admin-client/                              # 独立管理前端 (端口 3001)
 │   ├── src/
+│   │   ├── app/                               # 应用注册表与集中路由装配
 │   │   ├── auth/                              # 管理员登录状态与路由保护
-│   │   ├── layout/                            # 平台管理布局
-│   │   ├── modules/family-war/                # 状态页、词库页和 API 封装
+│   │   ├── components/                        # 页面头部、请求状态和错误边界
+│   │   ├── layout/                            # 注册表驱动的平台管理布局
+│   │   ├── modules/family-war/                # 模块公开入口、页面和 API 封装
+│   │   ├── pages/                             # 平台首页与 404 页面
 │   │   └── __tests__/                         # 管理端 Vitest 测试
 │   ├── tests/acceptance/                      # Playwright 预发布验收
 │   ├── vite.config.js                         # `/admin/` 构建与开发代理
@@ -207,15 +210,19 @@ family-war/
     └── onBack() → setRoomState(null) 返回首页
 
 管理 admin-client（/admin/）
-├── /                         → 管理首页
-├── /family-war              → Family War 状态
-└── /family-war/word-config  → 词库与图片管理
+├── appRegistry                       → 应用元数据与平台导航来源
+├── /                                 → 管理首页
+├── /family-war                       → Family War 状态
+├── /family-war/word-config           → 词库与图片管理
+└── /*                                → 明确的管理端 404 页面
 ```
 
 - Home 和 Room 之间没有 URL 切换，由 `GameApp` 的 state 控制渲染
 - 刷新页面时 state 丢失，回退到 Home 界面，不产生死页面
 - `socket.io` 客户端是模块级单例，不受 React 生命周期影响
 - 管理端独立构建，不安装或连接 Socket.IO
+- 管理模块只通过 `modules/<module>/index.js` 暴露元数据和路由，不向平台层暴露内部页面
+- 管理页面统一使用 `PageHeader`、`RequestState` 和顶层渲染错误边界
 
 ## 游戏流程
 

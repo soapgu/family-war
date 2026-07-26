@@ -47,6 +47,9 @@ root package.json  (concurrently orchestrates all three)
 - **Vite proxy** (`client/vite.config.js`): forwards `/api` → `:4000`, `/socket.io` → `:4000` (ws)
 - **Vite base** is `/family-war/` for production (nginx reverse proxy)
 - **Admin Vite base** is `/admin/`; its production output is `admin-client/build/`
+- **Admin platform registry** is `admin-client/src/app/appRegistry.js`; platform navigation and home cards use the same metadata.
+- **Admin module public boundary** is `admin-client/src/modules/<module>/index.js`; platform code must not import module-internal pages or API files directly.
+- **Admin request states** use `RequestState`; top-level route rendering is protected by `AppErrorBoundary`.
 - **Three game modes**: RPS (1v1), 算术 (arithmetic, all-vs-all), 默写 (spelling, all-vs-all with TTS + Unsplash images)
 - **Spelling mode** uses `server/src/data/words.json` word bank (每章包含 `context` 字段配文章节上下文，用于 Unsplash 搜索退选); difficulty levels: `easy` / `normal` / `hard`
 - **Room ID** hardcoded to `'default'`; `roomId` param on events is a design预留
@@ -67,6 +70,6 @@ root package.json  (concurrently orchestrates all three)
 - Roles: `爸爸`, `妈妈`, `儿子`, `机器人`
 - BGM: `<audio>` elements with mp3 in `client/public/`. UI sfx: Web Audio API oscillator synthesis (in `Room.js`)
 - Game client only renders `<GameApp/>`; Home/Room remains state-controlled with no room URL.
-- Admin BrowserRouter uses basename `/admin` with `/`, `/family-war`, and `/family-war/word-config`.
+- Admin BrowserRouter uses basename `/admin` with `/`, `/family-war`, `/family-war/word-config`, and an explicit in-app 404 page.
 - Plain JS (no TypeScript). `jsconfig.json` for VSCode intellisense.
 - All JSX source files use `.jsx` extension (Vite requirement).

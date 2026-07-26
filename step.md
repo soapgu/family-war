@@ -1027,13 +1027,13 @@ v3.4 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 6a | 将根项目和三个 package 版本统一更新为 `3.4.0`，同步 lockfile | 各级 `package.json`, `package-lock.json` | ⬜ |
-| 6b | 执行服务端、游戏端、管理端全部测试、Socket.IO 集成测试和完整生产构建 | 根项目、三个 package | ⬜ |
-| 6c | 部署管理端生产构建，验证 `/admin/`、family-war 模块、深层路由和 404 页面 | 正式环境 | ⬜ |
-| 6d | 确认服务端、游戏端、Nginx 标准入口及兼容入口没有行为变更 | 正式环境、网关验收 | ⬜ |
-| 6e | 更新项目结构、模块注册约定、测试命令、路线图和 v3.4 发布说明 | `README.md`, `AGENTS.md`, `road-map.md`, `docs/RELEASE.md` | ⬜ |
-| 6f | 发布 v3.4.0 Git tag 和 GitHub Release，说明该版本不包含认证后端改造或旧入口删除 | Git、GitHub Release | ⬜ |
-| 6g | 在 v3.5 计划中记录旧入口清理清单、观察门槛、回滚要求和 Socket.IO 禁止重定向规则 | `step.md`, `road-map.md` | ⬜ |
+| 6a | 将根项目和三个 package 版本统一更新为 `3.4.0`，同步 lockfile | 各级 `package.json`, `package-lock.json` | ✅ |
+| 6b | 执行服务端、游戏端、管理端全部测试、Socket.IO 集成测试和完整生产构建 | 根项目、三个 package | ✅ |
+| 6c | 部署管理端生产构建，验证 `/admin/`、family-war 模块、深层路由和 404 页面 | 正式环境 | ✅ |
+| 6d | 确认服务端、游戏端、Nginx 标准入口及兼容入口没有行为变更 | 正式环境、网关验收 | ✅ |
+| 6e | 更新项目结构、模块注册约定、测试命令、路线图和 v3.4 发布说明 | `README.md`, `AGENTS.md`, `road-map.md`, `docs/RELEASE.md` | ✅ |
+| 6f | 发布 v3.4.0 Git tag 和 GitHub Release，说明该版本不包含认证后端改造或旧入口删除 | Git、GitHub Release | ✅ |
+| 6g | 在 v3.5 计划中记录旧入口清理清单、观察门槛、回滚要求和 Socket.IO 禁止重定向规则 | `step.md`, `road-map.md` | ✅ |
 
 ## v3.4 最终验收条件
 
