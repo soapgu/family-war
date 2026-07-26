@@ -39,18 +39,23 @@ select {
   display: flex;
   align-items: center;
   gap: 32px;
+  overflow: hidden;
 }
 
 .admin-brand.ant-typography {
   flex: 0 0 auto;
   margin: 0;
   color: #fff;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .admin-navigation {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .admin-content {
@@ -68,8 +73,48 @@ select {
   max-width: 480px;
 }
 
+.platform-page,
+.not-found-page {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-breadcrumb {
+  margin-bottom: 12px;
+}
+
+.page-header-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.page-header-copy {
+  min-width: 0;
+}
+
+.page-title.ant-typography {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.page-description.ant-typography {
+  margin: 8px 0 0;
+}
+
+.page-header-actions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
 .word-config-page {
-  padding-bottom: 100px !important;
+  padding-bottom: 100px;
 }
 
 .word-config-grid {

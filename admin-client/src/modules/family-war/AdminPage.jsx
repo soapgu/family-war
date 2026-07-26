@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Typography, Button, Tag, Card, Space } from 'antd'
 import { ReloadOutlined, LogoutOutlined } from '@ant-design/icons'
 import { useAdminAuth } from '../../auth/AdminAuthContext'
+import PageHeader from '../../components/PageHeader'
 import { familyWarAdminApi } from './api'
 
 const ROLE_EMOJI = {
@@ -47,15 +48,20 @@ function AdminPage() {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>后台管理</Typography.Title>
-        <Space>
-          <Button onClick={() => navigate('/family-war/word-config')}>词库管理</Button>
-          <Button icon={<ReloadOutlined />} onClick={fetchStatus}>刷新</Button>
-          <Button icon={<LogoutOutlined />} onClick={handleLogout} danger>登出</Button>
-        </Space>
-      </div>
+    <main className="platform-page">
+      <PageHeader
+        title="后台管理"
+        description="查看 Family War 在线状态和历史对局。"
+        breadcrumbs={[
+          { title: '管理首页', path: '/' },
+          { title: 'Family War' },
+        ]}
+        extra={[
+          <Button key="word-config" onClick={() => navigate('/family-war/word-config')}>词库管理</Button>,
+          <Button key="refresh" icon={<ReloadOutlined />} onClick={fetchStatus}>刷新</Button>,
+          <Button key="logout" icon={<LogoutOutlined />} onClick={handleLogout} danger>登出</Button>,
+        ]}
+      />
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
         <Card size="small" style={{ flex: 1 }}><Typography.Text strong>在线房间</Typography.Text><div style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{rooms.length}</div></Card>
@@ -101,7 +107,7 @@ function AdminPage() {
           </Card>
         )
       })}
-    </div>
+    </main>
   )
 }
 

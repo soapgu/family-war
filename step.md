@@ -987,11 +987,11 @@ v3.4 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | 让 `AdminLayout` 的导航项由应用注册表生成，首页、模块页和模块子页选择状态保持正确 | `admin-client/src/layout/AdminLayout.jsx`, `admin-client/src/app/appRegistry.js` | ⬜ |
-| 3b | 增加统一页面头部，支持页面标题、面包屑、说明和右侧操作区，替换页面内重复标题结构 | `admin-client/src/components/PageHeader.jsx`, `admin-client/src/modules/family-war/` | ⬜ |
-| 3c | 为桌面宽度完善内容最大宽度、导航溢出和长标题布局；不扩大到手机端适配 | `admin-client/src/index.css`, `admin-client/src/layout/` | ⬜ |
-| 3d | 增加明确的 `/admin/*` 404 页面，提供返回管理首页操作；不得自动重定向掩盖错误链接 | `admin-client/src/pages/NotFoundPage.jsx`, 路由配置 | ⬜ |
-| 3e | 补充导航选中、面包屑、前进后退、深层链接和 404 页面测试 | `admin-client/src/**/*.test.*` | ⬜ |
+| 3a | 让 `AdminLayout` 的导航项由应用注册表生成，首页、模块页和模块子页选择状态保持正确 | `admin-client/src/layout/AdminLayout.jsx`, `admin-client/src/app/appRegistry.js` | ✅ |
+| 3b | 增加统一页面头部，支持页面标题、面包屑、说明和右侧操作区，替换页面内重复标题结构 | `admin-client/src/components/PageHeader.jsx`, `admin-client/src/modules/family-war/` | ✅ |
+| 3c | 为桌面宽度完善内容最大宽度、导航溢出和长标题布局；不扩大到手机端适配 | `admin-client/src/index.css`, `admin-client/src/layout/` | ✅ |
+| 3d | 增加明确的 `/admin/*` 404 页面，提供返回管理首页操作；不得自动重定向掩盖错误链接 | `admin-client/src/pages/NotFoundPage.jsx`, 路由配置 | ✅ |
+| 3e | 补充导航选中、面包屑、前进后退、深层链接和 404 页面测试 | `admin-client/src/**/*.test.*` | ✅ |
 
 ## Phase 4：统一请求状态与模块错误边界
 

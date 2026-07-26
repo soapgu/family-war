@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Typography, Button, Tag, Card, Switch, Space, Image, Spin, App, Modal, Alert, Progress } from 'antd'
 import { ReloadOutlined, SyncOutlined, SoundOutlined } from '@ant-design/icons'
 import { useAdminAuth } from '../../auth/AdminAuthContext'
+import PageHeader from '../../components/PageHeader'
 import { familyWarAdminApi } from './api'
 
 const EMPTY_WORD_BANK_MESSAGE = '至少需要保留一个可用的默写单词'
@@ -19,7 +19,6 @@ function getActiveWordCount(config) {
 }
 
 function WordConfigPage() {
-  const navigate = useNavigate()
   const { logout } = useAdminAuth()
   const { message } = App.useApp()
   const voiceRef = useRef(null)
@@ -301,14 +300,19 @@ function WordConfigPage() {
       : `同步缺失 ${missingWordCount} 个`
 
   return (
-    <div className="word-config-page" style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>词库管理</Typography.Title>
-        <Space>
-          <Button onClick={() => navigate('/family-war')}>返回管理</Button>
+    <main className="platform-page word-config-page">
+      <PageHeader
+        title="词库管理"
+        description="配置默写章节、单词和配图。"
+        breadcrumbs={[
+          { title: '管理首页', path: '/' },
+          { title: 'Family War', path: '/family-war' },
+          { title: '词库管理' },
+        ]}
+        extra={(
           <Button icon={<ReloadOutlined />} onClick={fetchConfig} loading={loading}>刷新</Button>
-        </Space>
-      </div>
+        )}
+      />
 
       {data && (
         <Card style={{ marginBottom: 20 }}>
@@ -566,7 +570,7 @@ function WordConfigPage() {
           </div>
         </Spin>
       </Modal>
-    </div>
+    </main>
   )
 }
 

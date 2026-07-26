@@ -1,16 +1,29 @@
 import { Layout, Menu, Typography } from 'antd'
 import { AppstoreOutlined, ControlOutlined } from '@ant-design/icons'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { appRegistry } from '../app/appRegistry'
 
-const navigationItems = [
+const iconByName = {
+  control: <ControlOutlined />,
+}
+
+export const navigationItems = [
   { key: '/', icon: <AppstoreOutlined />, label: '管理首页' },
-  { key: '/family-war', icon: <ControlOutlined />, label: 'Family War' },
+  ...appRegistry.map((app) => ({
+    key: app.entryPath,
+    icon: iconByName[app.icon],
+    label: app.navigationLabel,
+  })),
 ]
 
 export default function AdminLayout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const selectedKey = location.pathname.startsWith('/family-war') ? '/family-war' : '/'
+  const selectedApp = appRegistry.find((app) => (
+    location.pathname === app.routePrefix
+    || location.pathname.startsWith(`${app.routePrefix}/`)
+  ))
+  const selectedKey = location.pathname === '/' ? '/' : selectedApp?.entryPath
 
   return (
     <Layout className="admin-layout">
@@ -23,7 +36,7 @@ export default function AdminLayout() {
           theme="dark"
           mode="horizontal"
           items={navigationItems}
-          selectedKeys={[selectedKey]}
+          selectedKeys={selectedKey ? [selectedKey] : []}
           onClick={({ key }) => navigate(key)}
         />
       </Layout.Header>
