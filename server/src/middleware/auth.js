@@ -1,16 +1,32 @@
 const jwt = require('jsonwebtoken')
-const crypto = require('crypto')
 const config = require('../../config')
+const {
+  ADMIN_AUTH_PATHS,
+  ADMIN_SESSION_COOKIE,
+  ADMIN_TOKEN_CLAIMS,
+} = require('../auth/adminAuthContract')
 
-const jwtSecret = config.auth.jwtSecret || crypto.randomBytes(32).toString('hex')
 const loginAttempts = new Map()
 
 function getJwtSecret() {
-  return jwtSecret
+  return config.auth.jwtSecret
+}
+
+function getAdminAuthConfigError() {
+  if (!config.auth.adminPassword) return 'adminPassword is missing'
+  if (!config.auth.jwtSecret) return 'jwtSecret is missing'
+  return ''
+}
+
+function assertAdminAuthConfig() {
+  const configError = getAdminAuthConfigError()
+  if (process.env.NODE_ENV === 'production' && configError) {
+    throw new Error(`管理员认证配置无效：${configError}`)
+  }
 }
 
 async function loginRateLimitMiddleware(ctx, next) {
-  if (ctx.path !== '/api/admin/login' || ctx.method !== 'POST') return next()
+  if (ctx.path !== ADMIN_AUTH_PATHS.login || ctx.method !== 'POST') return next()
 
   const ip = ctx.ip
   const now = Date.now()
@@ -37,7 +53,12 @@ async function loginRateLimitMiddleware(ctx, next) {
 }
 
 function originCheckMiddleware(ctx, next) {
-  if (ctx.method === 'POST' && ctx.path.startsWith('/api/admin') && ctx.path !== '/api/admin/login') {
+  const isAdminMutation = ctx.method === 'POST' && (
+    ctx.path.startsWith('/api/admin-auth') ||
+    ctx.path.startsWith('/api/admin')
+  )
+
+  if (isAdminMutation) {
     const origin = ctx.get('Origin')
     if (origin && process.env.NODE_ENV === 'production') {
       try {
@@ -58,12 +79,25 @@ function originCheckMiddleware(ctx, next) {
 }
 
 function authMiddleware(ctx, next) {
-  const whitelist = ['/api/admin/login', '/api/admin/logout']
+  const whitelist = [ADMIN_AUTH_PATHS.login, ADMIN_AUTH_PATHS.logout]
   if (whitelist.includes(ctx.path)) return next()
 
-  if (!ctx.path.startsWith('/api/admin')) return next()
+  const removedLegacyAuthPaths = ['/api/admin/login', '/api/admin/logout']
+  if (removedLegacyAuthPaths.includes(ctx.path)) return next()
 
-  const token = ctx.cookies.get('admin_token')
+  const isProtectedAdminPath = (
+    ctx.path === ADMIN_AUTH_PATHS.me ||
+    ctx.path.startsWith('/api/admin/')
+  )
+  if (!isProtectedAdminPath) return next()
+
+  if (getAdminAuthConfigError()) {
+    ctx.status = 503
+    ctx.body = { error: '管理员认证未配置' }
+    return
+  }
+
+  const token = ctx.cookies.get(ADMIN_SESSION_COOKIE.name)
   if (!token) {
     ctx.status = 401
     ctx.body = { error: '未登录' }
@@ -72,7 +106,13 @@ function authMiddleware(ctx, next) {
 
   try {
     const decoded = jwt.verify(token, getJwtSecret())
-    if (decoded.role !== 'admin') {
+    if (
+      decoded.sub !== ADMIN_TOKEN_CLAIMS.subject ||
+      decoded.role !== ADMIN_TOKEN_CLAIMS.role ||
+      decoded.tokenType !== ADMIN_TOKEN_CLAIMS.tokenType ||
+      decoded.aud !== ADMIN_TOKEN_CLAIMS.audience ||
+      decoded.iss !== ADMIN_TOKEN_CLAIMS.issuer
+    ) {
       ctx.status = 401
       ctx.body = { error: '无效的登录状态' }
       return
@@ -107,6 +147,8 @@ module.exports = {
   loginRateLimitMiddleware,
   originCheckMiddleware,
   authMiddleware,
+  assertAdminAuthConfig,
+  getAdminAuthConfigError,
   getJwtSecret,
   startCleanup,
   resetLoginAttempts,

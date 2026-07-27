@@ -135,5 +135,6 @@ Phase 1 使用 `server/src/auth/adminAuthContract.js` 和对应单元测试锁�
 JWT 声明及成功响应。v3.4 现有测试继续作为迁移基线，覆盖错误密码、缺少 Cookie、
 过期/篡改/错误角色 Token、跨源 POST 和限流。
 
-Phase 2 实现新接口时，必须把上述基线迁移为对新路径和新 Cookie 的行为测试，并新增
-错误 `tokenType`、audience、issuer、subject、空配置 503 和生产启动失败测试。
+Phase 2 已把上述基线迁移为对新路径和新 Cookie 的行为测试，并补充错误
+`tokenType`、audience、issuer、subject、空配置 503 和生产启动失败测试。执行结果见
+[`phase-2-report.md`](./phase-2-report.md)。

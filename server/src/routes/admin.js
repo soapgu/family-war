@@ -3,8 +3,6 @@ const gameManager = require('../socket/gameManager')
 const unsplashClient = require('../unsplashClient')
 const wordBank = require('../data/wordBank')
 const config = require('../../config')
-const jwt = require('jsonwebtoken')
-const { getJwtSecret } = require('../middleware/auth')
 const logger = require('../logger')
 
 /**
@@ -12,40 +10,6 @@ const logger = require('../logger')
  * @param {import('@koa/router')} router
  */
 function registerAdminRoutes(router) {
-  router.post('/api/admin/login', (ctx) => {
-    const { password } = ctx.request.body || {}
-    const { adminPassword } = config.auth
-
-    if (adminPassword && password !== adminPassword) {
-      logger.warn('[auth] login FAIL — wrong password')
-      ctx.status = 401
-      ctx.body = { error: '密码错误' }
-      return
-    }
-
-    const token = jwt.sign({ role: 'admin' }, getJwtSecret(), { expiresIn: '24h' })
-    ctx.cookies.set('admin_token', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 86400000,
-      path: '/',
-    })
-    logger.info(`[auth] login OK — token issued (adminPassword=${adminPassword ? 'set' : 'empty'})`)
-    ctx.body = { success: true }
-  })
-
-  router.post('/api/admin/logout', (ctx) => {
-    const hadCookie = !!ctx.cookies.get('admin_token')
-    ctx.cookies.set('admin_token', null, {
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: -1,
-      path: '/',
-    })
-    logger.info(`[auth] logout — cookie ${hadCookie ? 'cleared' : 'already empty'}, set-cookie: admin_token=; path=/; expires=Thu, 01 Jan 1970`)
-    ctx.body = { success: true }
-  })
-
   router.get('/api/admin/status', (ctx) => {
     ctx.body = {
       rooms: roomManager.getAdminStatus(),

@@ -7,11 +7,13 @@ const path = require('path')
 const fs = require('fs')
 const logger = require('./logger')
 const registerHandlers = require('./socket/handler')
+const registerAdminAuthRoutes = require('./routes/adminAuth')
 const registerAdminRoutes = require('./routes/admin')
 const {
   authMiddleware,
   originCheckMiddleware,
   loginRateLimitMiddleware,
+  assertAdminAuthConfig,
   startCleanup,
 } = require('./middleware/auth')
 
@@ -38,6 +40,9 @@ router.get('/api/health', (ctx) => {
 
 // Socket 事件注册
 registerHandlers(io)
+
+// 平台管理员身份
+registerAdminAuthRoutes(router)
 
 // 管理接口
 registerAdminRoutes(router)
@@ -66,6 +71,7 @@ router.get('/api/images/:name', (ctx) => {
 })
 
 const PORT = process.env.PORT || 4000
+assertAdminAuthConfig()
 server.listen(PORT, () => {
   startCleanup()
   logger.info(`Server running on http://localhost:${PORT}`)

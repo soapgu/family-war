@@ -1196,14 +1196,14 @@ v3.5 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 2a | 新建管理员认证路由或服务，迁移密码校验、JWT 签发、Cookie 设置与清除逻辑 | `server/src/routes/adminAuth.js`, `server/src/auth/` 或实际等价目录 | ⬜ |
-| 2b | 实现 `POST /api/admin-auth/login`：校验单一管理员密码，签发管理员 Token，仅设置 `admin_session` Cookie | `server/src/routes/adminAuth.js` | ⬜ |
-| 2c | 实现 `GET /api/admin-auth/me`：验证会话并返回最小管理员信息，不读取 family-war 房间或业务状态 | `server/src/routes/adminAuth.js`, 认证中间件 | ⬜ |
-| 2d | 实现 `POST /api/admin-auth/logout`：无论 Cookie 是否存在都幂等清除 `admin_session`，返回成功 | `server/src/routes/adminAuth.js` | ⬜ |
-| 2e | 重构认证中间件，分别处理身份接口白名单和受保护的 family-war 管理路由；统一过期、篡改和错误类型 Token 的 401 语义 | `server/src/middleware/auth.js`, `server/src/index.js` | ⬜ |
-| 2f | 将登录限流和来源校验切换到新认证路径，同时覆盖 family-war 修改类管理请求，不扩大到游戏 Socket.IO | `server/src/middleware/auth.js` | ⬜ |
-| 2g | 从 family-war 管理路由删除登录和退出职责，保留状态、词库和图片管理接口及其响应结构 | `server/src/routes/admin.js` | ⬜ |
-| 2h | 增加管理员身份接口和业务授权测试，覆盖 Cookie 属性、`me`、登出幂等、限流、来源校验、业务 401 及无密码配置策略 | `server/__tests__/adminAuth.test.js`, 相关测试 | ⬜ |
+| 2a | 新建管理员认证路由或服务，迁移密码校验、JWT 签发、Cookie 设置与清除逻辑 | `server/src/routes/adminAuth.js`, `server/src/auth/` 或实际等价目录 | ✅ |
+| 2b | 实现 `POST /api/admin-auth/login`：校验单一管理员密码，签发管理员 Token，仅设置 `admin_session` Cookie | `server/src/routes/adminAuth.js` | ✅ |
+| 2c | 实现 `GET /api/admin-auth/me`：验证会话并返回最小管理员信息，不读取 family-war 房间或业务状态 | `server/src/routes/adminAuth.js`, 认证中间件 | ✅ |
+| 2d | 实现 `POST /api/admin-auth/logout`：无论 Cookie 是否存在都幂等清除 `admin_session`，返回成功 | `server/src/routes/adminAuth.js` | ✅ |
+| 2e | 重构认证中间件，分别处理身份接口白名单和受保护的 family-war 管理路由；统一过期、篡改和错误类型 Token 的 401 语义 | `server/src/middleware/auth.js`, `server/src/index.js` | ✅ |
+| 2f | 将登录限流和来源校验切换到新认证路径，同时覆盖 family-war 修改类管理请求，不扩大到游戏 Socket.IO | `server/src/middleware/auth.js` | ✅ |
+| 2g | 从 family-war 管理路由删除登录和退出职责，保留状态、词库和图片管理接口及其响应结构 | `server/src/routes/admin.js` | ✅ |
+| 2h | 增加管理员身份接口和业务授权测试，覆盖 Cookie 属性、`me`、登出幂等、限流、来源校验、业务 401 及无密码配置策略 | `server/__tests__/adminAuth.test.js`, 相关测试 | ✅ |
 
 ## Phase 3：切换管理端认证服务
 

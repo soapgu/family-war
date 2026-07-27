@@ -53,6 +53,7 @@ function createApp() {
   const app = new Koa()
   const router = new Router()
   const { authMiddleware, originCheckMiddleware, loginRateLimitMiddleware, resetLoginAttempts } = require('../src/middleware/auth')
+  const registerAdminAuthRoutes = require('../src/routes/adminAuth')
   const registerAdminRoutes = require('../src/routes/admin')
 
   resetLoginAttempts()
@@ -66,13 +67,33 @@ function createApp() {
   app.use(authMiddleware)
   app.use(router.routes())
   app.use(router.allowedMethods())
+  registerAdminAuthRoutes(router)
   registerAdminRoutes(router)
 
   return app
 }
 
 function validToken() {
-  return jwt.sign({ role: 'admin' }, 'test-secret', { expiresIn: '1h' })
+  return customToken()
+}
+
+function customToken({
+  subject = 'admin',
+  role = 'admin',
+  tokenType = 'admin-session',
+  audience = 'admin-client',
+  issuer = 'family-war-admin-auth',
+} = {}) {
+  return jwt.sign(
+    { role, tokenType },
+    'test-secret',
+    {
+      subject,
+      audience,
+      issuer,
+      expiresIn: '1h',
+    },
+  )
 }
 
 beforeEach(() => {
@@ -94,17 +115,23 @@ describe('authMiddleware', () => {
     const app = createApp()
     const res = await request(app.callback())
       .get('/api/admin/status')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
     expect(res.status).toBe(200)
   })
 
-  it('login/logout 端点无需认证', async () => {
+  it('独立 login/logout 端点无需认证', async () => {
     const app = createApp()
-    const loginRes = await request(app.callback()).post('/api/admin/login').send({ password: 'test123' })
+    const loginRes = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'test123' })
     expect(loginRes.status).toBe(200)
 
-    const logoutRes = await request(app.callback()).post('/api/admin/logout')
+    const logoutRes = await request(app.callback()).post('/api/admin-auth/logout')
     expect(logoutRes.status).toBe(200)
+  })
+
+  it('旧 login/logout 路由已从 family-war 管理模块移除', async () => {
+    const app = createApp()
+    expect((await request(app.callback()).post('/api/admin/login')).status).toBe(404)
+    expect((await request(app.callback()).post('/api/admin/logout')).status).toBe(404)
   })
 
   it('非 /api/admin 路径不受影响', async () => {
@@ -115,25 +142,58 @@ describe('authMiddleware', () => {
 
   it('错误密码返回 401', async () => {
     const app = createApp()
-    const res = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+    const res = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'wrong' })
     expect(res.status).toBe(401)
     expect(res.body).toEqual({ error: '密码错误' })
   })
 
   it('正确密码返回 200 并设置 cookie', async () => {
     const app = createApp()
-    const res = await request(app.callback()).post('/api/admin/login').send({ password: 'test123' })
+    const res = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'test123' })
     expect(res.status).toBe(200)
     const cookie = res.headers['set-cookie']
     expect(cookie).toBeDefined()
-    expect(cookie[0]).toMatch(/admin_token=.+;.*httponly/i)
+    expect(cookie[0]).toMatch(/admin_session=.+;.*httponly/i)
+    expect(cookie[0]).toMatch(/SameSite=Lax/i)
+    expect(cookie[0]).toMatch(/Path=\//i)
+    const expires = cookie[0].match(/expires=([^;]+)/i)
+    expect(expires).not.toBeNull()
+    const remainingMs = new Date(expires[1]).getTime() - Date.now()
+    expect(remainingMs).toBeGreaterThan(23 * 60 * 60 * 1000)
+    expect(remainingMs).toBeLessThanOrEqual(24 * 60 * 60 * 1000)
+    expect(res.body).toEqual({ success: true })
+    expect(res.body).not.toHaveProperty('token')
   })
 
-  it('dev 模式（空密码）任意密码返回 200', async () => {
+  it('非生产环境缺少密码时返回 503', async () => {
     mockAuthConfig.adminPassword = ''
     const app = createApp()
-    const res = await request(app.callback()).post('/api/admin/login').send({ password: 'anypassword' })
+    const res = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'anypassword' })
+    expect(res.status).toBe(503)
+    expect(res.body).toEqual({ error: '管理员认证未配置' })
+  })
+
+  it('缺少、空白或非字符串密码返回 400', async () => {
+    const app = createApp()
+    for (const body of [{}, { password: '' }, { password: 123 }]) {
+      const res = await request(app.callback()).post('/api/admin-auth/login').send(body)
+      expect(res.status).toBe(400)
+      expect(res.body).toEqual({ error: '请输入管理密码' })
+    }
+  })
+
+  it('me 返回最小管理员身份且不包含业务状态', async () => {
+    const app = createApp()
+    const res = await request(app.callback())
+      .get('/api/admin-auth/me')
+      .set('Cookie', `admin_session=${validToken()}`)
     expect(res.status).toBe(200)
+    expect(res.body).toEqual({
+      authenticated: true,
+      admin: { id: 'admin', role: 'admin', displayName: '管理员' },
+    })
+    expect(res.body).not.toHaveProperty('rooms')
+    expect(res.body).not.toHaveProperty('matchHistory')
   })
 
   it('过期 JWT 返回 401', async () => {
@@ -145,7 +205,7 @@ describe('authMiddleware', () => {
     const app = createApp()
     const res = await request(app.callback())
       .get('/api/admin/status')
-      .set('Cookie', 'admin_token=expired')
+      .set('Cookie', 'admin_session=expired')
     expect(res.status).toBe(401)
     expect(res.body).toEqual({ error: '登录已过期' })
   })
@@ -157,28 +217,61 @@ describe('authMiddleware', () => {
     const app = createApp()
     const res = await request(app.callback())
       .get('/api/admin/status')
-      .set('Cookie', 'admin_token=tampered')
+      .set('Cookie', 'admin_session=tampered')
     expect(res.status).toBe(401)
     expect(res.body).toEqual({ error: '登录已失效' })
   })
 
   it('错误 role 返回 401', async () => {
-    const badToken = jwt.sign({ role: 'user' }, 'test-secret', { expiresIn: '1h' })
+    const badToken = customToken({ role: 'user' })
     const app = createApp()
     const res = await request(app.callback())
       .get('/api/admin/status')
-      .set('Cookie', `admin_token=${badToken}`)
+      .set('Cookie', `admin_session=${badToken}`)
     expect(res.status).toBe(401)
     expect(res.body).toEqual({ error: '无效的登录状态' })
   })
 
+  it.each([
+    ['tokenType', { tokenType: 'user-session' }],
+    ['subject', { subject: 'someone-else' }],
+    ['audience', { audience: 'other-client' }],
+    ['issuer', { issuer: 'other-issuer' }],
+  ])('错误 %s 声明返回 401', async (_name, claims) => {
+    const app = createApp()
+    const res = await request(app.callback())
+      .get('/api/admin-auth/me')
+      .set('Cookie', `admin_session=${customToken(claims)}`)
+    expect(res.status).toBe(401)
+    expect(res.body).toEqual({ error: '无效的登录状态' })
+  })
+
+  it('缺少 JWT Secret 时受保护接口返回 503', async () => {
+    mockAuthConfig.jwtSecret = ''
+    const app = createApp()
+    const res = await request(app.callback()).get('/api/admin-auth/me')
+    expect(res.status).toBe(503)
+    expect(res.body).toEqual({ error: '管理员认证未配置' })
+  })
+
+  it('HTTPS 请求签发 Secure Cookie', async () => {
+    const app = createApp()
+    const res = await request(app.callback())
+      .post('/api/admin-auth/login')
+      .set('X-Forwarded-Proto', 'https')
+      .send({ password: 'test123' })
+    expect(res.status).toBe(200)
+    expect(res.headers['set-cookie'][0]).toMatch(/;\s*Secure/i)
+  })
+
   it('登出清除 cookie', async () => {
     const app = createApp()
-    const res = await request(app.callback()).post('/api/admin/logout')
+    const res = await request(app.callback()).post('/api/admin-auth/logout')
     expect(res.status).toBe(200)
     const cookie = res.headers['set-cookie']
     expect(cookie).toBeDefined()
     expect(cookie[0]).toMatch(/Max-Age=-1|expires=Thu, 01 Jan 1970/)
+    expect(cookie[0]).toMatch(/admin_session=/)
   })
 })
 
@@ -188,11 +281,11 @@ describe('loginRateLimitMiddleware', () => {
     const app = createApp()
 
     for (let i = 0; i < 5; i++) {
-      const res = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+      const res = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'wrong' })
       expect(res.status).toBe(401)
     }
 
-    const res = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+    const res = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'wrong' })
     expect(res.status).toBe(429)
     expect(res.body).toEqual({ error: '登录尝试过于频繁，请稍后再试' })
   })
@@ -201,7 +294,7 @@ describe('loginRateLimitMiddleware', () => {
     const app = createApp()
 
     for (let i = 0; i < 8; i++) {
-      const res = await request(app.callback()).post('/api/admin/login').send({ password: 'test123' })
+      const res = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'test123' })
       expect(res.status).toBe(200)
     }
   })
@@ -210,19 +303,19 @@ describe('loginRateLimitMiddleware', () => {
     const app = createApp()
 
     for (let i = 0; i < 4; i++) {
-      const res = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+      const res = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'wrong' })
       expect(res.status).toBe(401)
     }
 
-    const success = await request(app.callback()).post('/api/admin/login').send({ password: 'test123' })
+    const success = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'test123' })
     expect(success.status).toBe(200)
 
     for (let i = 0; i < 5; i++) {
-      const res = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+      const res = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'wrong' })
       expect(res.status).toBe(401)
     }
 
-    const limited = await request(app.callback()).post('/api/admin/login').send({ password: 'wrong' })
+    const limited = await request(app.callback()).post('/api/admin-auth/login').send({ password: 'wrong' })
     expect(limited.status).toBe(429)
   })
 })
@@ -232,18 +325,30 @@ describe('originCheckMiddleware', () => {
     process.env.NODE_ENV = 'production'
     const app = createApp()
     const res = await request(app.callback())
-      .post('/api/admin/logout')
+      .post('/api/admin-auth/logout')
       .set('Origin', 'http://evil.com')
       .set('Host', 'real-host.com')
     expect(res.status).toBe(403)
     expect(res.body).toEqual({ error: '拒绝的请求来源' })
   })
 
+  it('POST + 无效 Origin 返回 403', async () => {
+    process.env.NODE_ENV = 'production'
+    const app = createApp()
+    const res = await request(app.callback())
+      .post('/api/admin-auth/login')
+      .set('Origin', 'not a url')
+      .set('Host', 'real-host.com')
+      .send({ password: 'test123' })
+    expect(res.status).toBe(403)
+    expect(res.body).toEqual({ error: '无效的请求来源' })
+  })
+
   it('POST + Origin 匹配正常处理', async () => {
     process.env.NODE_ENV = 'production'
     const app = createApp()
     const res = await request(app.callback())
-      .post('/api/admin/logout')
+      .post('/api/admin-auth/logout')
       .set('Origin', 'http://127.0.0.1')
       .set('Host', '127.0.0.1')
     expect(res.status).toBe(200)
@@ -253,7 +358,7 @@ describe('originCheckMiddleware', () => {
     process.env.NODE_ENV = 'development'
     const app = createApp()
     const res = await request(app.callback())
-      .post('/api/admin/logout')
+      .post('/api/admin-auth/logout')
       .set('Origin', 'http://evil.com')
       .set('Host', 'real-host.com')
     expect(res.status).toBe(200)
@@ -264,9 +369,29 @@ describe('originCheckMiddleware', () => {
     const app = createApp()
     const res = await request(app.callback())
       .get('/api/admin/status')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
       .set('Origin', 'http://evil.com')
     expect(res.status).toBe(200)
+  })
+})
+
+describe('管理员认证生产配置', () => {
+  it.each([
+    ['adminPassword', { adminPassword: '', jwtSecret: 'test-secret' }],
+    ['jwtSecret', { adminPassword: 'test123', jwtSecret: '' }],
+  ])('生产环境缺少 %s 时启动检查失败', (_name, authConfig) => {
+    process.env.NODE_ENV = 'production'
+    Object.assign(mockAuthConfig, authConfig)
+    const { assertAdminAuthConfig } = require('../src/middleware/auth')
+    expect(() => assertAdminAuthConfig()).toThrow('管理员认证配置无效')
+  })
+
+  it('非生产环境缺少配置时不阻止服务启动', () => {
+    process.env.NODE_ENV = 'development'
+    mockAuthConfig.adminPassword = ''
+    mockAuthConfig.jwtSecret = ''
+    const { assertAdminAuthConfig } = require('../src/middleware/auth')
+    expect(() => assertAdminAuthConfig()).not.toThrow()
   })
 })
 
@@ -275,7 +400,7 @@ describe('candidateId 机制', () => {
     const app = createApp()
     const res = await request(app.callback())
       .post('/api/admin/word-images/confirm/cat')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
       .send({})
     expect(res.status).toBe(400)
     expect(res.body).toEqual({ error: '缺少 candidateId' })
@@ -286,7 +411,7 @@ describe('candidateId 机制', () => {
     const app = createApp()
     const res = await request(app.callback())
       .post('/api/admin/word-images/confirm/cat')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
       .send({ candidateId: 'invalid-uuid' })
     expect(res.status).toBe(400)
     expect(res.body).toEqual({ error: '无效或已过期的 candidateId' })
@@ -299,7 +424,7 @@ describe('candidateId 机制', () => {
     const app = createApp()
     const res = await request(app.callback())
       .post('/api/admin/word-images/confirm/cat')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
       .send({ candidateId: 'valid-uuid' })
     expect(res.status).toBe(200)
     expect(res.body).toEqual({ word: 'cat', imageUrl: '/api/images/cat' })
@@ -314,7 +439,7 @@ describe('candidateId 机制', () => {
     const app = createApp()
     const res = await request(app.callback())
       .post('/api/admin/word-images/confirm/cat')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
       .send({ candidateId: 'retryable-uuid' })
 
     expect(res.status).toBe(500)
@@ -326,7 +451,7 @@ describe('candidateId 机制', () => {
     const app = createApp()
     const res = await request(app.callback())
       .post('/api/admin/word-images/confirm/notaword')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
       .send({ candidateId: 'uuid' })
     expect(res.status).toBe(400)
     expect(res.body).toEqual({ error: '"notaword" 不在词库中' })
@@ -336,7 +461,7 @@ describe('candidateId 机制', () => {
     const app = createApp()
     const res = await request(app.callback())
       .post(`/api/admin/word-images/confirm/${encodeURIComponent('../../etc')}`)
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
       .send({ candidateId: 'uuid' })
     expect(res.status).toBe(400)
     expect(res.body).toEqual({ error: '"../../etc" 不在词库中' })
@@ -352,7 +477,7 @@ describe('candidateId 机制', () => {
     })
     const res = await request(app.callback())
       .get('/api/admin/word-images/candidates/cat')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
     expect(res.status).toBe(200)
     expect(res.body.candidates[0]).not.toHaveProperty('url')
     expect(res.body.candidates[0]).toHaveProperty('candidateId')
@@ -366,7 +491,7 @@ describe('page/perPage 钳位', () => {
     const app = createApp()
     await request(app.callback())
       .get('/api/admin/word-images/candidates/cat?page=0')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
     expect(mockUnsplash.searchCandidates).toHaveBeenCalledWith('cat', 1, 15)
   })
 
@@ -375,7 +500,7 @@ describe('page/perPage 钳位', () => {
     const app = createApp()
     await request(app.callback())
       .get('/api/admin/word-images/candidates/cat?page=-5')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
     expect(mockUnsplash.searchCandidates).toHaveBeenCalledWith('cat', 1, 15)
   })
 
@@ -384,7 +509,7 @@ describe('page/perPage 钳位', () => {
     const app = createApp()
     await request(app.callback())
       .get('/api/admin/word-images/candidates/cat?perPage=0')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
     expect(mockUnsplash.searchCandidates).toHaveBeenCalledWith('cat', 1, 1)
   })
 
@@ -393,7 +518,7 @@ describe('page/perPage 钳位', () => {
     const app = createApp()
     await request(app.callback())
       .get('/api/admin/word-images/candidates/cat?perPage=100')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
     expect(mockUnsplash.searchCandidates).toHaveBeenCalledWith('cat', 1, 30)
   })
 
@@ -402,7 +527,7 @@ describe('page/perPage 钳位', () => {
     const app = createApp()
     await request(app.callback())
       .get('/api/admin/word-images/candidates/cat?page=abc&perPage=xyz')
-      .set('Cookie', `admin_token=${validToken()}`)
+      .set('Cookie', `admin_session=${validToken()}`)
     expect(mockUnsplash.searchCandidates).toHaveBeenCalledWith('cat', 1, 15)
   })
 })
