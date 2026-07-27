@@ -1,4 +1,4 @@
-# Family War 🎮 v3.4
+# Family War 🎮 v3.5
 
 一个局域网多人游戏系统。目前可玩**石头剪刀布**（1v1 对战）、**算术达人**（全员抢答）和 v3.0 **爱拼才会赢**（英文默写），并支持机器人对局。
 
@@ -717,7 +717,9 @@ pm2 save       # 保存当前进程列表
 
 ### Nginx 配置
 
-**目标**：提供 `/family-war/` 游戏站点和独立 `/admin/` 管理站点，通过 `/api/family-war/` 和 `/socket/family-war/` 访问后端，并在迁移期保留 v3.2 兼容入口。
+**目标**：提供 `/family-war/` 游戏站点和独立 `/admin/` 管理站点，通过
+`/api/admin-auth/`、`/api/family-war/` 和 `/socket/family-war/` 访问后端。
+v3.2 旧 API 和 Socket.IO 入口已在 v3.5 下线。
 
 **实施内容**
 
@@ -742,12 +744,13 @@ location /api/family-war/ {
     proxy_set_header X-Forwarded-Proto $scheme;
 }
 
-# v3.2 兼容 API；观察期结束前不得移除
-location /family-war/api/ {
-    access_log /opt/homebrew/var/log/nginx/family-war-legacy-access.log;
-    proxy_pass http://localhost:4010/api/;
+# v3.5 管理员认证
+location /api/admin-auth/ {
+    proxy_pass http://localhost:4010/api/admin-auth/;
     proxy_set_header Host $http_host;
     proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
 }
 
 # v3.3 标准 Socket.IO
@@ -760,20 +763,12 @@ location /socket/family-war/ {
     proxy_set_header X-Real-IP $remote_addr;
 }
 
-# v3.2 兼容 Socket.IO；不得使用 301/302
-location /family-war/socket.io/ {
-    access_log /opt/homebrew/var/log/nginx/family-war-legacy-access.log;
-    proxy_pass http://localhost:4010/socket.io/;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $http_host;
-    proxy_set_header X-Real-IP $remote_addr;
-}
-
 ```
 
-回滚前端时恢复 v3.2 的 `client/build/` 与 `admin-client/build/` 即可，旧代理入口仍然可用，不需要回滚服务端。当前 Nginx 直接读取仓库 `build/`，执行生产构建即会更新本机预发布静态产物。
+当前 Nginx 直接读取仓库 `build/`，执行生产构建即会更新本机预发布静态产物。
+如需回滚到依赖 v3.2 路径的旧前端，必须同时恢复
+[`deploy/nginx/family-war-legacy-locations.conf`](deploy/nginx/family-war-legacy-locations.conf)，
+不能只恢复前端构建。
 
 ### 环境对照
 
@@ -782,6 +777,7 @@ location /family-war/socket.io/ {
 | 游戏前端 | Vite `:3000` | Nginx `:8080/family-war/` |
 | 管理前端 | Vite `:3001` | Nginx `:8080/admin/` |
 | 后端进程 | nodemon `:4000`（自动重启） | PM2 `:4010`（手动重启） |
-| API 入口 | `http://localhost:3000/api/*`（Vite 代理） | `http://localhost:8080/api/family-war/*`（旧 `/family-war/api/*` 暂时兼容） |
-| Socket.IO | 直连 `http://{host}:4000/socket.io` | nginx 反代 `/socket/family-war/` → `:4010/socket.io/`（旧路径暂时兼容） |
+| 管理员认证 | `http://localhost:3001/api/admin-auth/*`（Vite 代理） | `http://localhost:8080/api/admin-auth/*` |
+| API 入口 | `http://localhost:3000/api/*`（Vite 代理） | `http://localhost:8080/api/family-war/*` |
+| Socket.IO | 直连 `http://{host}:4000/socket.io` | Nginx 反代 `/socket/family-war/` → `:4010/socket.io/` |
 | 配置文件 | `client/vite.config.js` | `deploy/nginx/family-war.conf` 与生效的 Nginx 配置 |

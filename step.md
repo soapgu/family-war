@@ -1251,21 +1251,20 @@ v3.5 不包含：
 | 5j | 演练认证回滚：恢复 v3.4 服务端和管理端后可重新登录；随后恢复 v3.5 并确认无数据迁移或残留配置 | 预发布环境、回滚报告 | ✅ |
 | 5k | 形成预发布验收报告，记录路径矩阵、Cookie 安全属性、日志门槛、回滚耗时和正式发布批准条件 | `docs/acceptance/v3.5/phase-5-report.md` | ✅ |
 
-## Phase 6：正式发布、观察与版本收尾
+## Phase 6：版本发布与文档收尾
 
-目标：复用预发布顺序完成正式发布，并确认管理员认证解耦和旧入口下线均可独立验证、独立回滚。
+目标：基于已经通过的本机预发布验收完成 v3.5.0 版本发布。当前没有独立正式环境，
+因此不执行正式环境部署、流量观察或重复的线上验收。
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 6a | 将根项目和三个 package 版本统一更新为 `3.5.0`，同步 lockfile | 各级 `package.json`, `package-lock.json` | ⬜ |
-| 6b | 执行全部单元测试、Socket.IO 集成、管理端 acceptance 离线检查、游戏端 E2E 清单、完整生产构建和构建隔离验证 | 根项目、三个 package | ⬜ |
-| 6c | 按 5a—5d 顺序发布服务端、认证 Nginx 入口和管理端构建，先验证新认证与全部标准入口 | 正式环境 | ⬜ |
-| 6d | 再次检查正式环境旧入口日志增量；满足门槛后删除旧 API location，验证通过后再删除旧 Socket.IO location | 正式环境、Nginx | ⬜ |
-| 6e | 执行正式环境完整验收：管理员认证、family-war 管理、游戏页面、图片、标准 API、polling 和 WebSocket；旧入口不得成功或重定向 | 正式环境、验收报告 | ⬜ |
-| 6f | 观察 Nginx、PM2 和服务端日志，确认无新增认证错误、代理循环、异常 30x、Socket.IO 握手失败或集中 4xx/5xx | 正式环境 | ⬜ |
-| 6g | 更新认证架构、环境配置、Nginx 路径、测试命令、回滚说明、路线图和发布说明 | `README.md`, `AGENTS.md`, `road-map.md`, `docs/ROUTING-MIGRATION-PLAN.md`, `docs/RELEASE.md` | ⬜ |
-| 6h | 发布 v3.5.0 Git tag 和 GitHub Release，明确管理员需要重新登录、旧入口已下线及回滚要求 | Git、GitHub Release | ⬜ |
-| 6i | 在约定观察期保留旧 location 备份但不启用；观察结束且无回滚需求后，归档兼容日志和下线报告 | 运维备份、`docs/acceptance/v3.5/release-report.md` | ⬜ |
+| 6a | 将根项目和三个 package 版本统一更新为 `3.5.0`，同步 lockfile | 各级 `package.json`, `package-lock.json` | ✅ |
+| 6b | 执行全部单元测试、Socket.IO 集成、管理端 acceptance 离线检查、游戏端 E2E 清单、完整生产构建和构建隔离验证 | 根项目、三个 package | ✅ |
+| 6c | **跳过正式环境流程**：当前没有独立正式环境，不执行服务部署、Nginx 切换、正式流量观察或线上重复验收；以 Phase 5 本机预发布报告作为发布批准证据 | `docs/acceptance/v3.5/phase-5-report.md` | ✅ |
+| 6d | 更新认证架构、环境配置、Nginx 最终路径、测试命令、回滚说明、路线图和发布说明 | `README.md`, `AGENTS.md`, `road-map.md`, `docs/ROUTING-MIGRATION-PLAN.md`, `docs/RELEASE.md` | ✅ |
+| 6e | 形成版本发布报告，汇总 Phase 5 路径矩阵、Cookie 属性、旧入口下线、自动化结果和两类回滚演练；说明没有执行正式环境步骤 | `docs/acceptance/v3.5/release-report.md` | ✅ |
+| 6f | 保留旧 location 回滚片段但不启用，归档本机预发布兼容日志结论和临时 v3.4 回滚副本处置结果 | 运维备份、`docs/acceptance/v3.5/` | ✅ |
+| 6g | 提交并推送版本收尾变更，发布 v3.5.0 Git tag 和 GitHub Release，明确管理员需要重新登录、旧入口已下线及回滚要求 | Git、GitHub Release | ✅ |
 
 ## v3.5 最终验收条件
 
@@ -1282,7 +1281,8 @@ v3.5 不包含：
 - `/family-war/`、`/admin/` 页面路径和服务端内部 Socket.IO 事件协议保持不变；
 - 旧入口下线前具有可复核日志结论，下线后具有独立 Nginx 回滚配置和演练记录；
 - 服务端、游戏端、管理端测试、Socket.IO 集成、生产构建及预发布 acceptance 全部通过；
-- 文档、发布说明、自动化断言和正式 Nginx 行为一致。
+- 文档、发布说明、自动化断言和本机预发布 Nginx 最终行为一致；
+- 当前没有独立正式环境，Phase 5 本机预发布完整验收和回滚演练作为 v3.5.0 的发布依据。
 
 ## 明确延期到后续版本
 

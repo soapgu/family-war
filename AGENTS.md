@@ -45,7 +45,7 @@ root package.json  (concurrently orchestrates all three)
 - **No database** — all state in `server/src/socket/roomManager.js` / `gameManager.js` singletons
 - **Socket.IO is a module-level singleton** on client (`client/src/hooks/useSocket.js`). Tests mock via `client/src/hooks/__mocks__/useSocket.js` (exports `triggerSocketEvent`)
 - **Client socket URL** — dev: `http://{hostname}:4000` with `/socket.io`; production: `/` with `/socket/family-war/`
-- **Production API base** — `/api/family-war`; legacy `/family-war/api/` remains temporarily available at Nginx
+- **Production API base** — `/api/family-war`; v3.2 legacy `/family-war/api/` and `/family-war/socket.io/` were removed in v3.5
 - **Vite proxy** (`client/vite.config.js`): forwards `/api` → `:4000`, `/socket.io` → `:4000` (ws)
 - **Vite base** is `/family-war/` for production (nginx reverse proxy)
 - **Admin Vite base** is `/admin/`; its production output is `admin-client/build/`

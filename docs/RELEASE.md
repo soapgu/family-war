@@ -1,5 +1,21 @@
 # 发布流程
 
+## v3.5.0 发布摘要
+
+- 将管理员身份接口拆分为 `/api/admin-auth/login|me|logout`；
+- 使用独立 HttpOnly `admin_session` Cookie，登录响应不向浏览器暴露 JWT；
+- 管理端启动时通过 `me` 探测会话，family-war 模块只保留业务管理请求；
+- 认证请求与 family-war 业务请求具有独立 API Base 和网络边界；
+- 增加管理员 Token 类型、受众、签发者、来源校验、限流及失败语义测试；
+- 删除 v3.2 `/family-war/api/*` 和 `/family-war/socket.io/*` Nginx 入口，不使用 301/302；
+- 标准 API、图片、Socket.IO polling/WebSocket 和旧入口下线均通过真实网关验收；
+- 服务端 273 项、游戏端 87 项、管理端 59 项测试和 Socket.IO 集成 95 项断言通过；
+- 管理端预发布 acceptance 7/7、游戏端 E2E 8/8、生产构建及构建隔离验证通过；
+- 完成旧 location 恢复及 v3.4/v3.5 管理认证回滚演练；
+- 当前没有独立正式环境，本版本以本机预发布完整验收作为发布依据；
+- 升级后管理员需要重新登录；回滚要求见 `docs/acceptance/v3.5/rollback.md`；
+- 详细结果见 `docs/acceptance/v3.5/phase-5-report.md` 和 `release-report.md`。
+
 ## v3.4.0 发布摘要
 
 - 将 `admin-client` 完善为注册表驱动的管理平台，首页卡片、顶部导航和模块路由使用同一份应用元数据；
