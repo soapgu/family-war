@@ -1054,8 +1054,243 @@ v3.4 不包含：
 
 - 管理员认证接口从 family-war 业务状态接口中解耦；
 - 管理员 Cookie、会话失效和登录限流的进一步完善；
-- 多管理员账号、权限和审计能力；
+- 为未来多管理员、权限和审计能力预留身份声明边界，完整能力继续延期；
 - 删除 `/family-war/api/*` 兼容入口；
 - 删除 `/family-war/socket.io/*` 兼容入口，不使用 HTTP 重定向；
 - 更新网关测试和回滚说明，使其反映旧入口正式下线；
 - 上述清理必须以 v3.3—v3.4 访问日志中不存在真实旧客户端为前置条件。
+
+---
+
+# v3.5：管理员认证解耦与旧入口清理实施计划
+
+> 规划版本：v3.5.0
+>
+> 前置版本：v3.4.0
+>
+> 目标：将平台管理员身份接口从 family-war 业务管理接口中解耦，并在 v3.3—v3.4 兼容观察门槛满足后，下线 v3.2 遗留的公网 API 与 Socket.IO 入口。
+>
+> 核心边界：本版本仍只服务单一管理员登录，继续使用现有管理员密码配置和管理员 JWT Secret；不实现微信认证、普通用户身份、多管理员账号或完整 RBAC。
+
+## 1. 当前基础与目标契约
+
+v3.4 当前认证和业务接口共用 family-war 管理前缀：
+
+```text
+POST /api/family-war/admin/login
+POST /api/family-war/admin/logout
+GET  /api/family-war/admin/status       # 同时被用于登录状态探测
+
+GET  /api/family-war/admin/word-config
+POST /api/family-war/admin/word-config
+```
+
+v3.5 将平台身份接口和 family-war 业务管理接口分开：
+
+```text
+# 平台管理员身份
+POST /api/admin-auth/login
+GET  /api/admin-auth/me
+POST /api/admin-auth/logout
+
+# family-war 业务管理
+GET  /api/family-war/admin/status
+GET  /api/family-war/admin/word-config
+POST /api/family-war/admin/word-config
+...
+```
+
+认证接口使用独立的 `admin_session` HttpOnly Cookie。JWT 继续由当前管理员 `jwtSecret` 签发，但必须带有明确的管理员令牌类型或受众声明，认证中间件只接受管理员令牌。未来微信或平台普通用户 Token 不得直接复用管理员 Cookie、声明空间和验证边界；是否使用独立 Secret 或独立签发服务留到对应身份版本设计。
+
+v3.5 发布后的公网入口：
+
+| 类型 | 标准入口 | v3.2 旧入口 | v3.5 结果 |
+|------|----------|--------------|------------|
+| 游戏页面 | `/family-war/` | 同左 | 保持 |
+| 管理页面 | `/admin/` | 同左 | 保持 |
+| 平台管理员认证 | `/api/admin-auth/*` | 无独立入口 | 新增 |
+| family-war API | `/api/family-war/*` | `/family-war/api/*` | 删除旧入口 |
+| family-war Socket.IO | `/socket/family-war/*` | `/family-war/socket.io/*` | 删除旧入口，不重定向 |
+
+Koa 内部 family-war 业务路由仍使用 `/api/admin/*`、`/api/images/*` 等现有路径，Socket.IO 内部 path 仍为 `/socket.io/`。本版本只新增独立认证路由并调整中间件职责，不借机重命名全部服务端业务路由。
+
+## 2. 本版本范围
+
+v3.5 包含：
+
+- 新建独立管理员认证模块，提供登录、当前管理员和退出接口；
+- 将登录限流、请求来源校验、Cookie 签发和管理员 JWT 校验收拢到认证模块；
+- 管理端使用独立认证服务，不再通过 family-war 状态接口探测登录状态；
+- 将认证接口和 family-war 业务接口配置为两个独立 Service Base；
+- 保持单一管理员密码，不引入数据库和账号表；
+- 使用独立命名的 `admin_session` Cookie，并明确安全属性和失效行为；
+- 扩充服务端、管理端和 Playwright 认证测试；
+- 再次核对 v3.3—v3.4 兼容日志增量，形成可审计的下线结论；
+- 删除 Nginx `/family-war/api/*` 和 `/family-war/socket.io/*` 旧 location；
+- 更新网关验收，使旧入口下线成为明确断言；
+- 完成预发布回滚演练、正式发布和兼容日志收尾。
+
+v3.5 不包含：
+
+- 微信登录、OAuth、平台普通用户或游戏玩家身份；
+- 家庭关系、儿童档案、当前活动档案或角色与真实身份绑定；
+- 多管理员账号、密码哈希数据库、管理员邀请和找回密码；
+- 完整 RBAC、应用级授权管理页面或审计日志平台；
+- 修改 family-war 游戏事件、房间状态、玩法或 Socket.IO 内部协议；
+- 修改 `/family-war/`、`/admin/`、`/api/family-war/` 和 `/socket/family-war/` 标准入口；
+- 使用 301/302 将旧 Socket.IO 入口重定向到新入口；
+- 保证 v3.2 前端构建在不恢复旧 Nginx location 的情况下可以回滚运行。
+
+## 3. 设计与发布约束
+
+- 管理员身份模块不得依赖 `roomManager`、`gameManager`、词库或图片管理实现；
+- family-war 管理路由只消费认证中间件写入的管理员身份，不负责登录、退出或 Token 签发；
+- `GET /api/admin-auth/me` 是唯一的前端会话探测接口，不得通过业务状态接口替代；
+- 登录成功、退出和认证失败的响应不得返回 JWT；Token 只通过 HttpOnly Cookie 传递；
+- `admin_session` 至少使用 `HttpOnly`、`SameSite=Lax`、`Path=/`，生产 HTTPS 环境启用 `Secure`；
+- 登录限流只匹配新的登录接口，不得误伤 family-war 普通管理请求；
+- 修改状态的认证及业务 POST 请求继续校验同源请求；
+- 日志可以记录成功、失败、限流和失效原因，但不得记录密码、JWT、Cookie 或完整敏感请求头；
+- 管理员 JWT Secret 缺失时的开发行为和生产启动策略必须有测试和文档，不在运行日志输出随机 Secret；
+- 旧入口下线是独立发布动作：必须先完成标准入口验收和配置备份，失败时只恢复旧 location，不先回滚认证代码；
+- 删除旧 Socket.IO location 后应直接不可用，不提供普通 HTTP 重定向；
+- 兼容日志若发现无法排除的真实旧客户端，旧入口清理步骤暂停，但认证解耦可以继续发布。
+
+## 4. 发布门槛与回滚原则
+
+旧入口允许下线必须同时满足：
+
+1. v3.3—v3.4 已覆盖至少一个完整版本观察周期；
+2. 发布前再次检查兼容日志增量；
+3. 排除项目自身网关测试、验收脚本、监控健康检查和明显扫描流量；
+4. 没有可识别的真实 v3.2 游戏端或管理端客户端；
+5. 标准 API、图片、Socket.IO polling 和 WebSocket 已在预发布通过；
+6. 旧 Nginx location 已保存为可直接恢复的配置片段；
+7. 网关测试能够分别证明标准入口可用和旧入口不可用。
+
+回滚分为两层：
+
+- **认证回滚**：恢复 v3.4 服务端与管理端构建，并恢复旧 `admin_token` 认证流程；允许管理员重新登录，不迁移或转换 Token；
+- **网关回滚**：恢复备份的 `/family-war/api/*` 与 `/family-war/socket.io/*` location，执行 `nginx -t` 后重载；
+- 若仅旧客户端兼容出现问题，优先只恢复旧 location，不回滚 v3.5 标准入口和新前端；
+- 回滚到 v3.2 前端时必须同时恢复旧 location；只恢复旧构建产物不足以完成回滚；
+- 本版本无数据库迁移，回滚不涉及数据转换。
+
+## Phase 1：冻结认证契约与清理门槛
+
+目标：先确定身份接口、Cookie、安全属性、兼容范围和旧入口下线证据，避免实施中同时改变多项协议。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1a | 盘点当前登录、退出、状态探测、认证中间件、限流、来源校验和 Cookie 行为，记录 v3.4 响应及错误语义 | `server/src/routes/admin.js`, `server/src/middleware/auth.js`, `admin-client/src/auth/`, 现有测试 | ⬜ |
+| 1b | 冻结 `/api/admin-auth/login`、`/api/admin-auth/me`、`/api/admin-auth/logout` 的方法、请求体、成功响应、401、403、429 和 Cookie 契约 | `step.md`, 服务端测试设计 | ⬜ |
+| 1c | 确定本版本继续使用单一管理员密码和现有管理员 JWT Secret；定义管理员 Token 类型/受众声明，明确未来普通用户 Token 不直接复用该验证边界 | `server/config.js`, 认证设计说明 | ⬜ |
+| 1d | 冻结 `admin_session` Cookie 的名称、有效期、Path、HttpOnly、SameSite、Secure 和删除属性；明确升级后允许管理员重新登录 | 认证设计说明、测试清单 | ⬜ |
+| 1e | 汇总 v3.3—v3.4 兼容日志及发布前增量，排除验收、监控和扫描流量，输出旧 API 与 Socket.IO 是否允许下线的独立结论 | Nginx 兼容日志、`docs/acceptance/v3.5/` | ⬜ |
+| 1f | 导出旧 Nginx location 配置片段，记录恢复命令、验证命令和负责人可执行的回滚清单 | Nginx 配置备份、`docs/acceptance/v3.5/rollback.md` | ⬜ |
+| 1g | 增加契约级失败测试或测试清单，覆盖错误密码、缺少 Cookie、过期/篡改/错误类型 Token、跨源 POST 和限流 | `server/__tests__/`, `admin-client/src/**/*.test.*` | ⬜ |
+
+## Phase 2：拆分服务端管理员认证
+
+目标：让身份签发和会话查询成为独立平台能力，family-war 管理路由只保留业务职责。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 2a | 新建管理员认证路由或服务，迁移密码校验、JWT 签发、Cookie 设置与清除逻辑 | `server/src/routes/adminAuth.js`, `server/src/auth/` 或实际等价目录 | ⬜ |
+| 2b | 实现 `POST /api/admin-auth/login`：校验单一管理员密码，签发管理员 Token，仅设置 `admin_session` Cookie | `server/src/routes/adminAuth.js` | ⬜ |
+| 2c | 实现 `GET /api/admin-auth/me`：验证会话并返回最小管理员信息，不读取 family-war 房间或业务状态 | `server/src/routes/adminAuth.js`, 认证中间件 | ⬜ |
+| 2d | 实现 `POST /api/admin-auth/logout`：无论 Cookie 是否存在都幂等清除 `admin_session`，返回成功 | `server/src/routes/adminAuth.js` | ⬜ |
+| 2e | 重构认证中间件，分别处理身份接口白名单和受保护的 family-war 管理路由；统一过期、篡改和错误类型 Token 的 401 语义 | `server/src/middleware/auth.js`, `server/src/index.js` | ⬜ |
+| 2f | 将登录限流和来源校验切换到新认证路径，同时覆盖 family-war 修改类管理请求，不扩大到游戏 Socket.IO | `server/src/middleware/auth.js` | ⬜ |
+| 2g | 从 family-war 管理路由删除登录和退出职责，保留状态、词库和图片管理接口及其响应结构 | `server/src/routes/admin.js` | ⬜ |
+| 2h | 增加管理员身份接口和业务授权测试，覆盖 Cookie 属性、`me`、登出幂等、限流、来源校验、业务 401 及无密码配置策略 | `server/__tests__/adminAuth.test.js`, 相关测试 | ⬜ |
+
+## Phase 3：切换管理端认证服务
+
+目标：管理端通过独立身份服务维护管理员会话，family-war 模块 API 只处理业务请求。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 3a | 在服务配置中增加独立 `ADMIN_AUTH_API_BASE`，继续保留 `FAMILY_WAR_API_BASE`；开发代理和生产路径分别验证 | `admin-client/src/config/`, `admin-client/vite.config.js`, 环境示例 | ⬜ |
+| 3b | 新建平台级管理员认证 API 封装，实现 `login`、`getCurrentAdmin` 和 `logout`，禁止 family-war 模块导出认证方法 | `admin-client/src/auth/api.js`, `admin-client/src/modules/family-war/api.js` | ⬜ |
+| 3c | 将 `RequireAdminAuth` 的启动探测从 family-war `status` 改为 `/api/admin-auth/me`，保持登录后原目标页恢复 | `admin-client/src/auth/RequireAdminAuth.jsx` | ⬜ |
+| 3d | 更新管理员上下文和布局退出流程，401 时统一清理前端认证状态并显示登录页，不在浏览器存储 Token | `admin-client/src/auth/`, `admin-client/src/layout/` | ⬜ |
+| 3e | 保持 family-war 状态、词库、图片和 TTS 页面行为及 URL 不变，只替换认证依赖 | `admin-client/src/modules/family-war/` | ⬜ |
+| 3f | 更新单元测试，覆盖首次探测、登录、刷新保持、深层链接恢复、过期、退出、401 和认证服务网络失败 | `admin-client/src/**/*.test.*` | ⬜ |
+| 3g | 增加网络边界断言：认证请求只访问 `/api/admin-auth/*`，业务请求只访问 `/api/family-war/*`，管理端仍不得连接 Socket.IO | `admin-client/src/**/*.test.*`, acceptance | ⬜ |
+
+## Phase 4：扩充网关和自动化验收
+
+目标：在修改生产 Nginx 前，让自动化能够验证新认证入口、标准业务入口和旧入口下线结果。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 4a | 扩充网关测试配置，分别接受认证 Base、family-war API Base、Socket.IO path 和预期旧入口状态 | `server/tests/gateway.js`, 根项目脚本 | ⬜ |
+| 4b | 增加 `/api/admin-auth/*` 经过真实 Nginx 的登录、`me`、退出和 Cookie 验收，不在输出中打印 Cookie 或 Token | `server/tests/gateway.js` 或独立认证网关测试 | ⬜ |
+| 4c | 保持标准 `/api/family-war/*`、图片、Socket.IO polling-only 和 WebSocket-only 全链路验收 | `server/tests/gateway.js` | ⬜ |
+| 4d | 将旧入口断言从“必须兼容”改为“不得成功代理到 family-war 服务”；明确允许的下线状态，不接受 301/302 到标准入口 | `server/tests/gateway.js` | ⬜ |
+| 4e | 更新管理端 Playwright Page Object 和认证步骤，验证 `admin_session`、`me`、刷新保持、登出、401 和限流恢复 | `admin-client/tests/acceptance/` | ⬜ |
+| 4f | 更新 acceptance 配置边界，分别提供管理页面地址、认证 API 地址和 family-war API 地址 | `admin-client/tests/acceptance/config.js`, `runner.js`, 文档 | ⬜ |
+| 4g | 执行服务端、游戏端、管理端单元测试、Socket.IO 集成、acceptance 离线检查、生产构建和构建隔离验证 | 根项目、三个 package | ⬜ |
+
+## Phase 5：预发布切换、旧入口下线与回滚演练
+
+目标：按可分步回滚的顺序在预发布完成认证切换和旧入口清理，不把两类风险合并为一次不可诊断的变更。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 5a | 部署带独立认证接口的服务端，先通过内部端口验证新认证接口和原 family-war 业务接口 | 预发布服务、PM2 | ⬜ |
+| 5b | Nginx 增加 `/api/admin-auth/` 标准入口，执行 `nginx -t` 后重载；暂时保留两个旧 v3.2 location | 预发布 Nginx | ⬜ |
+| 5c | 部署管理端生产构建，执行完整 Playwright acceptance，确认登录、刷新、深层链接、业务管理和登出正常 | `admin-client/build/`, 预发布环境 | ⬜ |
+| 5d | 验证管理端网络只出现 `/api/admin-auth/*` 和 `/api/family-war/*`，没有旧 API、Socket.IO 或 Token 暴露 | 浏览器网络记录、Nginx 日志 | ⬜ |
+| 5e | 在删除前最后检查兼容日志增量；若发现无法排除的真实旧客户端，停止 5f—5i，继续完成认证回滚演练，并保留书面阻断结论 | 兼容日志、`docs/acceptance/v3.5/` | ⬜ |
+| 5f | 删除 `/family-war/api/*` 旧 location，验证旧 API 不再代理或重定向，标准 API、认证和图片链路仍正常 | 预发布 Nginx、网关测试 | ⬜ |
+| 5g | 删除 `/family-war/socket.io/*` 旧 location，不增加 301/302；验证旧 polling/WebSocket 失败且标准 Socket.IO 两种传输正常 | 预发布 Nginx、网关测试 | ⬜ |
+| 5h | 执行管理端 acceptance、游戏端 E2E、标准网关和完整生产构建验收，检查浏览器、Nginx、PM2 和服务端日志 | 预发布环境、验收报告 | ⬜ |
+| 5i | 演练仅恢复两个旧 location：执行语法检查和重载，确认 v3.2 旧 API/Socket.IO 恢复，再重新执行下线 | 预发布 Nginx、回滚报告 | ⬜ |
+| 5j | 演练认证回滚：恢复 v3.4 服务端和管理端后可重新登录；随后恢复 v3.5 并确认无数据迁移或残留配置 | 预发布环境、回滚报告 | ⬜ |
+| 5k | 形成预发布验收报告，记录路径矩阵、Cookie 安全属性、日志门槛、回滚耗时和正式发布批准条件 | `docs/acceptance/v3.5/phase-5-report.md` | ⬜ |
+
+## Phase 6：正式发布、观察与版本收尾
+
+目标：复用预发布顺序完成正式发布，并确认管理员认证解耦和旧入口下线均可独立验证、独立回滚。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 6a | 将根项目和三个 package 版本统一更新为 `3.5.0`，同步 lockfile | 各级 `package.json`, `package-lock.json` | ⬜ |
+| 6b | 执行全部单元测试、Socket.IO 集成、管理端 acceptance 离线检查、游戏端 E2E 清单、完整生产构建和构建隔离验证 | 根项目、三个 package | ⬜ |
+| 6c | 按 5a—5d 顺序发布服务端、认证 Nginx 入口和管理端构建，先验证新认证与全部标准入口 | 正式环境 | ⬜ |
+| 6d | 再次检查正式环境旧入口日志增量；满足门槛后删除旧 API location，验证通过后再删除旧 Socket.IO location | 正式环境、Nginx | ⬜ |
+| 6e | 执行正式环境完整验收：管理员认证、family-war 管理、游戏页面、图片、标准 API、polling 和 WebSocket；旧入口不得成功或重定向 | 正式环境、验收报告 | ⬜ |
+| 6f | 观察 Nginx、PM2 和服务端日志，确认无新增认证错误、代理循环、异常 30x、Socket.IO 握手失败或集中 4xx/5xx | 正式环境 | ⬜ |
+| 6g | 更新认证架构、环境配置、Nginx 路径、测试命令、回滚说明、路线图和发布说明 | `README.md`, `AGENTS.md`, `road-map.md`, `docs/ROUTING-MIGRATION-PLAN.md`, `docs/RELEASE.md` | ⬜ |
+| 6h | 发布 v3.5.0 Git tag 和 GitHub Release，明确管理员需要重新登录、旧入口已下线及回滚要求 | Git、GitHub Release | ⬜ |
+| 6i | 在约定观察期保留旧 location 备份但不启用；观察结束且无回滚需求后，归档兼容日志和下线报告 | 运维备份、`docs/acceptance/v3.5/release-report.md` | ⬜ |
+
+## v3.5 最终验收条件
+
+- `/api/admin-auth/login`、`/me`、`/logout` 通过标准公网入口工作；
+- 登录状态探测不再读取 family-war 房间或比赛状态；
+- 管理员身份模块不依赖 family-war 业务管理器、词库或图片实现；
+- 管理端认证请求只使用 `/api/admin-auth/*`，业务请求只使用 `/api/family-war/*`；
+- `admin_session` 只通过 HttpOnly Cookie 传递，安全属性、过期和删除行为符合契约；
+- 错误密码、限流、跨源 POST、缺失/过期/篡改/错误类型 Token 均有自动化覆盖；
+- 管理首页、family-war 状态、词库、图片、TTS、深层链接和 404 行为与 v3.4 一致；
+- `/family-war/api/*` 不再代理到服务端，也不重定向到标准 API；
+- `/family-war/socket.io/*` 的 polling 和 WebSocket 均不再可用，且不存在 301/302；
+- `/api/family-war/*`、`/socket/family-war/*`、图片和两个 Socket.IO 传输继续通过真实 Nginx 验收；
+- `/family-war/`、`/admin/` 页面路径和服务端内部 Socket.IO 事件协议保持不变；
+- 旧入口下线前具有可复核日志结论，下线后具有独立 Nginx 回滚配置和演练记录；
+- 服务端、游戏端、管理端测试、Socket.IO 集成、生产构建及预发布 acceptance 全部通过；
+- 文档、发布说明、自动化断言和正式 Nginx 行为一致。
+
+## 明确延期到后续版本
+
+- 微信登录及其他第三方身份提供方；
+- 平台普通用户 Token、刷新令牌和 Socket.IO 用户认证；
+- 家庭关系、儿童档案、当前活动档案和游戏角色身份映射；
+- 多管理员账号、账号数据库、密码哈希迁移、邀请和找回流程；
+- 完整 RBAC、权限配置页面和集中审计平台；
+- `family-war:view`、`family-war:word-config`、`family-war:image-manage` 等权限可作为声明设计预留，但 v3.5 不强制执行；
+- 将管理员认证拆成独立进程、独立域名或集中式身份服务；
+- 修改 Koa 内部 `/api/*`、Socket.IO `/socket.io/` path 或业务事件协议。
