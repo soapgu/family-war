@@ -1,3 +1,20 @@
+const { execSync } = require('child_process')
+
+async function waitForHealth(url, retries = 30) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await fetch(`${url}/health`, {
+        signal: AbortSignal.timeout(2000),
+      })
+      if (response.ok) return
+    } catch {
+      // 服务重启期间连接失败属于预期，继续轮询。
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  throw new Error('限流恢复后等待服务健康超时')
+}
+
 /** @type {import('../types').AcceptanceStep} */
 const step = {
   id: '5b',
@@ -20,14 +37,26 @@ const step = {
     // 主动登出，随后验证前端和服务端共同清除了会话。
     const logoutBtn = page.locator('button:has-text("登出")')
     if (await logoutBtn.count() === 0) throw new Error('登录后未找到"登出"按钮')
+    const logoutResponsePromise = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === `${config.authPath}/logout`
+        && response.request().method() === 'POST'
+    )
     await logoutBtn.click()
-    await page.waitForTimeout(500)
+    const logoutResponse = await logoutResponsePromise
+    if (!logoutResponse.ok()) throw new Error(`管理员退出失败: HTTP ${logoutResponse.status()}`)
     details.push('点击"登出"按钮')
 
     // 从浏览器上下文读取 Cookie，确认 admin_session 已删除。
     const cookies = await page.context().cookies()
     if (cookies.find(c => c.name === 'admin_session')) throw new Error('登出后 admin_session Cookie 未清除')
     details.push('admin_session Cookie 已清除')
+
+    const meAfterLogout = await page.evaluate(async (authPath) => {
+      const response = await fetch(`${authPath}/me`)
+      return response.status
+    }, config.authPath)
+    if (meAfterLogout !== 401) throw new Error(`登出后 me 预期 401，实际 ${meAfterLogout}`)
+    details.push('登出后 GET /api/admin-auth/me 返回 401')
 
     // 重新加载受保护页面，未认证用户应再次看到登录弹窗。
     await page.reload({ waitUntil: 'networkidle' })
@@ -64,7 +93,57 @@ const step = {
     const finalCookie = (await page.context().cookies()).find(c => c.name === 'admin_session')
     if (!finalCookie) throw new Error('重新登录后未设置 admin_session Cookie')
     if (!finalCookie.httpOnly) throw new Error('admin_session Cookie 未设置 HttpOnly')
+    if (finalCookie.sameSite !== 'Lax') throw new Error(`admin_session SameSite 异常: ${finalCookie.sameSite}`)
+    if (finalCookie.path !== '/') throw new Error(`admin_session Path 异常: ${finalCookie.path}`)
     details.push(`admin_session Cookie 已设置，过期于 ${new Date(finalCookie.expires * 1000).toISOString()}`)
+
+    await page.reload({ waitUntil: 'networkidle' })
+    if (await page.locator('.ant-modal').count() !== 0) {
+      throw new Error('刷新后管理员会话未保持')
+    }
+    const meAfterRefresh = await page.evaluate(async (authPath) => {
+      const response = await fetch(`${authPath}/me`)
+      return response.ok ? response.json() : null
+    }, config.authPath)
+    if (meAfterRefresh?.admin?.role !== 'admin') {
+      throw new Error('刷新后 me 未返回管理员身份')
+    }
+    details.push('刷新保持登录，me 返回管理员身份')
+
+    // 清除当前会话后触发登录限流；服务重启会清空内存限流记录，但保留本轮临时配置。
+    await page.evaluate(async (authPath) => {
+      await fetch(`${authPath}/logout`, { method: 'POST' })
+    }, config.authPath)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForSelector('.ant-modal', { timeout: 10000 })
+
+    const rateLimitStatuses = await page.evaluate(async ({ authPath }) => {
+      const statuses = []
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const response = await fetch(`${authPath}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: 'acceptance-rate-limit-wrong' }),
+        })
+        statuses.push(response.status)
+      }
+      return statuses
+    }, { authPath: config.authPath })
+    if (
+      rateLimitStatuses.slice(0, 5).some((status) => status !== 401) ||
+      rateLimitStatuses[5] !== 429
+    ) {
+      throw new Error(`登录限流状态异常: ${rateLimitStatuses.join(', ')}`)
+    }
+    details.push('连续 5 次错误密码后第 6 次返回 429')
+
+    execSync('pm2 restart family-war-server', { stdio: 'inherit' })
+    await waitForHealth(config.apiBaseURL)
+
+    await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
+    await page.click('button:has-text("登录")')
+    await page.waitForFunction(() => !document.querySelector('.ant-modal'), null, { timeout: 10000 })
+    details.push('服务重启清除内存限流后可重新登录')
 
     reporter.onStepPass(this.id, details)
   },

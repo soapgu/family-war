@@ -564,8 +564,17 @@ npm test --prefix admin-client
 # Acceptance 配置与依赖检查（不连接预发布）
 npm run test:acceptance:check
 
-# 公网 API、Socket.IO 和图片网关验收
-GATEWAY_BASE_URL=http://localhost:8080 npm run test:gateway
+# 公网认证、API、Socket.IO 和图片网关验收
+GATEWAY_BASE_URL=http://localhost:8080 \
+GATEWAY_ADMIN_PASSWORD=你的管理密码 \
+GATEWAY_LEGACY_MODE=compatible \
+npm run test:gateway
+
+# v3.5 删除旧入口后的网关验收
+GATEWAY_BASE_URL=http://localhost:8080 \
+GATEWAY_ADMIN_PASSWORD=你的管理密码 \
+GATEWAY_LEGACY_MODE=removed \
+npm run test:gateway
 
 # 游戏端 E2E 测试（需先启动 npm run dev，单 worker 串行防房间冲突）
 npm run test:e2e

@@ -26,7 +26,7 @@ root package.json  (concurrently orchestrates all three)
 | server unit | `npm test --prefix server` | |
 | server unit watch | `npm run test:watch --prefix server` | |
 | server integration | `npm run test:integration` | plain Node script, real sockets, port :4001 |
-| gateway acceptance | `npm run test:gateway` | requires `GATEWAY_BASE_URL`, checks new/legacy API and Socket paths |
+| gateway acceptance | `npm run test:gateway` | requires `GATEWAY_BASE_URL` / `GATEWAY_ADMIN_PASSWORD`; `GATEWAY_LEGACY_MODE=compatible\|removed` |
 | client unit | `npm test --prefix client` | Vitest |
 | client unit watch | `npm run test:watch --prefix client` | |
 | admin unit | `npm test --prefix admin-client` | Vitest |

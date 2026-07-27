@@ -19,8 +19,8 @@
     "test": "执行全部服务端 Jest 单元测试，显示详细结果并禁用 Jest 缓存。",
     "test:watch": "以监听模式运行服务端 Jest，源码变化后自动重测。",
     "test:integration": "在 4001 端口启动临时真实服务，用两个 Socket.IO 客户端验证三种游戏完整流程。",
-    "test:gateway": "使用 GATEWAY_BASE_URL 验证 Nginx 新旧 API、Socket.IO 双传输和默写图片链路。",
-    "test:gateway:check": "只检查网关脚本依赖和测试矩阵，不连接 Nginx 或服务端。",
+    "test:gateway": "使用网关地址、管理员密码和旧入口模式验证认证、API、Socket.IO 双传输及图片链路。",
+    "test:gateway:check": "离线检查网关脚本依赖、认证配置和 compatible/removed 测试矩阵。",
     "test:unsplash": "调用 Unsplash 集成流程进行验证，需要 UNSPLASH_ACCESS_KEY。",
     "unsplash:sync": "同步词库图片；附加参数由脚本处理，命令中的 --keep 表示保留下载结果。"
   },

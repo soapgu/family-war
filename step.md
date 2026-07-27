@@ -624,7 +624,7 @@ admin-client/tests/acceptance/       管理端 Playwright 浏览器验收
 | 5i | 更新 Playwright 页面入口和选择器，通过 Browser Router 访问 `/admin/family-war/` 与 `/admin/family-war/word-config` | `admin-client/tests/acceptance/pages/`, `admin-client/tests/acceptance/steps/`, `admin-client/tests/acceptance/lib/auth.js` | ✅ |
 | 5j | 增加浏览器网络断言：管理端不得请求 `/socket.io` 或 `/family-war/socket.io`，管理请求仍通过 `/family-war/api/*` | `admin-client/tests/acceptance/` | ✅ |
 | 5k | 整理运行产物：临时状态、备份和普通运行截图加入 `.gitignore`；需要随版本保留的正式验收报告另存到版本化文档目录 | `.gitignore`, `admin-client/tests/acceptance/output/`, `docs/acceptance/v3.2/`（如需） | ✅ |
-| 5l | 更新验收自动化方案中的目录、命令、环境变量、恢复路径和运行示例 | `docs/Phase-6-验收自动化方案.md` | ✅ |
+| 5l | 更新验收自动化方案中的目录、命令、环境变量、恢复路径和运行示例 | `docs/管理端预发布验收自动化方案.md` | ✅ |
 | 5m | 执行服务端、游戏端、管理端全部单元测试和 Socket.IO 集成测试；检查管理端 Playwright 用例发现、配置加载及本地运行能力，不执行预发布 acceptance 和生产构建 | `server/`, `client/`, `admin-client/` | ✅ |
 
 **测试边界**
@@ -1225,13 +1225,13 @@ v3.5 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 4a | 扩充网关测试配置，分别接受认证 Base、family-war API Base、Socket.IO path 和预期旧入口状态 | `server/tests/gateway.js`, 根项目脚本 | ⬜ |
-| 4b | 增加 `/api/admin-auth/*` 经过真实 Nginx 的登录、`me`、退出和 Cookie 验收，不在输出中打印 Cookie 或 Token | `server/tests/gateway.js` 或独立认证网关测试 | ⬜ |
-| 4c | 保持标准 `/api/family-war/*`、图片、Socket.IO polling-only 和 WebSocket-only 全链路验收 | `server/tests/gateway.js` | ⬜ |
-| 4d | 将旧入口断言从“必须兼容”改为“不得成功代理到 family-war 服务”；明确允许的下线状态，不接受 301/302 到标准入口 | `server/tests/gateway.js` | ⬜ |
-| 4e | 更新管理端 Playwright Page Object 和认证步骤，验证 `admin_session`、`me`、刷新保持、登出、401 和限流恢复 | `admin-client/tests/acceptance/` | ⬜ |
-| 4f | 更新 acceptance 配置边界，分别提供管理页面地址、认证 API 地址和 family-war API 地址 | `admin-client/tests/acceptance/config.js`, `runner.js`, 文档 | ⬜ |
-| 4g | 执行服务端、游戏端、管理端单元测试、Socket.IO 集成、acceptance 离线检查、生产构建和构建隔离验证 | 根项目、三个 package | ⬜ |
+| 4a | 扩充网关测试配置，分别接受认证 Base、family-war API Base、Socket.IO path 和预期旧入口状态 | `server/tests/gateway.js`, 根项目脚本 | ✅ |
+| 4b | 增加 `/api/admin-auth/*` 经过真实 Nginx 的登录、`me`、退出和 Cookie 验收，不在输出中打印 Cookie 或 Token | `server/tests/gateway.js` 或独立认证网关测试 | ✅ |
+| 4c | 保持标准 `/api/family-war/*`、图片、Socket.IO polling-only 和 WebSocket-only 全链路验收 | `server/tests/gateway.js` | ✅ |
+| 4d | 将旧入口断言从“必须兼容”改为“不得成功代理到 family-war 服务”；明确允许的下线状态，不接受 301/302 到标准入口 | `server/tests/gateway.js` | ✅ |
+| 4e | 更新管理端 Playwright Page Object 和认证步骤，验证 `admin_session`、`me`、刷新保持、登出、401 和限流恢复 | `admin-client/tests/acceptance/` | ✅ |
+| 4f | 更新 acceptance 配置边界，分别提供管理页面地址、认证 API 地址和 family-war API 地址 | `admin-client/tests/acceptance/config.js`, `runner.js`, 文档 | ✅ |
+| 4g | 执行服务端、游戏端、管理端单元测试、Socket.IO 集成、acceptance 离线检查、生产构建和构建隔离验证 | 根项目、三个 package | ✅ |
 
 ## Phase 5：预发布切换、旧入口下线与回滚演练
 
