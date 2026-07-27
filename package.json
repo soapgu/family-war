@@ -21,7 +21,11 @@
     "test:acceptance": "npm --prefix admin-client run test:acceptance --",
     "test:acceptance:restore": "npm --prefix admin-client run test:acceptance:restore",
     "test:acceptance:check": "npm --prefix admin-client run test:acceptance:check && npm run test:gateway:check",
-    "test:acceptance:client": "npm run test:acceptance --prefix client"
+    "test:e2e": "npm run test:e2e --prefix client",
+    "test:e2e:headed": "npm run test:e2e:headed --prefix client",
+    "test:e2e:check": "npm run test:e2e:check --prefix client",
+    "test:e2e:report": "npm run test:e2e:report --prefix client",
+    "test:acceptance:client": "npm run test:e2e --prefix client"
   },
   "scriptsDescription": {
     "dev": "同时启动服务端、游戏端和管理端开发服务，输出使用不同颜色区分。",
@@ -42,7 +46,11 @@
     "test:acceptance": "运行管理端 Playwright 验收；通常追加 -- --reset 并提供 ACCEPTANCE_* 环境变量。",
     "test:acceptance:restore": "只执行未完成验收留下的词库、图片等数据恢复。",
     "test:acceptance:check": "离线检查管理端 Playwright 验收和网关验收的目录、步骤与依赖。",
-    "test:acceptance:client": "运行游戏端 Playwright 验收测试，需要先启动 npm run dev。"
+    "test:e2e": "通过 Playwright 无头浏览器运行游戏端端到端测试，需要目标服务已启动。",
+    "test:e2e:headed": "使用可见浏览器运行游戏端端到端测试，便于人工调试。",
+    "test:e2e:check": "只列出游戏端 Playwright 测试用例，不启动浏览器执行。",
+    "test:e2e:report": "打开最近一次游戏端 Playwright HTML 报告。",
+    "test:acceptance:client": "兼容旧命令，等价于 test:e2e。"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

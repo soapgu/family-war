@@ -1239,17 +1239,17 @@ v3.5 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 5a | 部署带独立认证接口的服务端，先通过内部端口验证新认证接口和原 family-war 业务接口 | 预发布服务、PM2 | ⬜ |
-| 5b | Nginx 增加 `/api/admin-auth/` 标准入口，执行 `nginx -t` 后重载；暂时保留两个旧 v3.2 location | 预发布 Nginx | ⬜ |
-| 5c | 部署管理端生产构建，执行完整 Playwright acceptance，确认登录、刷新、深层链接、业务管理和登出正常 | `admin-client/build/`, 预发布环境 | ⬜ |
-| 5d | 验证管理端网络只出现 `/api/admin-auth/*` 和 `/api/family-war/*`，没有旧 API、Socket.IO 或 Token 暴露 | 浏览器网络记录、Nginx 日志 | ⬜ |
-| 5e | 在删除前最后检查兼容日志增量；若发现无法排除的真实旧客户端，停止 5f—5i，继续完成认证回滚演练，并保留书面阻断结论 | 兼容日志、`docs/acceptance/v3.5/` | ⬜ |
-| 5f | 删除 `/family-war/api/*` 旧 location，验证旧 API 不再代理或重定向，标准 API、认证和图片链路仍正常 | 预发布 Nginx、网关测试 | ⬜ |
-| 5g | 删除 `/family-war/socket.io/*` 旧 location，不增加 301/302；验证旧 polling/WebSocket 失败且标准 Socket.IO 两种传输正常 | 预发布 Nginx、网关测试 | ⬜ |
-| 5h | 执行管理端 acceptance、游戏端 E2E、标准网关和完整生产构建验收，检查浏览器、Nginx、PM2 和服务端日志 | 预发布环境、验收报告 | ⬜ |
-| 5i | 演练仅恢复两个旧 location：执行语法检查和重载，确认 v3.2 旧 API/Socket.IO 恢复，再重新执行下线 | 预发布 Nginx、回滚报告 | ⬜ |
-| 5j | 演练认证回滚：恢复 v3.4 服务端和管理端后可重新登录；随后恢复 v3.5 并确认无数据迁移或残留配置 | 预发布环境、回滚报告 | ⬜ |
-| 5k | 形成预发布验收报告，记录路径矩阵、Cookie 安全属性、日志门槛、回滚耗时和正式发布批准条件 | `docs/acceptance/v3.5/phase-5-report.md` | ⬜ |
+| 5a | 部署带独立认证接口的服务端，先通过内部端口验证新认证接口和原 family-war 业务接口 | 预发布服务、PM2 | ✅ |
+| 5b | Nginx 增加 `/api/admin-auth/` 标准入口，执行 `nginx -t` 后重载；暂时保留两个旧 v3.2 location | 预发布 Nginx | ✅ |
+| 5c | 部署管理端生产构建，执行完整 Playwright acceptance，确认登录、刷新、深层链接、业务管理和登出正常 | `admin-client/build/`, 预发布环境 | ✅ |
+| 5d | 验证管理端网络只出现 `/api/admin-auth/*` 和 `/api/family-war/*`，没有旧 API、Socket.IO 或 Token 暴露 | 浏览器网络记录、Nginx 日志 | ✅ |
+| 5e | 在删除前最后检查兼容日志增量；若发现无法排除的真实旧客户端，停止 5f—5i，继续完成认证回滚演练，并保留书面阻断结论 | 兼容日志、`docs/acceptance/v3.5/` | ✅ |
+| 5f | 删除 `/family-war/api/*` 旧 location，验证旧 API 不再代理或重定向，标准 API、认证和图片链路仍正常 | 预发布 Nginx、网关测试 | ✅ |
+| 5g | 删除 `/family-war/socket.io/*` 旧 location，不增加 301/302；验证旧 polling/WebSocket 失败且标准 Socket.IO 两种传输正常 | 预发布 Nginx、网关测试 | ✅ |
+| 5h | 执行管理端 acceptance、游戏端 E2E、标准网关和完整生产构建验收，检查浏览器、Nginx、PM2 和服务端日志 | 预发布环境、验收报告 | ✅ |
+| 5i | 演练仅恢复两个旧 location：执行语法检查和重载，确认 v3.2 旧 API/Socket.IO 恢复，再重新执行下线 | 预发布 Nginx、回滚报告 | ✅ |
+| 5j | 演练认证回滚：恢复 v3.4 服务端和管理端后可重新登录；随后恢复 v3.5 并确认无数据迁移或残留配置 | 预发布环境、回滚报告 | ✅ |
+| 5k | 形成预发布验收报告，记录路径矩阵、Cookie 安全属性、日志门槛、回滚耗时和正式发布批准条件 | `docs/acceptance/v3.5/phase-5-report.md` | ✅ |
 
 ## Phase 6：正式发布、观察与版本收尾
 
