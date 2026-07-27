@@ -1211,13 +1211,13 @@ v3.5 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 3a | 在服务配置中增加独立 `ADMIN_AUTH_API_BASE`，继续保留 `FAMILY_WAR_API_BASE`；开发代理和生产路径分别验证 | `admin-client/src/config/`, `admin-client/vite.config.js`, 环境示例 | ⬜ |
-| 3b | 新建平台级管理员认证 API 封装，实现 `login`、`getCurrentAdmin` 和 `logout`，禁止 family-war 模块导出认证方法 | `admin-client/src/auth/api.js`, `admin-client/src/modules/family-war/api.js` | ⬜ |
-| 3c | 将 `RequireAdminAuth` 的启动探测从 family-war `status` 改为 `/api/admin-auth/me`，保持登录后原目标页恢复 | `admin-client/src/auth/RequireAdminAuth.jsx` | ⬜ |
-| 3d | 更新管理员上下文和布局退出流程，401 时统一清理前端认证状态并显示登录页，不在浏览器存储 Token | `admin-client/src/auth/`, `admin-client/src/layout/` | ⬜ |
-| 3e | 保持 family-war 状态、词库、图片和 TTS 页面行为及 URL 不变，只替换认证依赖 | `admin-client/src/modules/family-war/` | ⬜ |
-| 3f | 更新单元测试，覆盖首次探测、登录、刷新保持、深层链接恢复、过期、退出、401 和认证服务网络失败 | `admin-client/src/**/*.test.*` | ⬜ |
-| 3g | 增加网络边界断言：认证请求只访问 `/api/admin-auth/*`，业务请求只访问 `/api/family-war/*`，管理端仍不得连接 Socket.IO | `admin-client/src/**/*.test.*`, acceptance | ⬜ |
+| 3a | 在服务配置中增加独立 `ADMIN_AUTH_API_BASE`，继续保留 `FAMILY_WAR_API_BASE`；开发代理和生产路径分别验证 | `admin-client/src/config/`, `admin-client/vite.config.js`, 环境示例 | ✅ |
+| 3b | 新建平台级管理员认证 API 封装，实现 `login`、`getCurrentAdmin` 和 `logout`，禁止 family-war 模块导出认证方法 | `admin-client/src/auth/api.js`, `admin-client/src/modules/family-war/api.js` | ✅ |
+| 3c | 将 `RequireAdminAuth` 的启动探测从 family-war `status` 改为 `/api/admin-auth/me`，保持登录后原目标页恢复 | `admin-client/src/auth/RequireAdminAuth.jsx` | ✅ |
+| 3d | 更新管理员上下文和布局退出流程，401 时统一清理前端认证状态并显示登录页，不在浏览器存储 Token | `admin-client/src/auth/`, `admin-client/src/layout/` | ✅ |
+| 3e | 保持 family-war 状态、词库、图片和 TTS 页面行为及 URL 不变，只替换认证依赖 | `admin-client/src/modules/family-war/` | ✅ |
+| 3f | 更新单元测试，覆盖首次探测、登录、刷新保持、深层链接恢复、过期、退出、401 和认证服务网络失败 | `admin-client/src/**/*.test.*` | ✅ |
+| 3g | 增加网络边界断言：认证请求只访问 `/api/admin-auth/*`，业务请求只访问 `/api/family-war/*`，管理端仍不得连接 Socket.IO | `admin-client/src/**/*.test.*`, acceptance | ✅ |
 
 ## Phase 4：扩充网关和自动化验收
 

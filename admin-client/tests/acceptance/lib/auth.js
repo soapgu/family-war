@@ -11,15 +11,15 @@ async function ensureAuthenticated(page, config) {
     timeout: 15000,
   })
 
-  // 在页面上下文中请求状态接口，以复用浏览器 Cookie。
-  const isLoggedIn = await page.evaluate(async (apiPath) => {
+  // 在页面上下文中请求独立身份接口，以复用浏览器 Cookie。
+  const isLoggedIn = await page.evaluate(async (authPath) => {
     try {
-      const res = await fetch(`${apiPath}/admin/status`)
+      const res = await fetch(`${authPath}/me`)
       return res.ok
     } catch {
       return false
     }
-  }, config.apiPath)
+  }, config.authPath)
 
   if (isLoggedIn) return
 
@@ -27,7 +27,7 @@ async function ensureAuthenticated(page, config) {
   await page.waitForSelector('.ant-modal', { timeout: 10000 })
   await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
   const loginResponsePromise = page.waitForResponse(
-    (res) => new URL(res.url()).pathname === `${config.apiPath}/admin/login`
+    (res) => new URL(res.url()).pathname === `${config.authPath}/login`
       && res.request().method() === 'POST'
   )
   await page.click('button:has-text("登录")')

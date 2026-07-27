@@ -3,6 +3,8 @@ import type { BrowserContext, Page } from '@playwright/test'
 /** 验收测试运行配置。 */
 export interface AcceptanceConfig {
   adminBaseURL: string
+  authBaseURL: string
+  authPath: string
   apiBaseURL: string
   apiPath: string
   adminPassword: string
@@ -16,6 +18,7 @@ export interface AcceptanceState {
   schemaVersion: number
   gitCommit: string
   adminBaseURL: string
+  authBaseURL: string
   apiBaseURL: string
   planVersion: string
   completed: string[]

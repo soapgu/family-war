@@ -28,13 +28,13 @@ afterEach(() => {
 })
 
 describe('RequireAdminAuth', () => {
-  it('初始验证中不渲染内容，并使用同源 Cookie 请求状态接口', async () => {
+  it('初始验证中不渲染内容，并使用独立身份接口探测会话', async () => {
     fetch.mockResolvedValueOnce(response({ ok: true }))
     const { container } = renderAuth()
     expect(container.innerHTML).toBe('')
 
     expect(await screen.findByText('管理后台')).toBeInTheDocument()
-    expect(fetch).toHaveBeenCalledWith('/api/admin/status', undefined)
+    expect(fetch).toHaveBeenCalledWith('/api/admin-auth/me', undefined)
   })
 
   it('状态验证失败时弹出登录窗口', async () => {
@@ -67,7 +67,7 @@ describe('RequireAdminAuth', () => {
     await waitFor(() => expect(screen.queryByText('管理员登录')).not.toBeInTheDocument())
     expect(screen.getByText('管理后台')).toBeInTheDocument()
     expect(fetch).toHaveBeenLastCalledWith(
-      '/api/admin/login',
+      '/api/admin-auth/login',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ password: 'secret' }),
@@ -104,13 +104,28 @@ describe('RequireAdminAuth', () => {
   })
 
   it('登出后重新显示登录窗口', async () => {
-    fetch.mockResolvedValueOnce(response({ ok: true }))
+    fetch
+      .mockResolvedValueOnce(response({ authenticated: true }))
+      .mockResolvedValueOnce(response({ success: true }))
     renderAuth()
     await screen.findByText('管理后台')
 
-    act(() => screen.getByRole('button', { name: '登出' }).click())
+    await act(async () => screen.getByRole('button', { name: '登出' }).click())
 
     expect(await screen.findByText('管理员登录')).toBeInTheDocument()
     expect(screen.queryByText('管理后台')).not.toBeInTheDocument()
+    expect(fetch).toHaveBeenLastCalledWith('/api/admin-auth/logout', { method: 'POST' })
+  })
+
+  it('退出接口失败时仍清理前端会话', async () => {
+    fetch
+      .mockResolvedValueOnce(response({ authenticated: true }))
+      .mockRejectedValueOnce(new Error('network error'))
+    renderAuth()
+    await screen.findByText('管理后台')
+
+    await act(async () => screen.getByRole('button', { name: '登出' }).click())
+
+    expect(await screen.findByText('管理员登录')).toBeInTheDocument()
   })
 })

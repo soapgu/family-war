@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button, Input, Modal, Typography } from 'antd'
 import { LockOutlined } from '@ant-design/icons'
-import { familyWarAdminApi } from '../modules/family-war/api'
 import { ApiRequestError } from '../config/request'
-import { AdminAuthProvider, useAdminLogout } from './AdminAuthContext'
+import { adminAuthApi } from './api'
+import { AdminAuthProvider } from './AdminAuthContext'
 
 export default function RequireAdminAuth({ children }) {
   const [authenticated, setAuthenticated] = useState(null)
@@ -11,14 +11,27 @@ export default function RequireAdminAuth({ children }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const logout = useAdminLogout(setAuthenticated, setShowLogin)
+
+  const expireSession = useCallback(() => {
+    setAuthenticated(false)
+    setShowLogin(true)
+  }, [])
+
+  const logout = useCallback(async () => {
+    try {
+      await adminAuthApi.logout()
+    } catch {
+      // 即使服务端退出失败，也清理前端认证状态并要求重新登录。
+    }
+    expireSession()
+  }, [expireSession])
 
   useEffect(() => {
     let active = true
 
     async function checkAuth() {
       try {
-        await familyWarAdminApi.getStatus()
+        await adminAuthApi.getCurrentAdmin()
         if (!active) return
         setAuthenticated(true)
         setShowLogin(false)
@@ -40,7 +53,7 @@ export default function RequireAdminAuth({ children }) {
     setLoading(true)
     setError('')
     try {
-      await familyWarAdminApi.login(password)
+      await adminAuthApi.login(password)
       setAuthenticated(true)
       setShowLogin(false)
       setPassword('')
@@ -87,7 +100,7 @@ export default function RequireAdminAuth({ children }) {
         </div>
         {error && <Typography.Text type="danger">{error}</Typography.Text>}
       </Modal>
-      <AdminAuthProvider logout={logout}>
+      <AdminAuthProvider logout={logout} expireSession={expireSession}>
         {authenticated && children}
       </AdminAuthProvider>
     </>

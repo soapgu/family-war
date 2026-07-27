@@ -1,10 +1,13 @@
-import { createContext, useCallback, useContext } from 'react'
+import { createContext, useContext } from 'react'
 
-const AdminAuthContext = createContext({ logout: () => {} })
+const AdminAuthContext = createContext({
+  logout: async () => {},
+  expireSession: () => {},
+})
 
-export function AdminAuthProvider({ children, logout }) {
+export function AdminAuthProvider({ children, logout, expireSession = logout }) {
   return (
-    <AdminAuthContext.Provider value={{ logout }}>
+    <AdminAuthContext.Provider value={{ logout, expireSession }}>
       {children}
     </AdminAuthContext.Provider>
   )
@@ -12,11 +15,4 @@ export function AdminAuthProvider({ children, logout }) {
 
 export function useAdminAuth() {
   return useContext(AdminAuthContext)
-}
-
-export function useAdminLogout(setAuthenticated, setShowLogin) {
-  return useCallback(() => {
-    setAuthenticated(false)
-    setShowLogin(true)
-  }, [setAuthenticated, setShowLogin])
 }

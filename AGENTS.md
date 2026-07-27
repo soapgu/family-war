@@ -30,7 +30,7 @@ root package.json  (concurrently orchestrates all three)
 | client unit | `npm test --prefix client` | Vitest |
 | client unit watch | `npm run test:watch --prefix client` | |
 | admin unit | `npm test --prefix admin-client` | Vitest |
-| admin acceptance | `npm run test:acceptance -- --reset` | requires `ACCEPTANCE_ADMIN_URL` / `ACCEPTANCE_API_URL` / `ACCEPTANCE_ADMIN_PASSWORD` |
+| admin acceptance | `npm run test:acceptance -- --reset` | requires `ACCEPTANCE_ADMIN_URL` / `ACCEPTANCE_AUTH_API_URL` / `ACCEPTANCE_API_URL` / `ACCEPTANCE_ADMIN_PASSWORD` |
 | admin acceptance check | `npm run test:acceptance:check` | offline structure check |
 | client e2e | `npm run test:e2e` | requires `npm run dev` running |
 | client e2e (headed) | `npm run test:e2e:headed` | visible browser for debugging |
@@ -52,6 +52,7 @@ root package.json  (concurrently orchestrates all three)
 - **Admin platform registry** is `admin-client/src/app/appRegistry.js`; platform navigation and home cards use the same metadata.
 - **Admin module public boundary** is `admin-client/src/modules/<module>/index.js`; platform code must not import module-internal pages or API files directly.
 - **Admin request states** use `RequestState`; top-level route rendering is protected by `AppErrorBoundary`.
+- **Admin authentication API** uses `/api/admin-auth/login|me|logout` and the HttpOnly `admin_session` Cookie; family-war business requests remain under `/api/family-war/admin/*`.
 - **Three game modes**: RPS (1v1), 算术 (arithmetic, all-vs-all), 默写 (spelling, all-vs-all with TTS + Unsplash images)
 - **Spelling mode** uses `server/src/data/words.json` word bank (每章包含 `context` 字段配文章节上下文，用于 Unsplash 搜索退选); difficulty levels: `easy` / `normal` / `hard`
 - **Room ID** hardcoded to `'default'`; `roomId` param on events is a design预留

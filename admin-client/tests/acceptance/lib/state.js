@@ -11,11 +11,12 @@ const STATE_PATH = path.join(__dirname, '..', 'output', 'state.json')
  */
 function defaultState() {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     gitCommit: '',
     adminBaseURL: '',
+    authBaseURL: '',
     apiBaseURL: '',
-    planVersion: 'v3.3 Phase 3',
+    planVersion: 'v3.5 Phase 3',
     completed: [],
     current: null,
     failed: [],
@@ -47,9 +48,10 @@ function load(config) {
     const data = JSON.parse(fs.readFileSync(STATE_PATH, 'utf-8'))
     const gitCommit = getGitCommit()
     if (
-      data.schemaVersion !== 2 ||
+      data.schemaVersion !== 3 ||
       data.gitCommit !== gitCommit ||
       data.adminBaseURL !== config.adminBaseURL ||
+      data.authBaseURL !== config.authBaseURL ||
       data.apiBaseURL !== config.apiBaseURL
     ) {
       console.log('运行指纹不匹配，请使用 --reset 重新开始')

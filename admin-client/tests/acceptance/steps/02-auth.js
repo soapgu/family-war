@@ -24,10 +24,10 @@ const step = {
     await page.waitForTimeout(500)
     details.push('点击"登出"按钮')
 
-    // 从浏览器上下文读取 Cookie，确认 admin_token 已删除。
+    // 从浏览器上下文读取 Cookie，确认 admin_session 已删除。
     const cookies = await page.context().cookies()
-    if (cookies.find(c => c.name === 'admin_token')) throw new Error('登出后 admin_token Cookie 未清除')
-    details.push('admin_token Cookie 已清除')
+    if (cookies.find(c => c.name === 'admin_session')) throw new Error('登出后 admin_session Cookie 未清除')
+    details.push('admin_session Cookie 已清除')
 
     // 重新加载受保护页面，未认证用户应再次看到登录弹窗。
     await page.reload({ waitUntil: 'networkidle' })
@@ -61,9 +61,10 @@ const step = {
     await page.waitForFunction(() => !document.querySelector('.ant-modal'), null, { timeout: 10000 })
     details.push('重新登录成功')
 
-    const finalCookie = (await page.context().cookies()).find(c => c.name === 'admin_token')
-    if (!finalCookie) throw new Error('重新登录后未设置 admin_token Cookie')
-    details.push(`admin_token Cookie 已设置，过期于 ${new Date(finalCookie.expires * 1000).toISOString()}`)
+    const finalCookie = (await page.context().cookies()).find(c => c.name === 'admin_session')
+    if (!finalCookie) throw new Error('重新登录后未设置 admin_session Cookie')
+    if (!finalCookie.httpOnly) throw new Error('admin_session Cookie 未设置 HttpOnly')
+    details.push(`admin_session Cookie 已设置，过期于 ${new Date(finalCookie.expires * 1000).toISOString()}`)
 
     reporter.onStepPass(this.id, details)
   },

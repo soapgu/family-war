@@ -11,10 +11,10 @@ function response(body, status = 200) {
   }
 }
 
-function renderPage(logout = vi.fn()) {
+function renderPage(logout = vi.fn(), expireSession = logout) {
   return render(
     <MemoryRouter>
-      <AdminAuthProvider logout={logout}>
+      <AdminAuthProvider logout={logout} expireSession={expireSession}>
         <AdminPage />
       </AdminAuthProvider>
     </MemoryRouter>,
@@ -55,11 +55,24 @@ describe('AdminPage', () => {
 
   it('状态接口返回 401 时退出登录', async () => {
     const logout = vi.fn()
+    const expireSession = vi.fn()
     fetch.mockResolvedValueOnce(response({ error: 'unauthorized' }, 401))
 
+    renderPage(logout, expireSession)
+
+    await waitFor(() => expect(expireSession).toHaveBeenCalledOnce())
+    expect(logout).not.toHaveBeenCalled()
+  })
+
+  it('主动登出交给平台认证上下文处理', async () => {
+    const logout = vi.fn().mockResolvedValue(undefined)
     renderPage(logout)
+    await screen.findByText('在线房间')
+
+    fireEvent.click(screen.getByRole('button', { name: /登出/ }))
 
     await waitFor(() => expect(logout).toHaveBeenCalledOnce())
+    expect(fetch.mock.calls.flat().join(' ')).not.toContain('/admin/logout')
   })
 
   it('网络失败时展示可重试状态并在重试后恢复', async () => {

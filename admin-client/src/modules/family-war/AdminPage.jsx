@@ -17,7 +17,7 @@ const ROLE_EMOJI = {
 
 function AdminPage() {
   const navigate = useNavigate()
-  const { logout } = useAdminAuth()
+  const { logout, expireSession } = useAdminAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -28,14 +28,14 @@ function AdminPage() {
       setData(await familyWarAdminApi.getStatus())
     } catch (requestError) {
       if (requestError instanceof ApiRequestError && requestError.status === 401) {
-        logout()
+        expireSession()
         return
       }
       setError(requestError instanceof ApiRequestError ? requestError.message : '获取后台状态失败')
     } finally {
       setLoading(false)
     }
-  }, [logout])
+  }, [expireSession])
 
   useEffect(() => {
     fetchStatus()
@@ -47,12 +47,7 @@ function AdminPage() {
   const matchHistory = data?.matchHistory || []
 
   async function handleLogout() {
-    try {
-      await familyWarAdminApi.logout()
-    } catch {
-      // ignore
-    }
-    logout()
+    await logout()
   }
 
   return (

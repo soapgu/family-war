@@ -2,6 +2,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 
 const REPOSITORY_ROOT = path.resolve(__dirname, '..', '..', '..')
 const CONFIG_LOCAL_PATH = path.join(REPOSITORY_ROOT, 'server', 'config.local.js')
@@ -46,7 +47,7 @@ function pm2Restart() {
  */
 async function waitForHealth(url, maxRetries = 30, delay = 1000, checkPassword = true) {
   const http = require('http')
-  const apiBase = config.apiBaseURL
+  const authBase = config.authBaseURL
   const passwordSet = config.adminPassword && config.adminPassword !== ''
   for (let i = 0; i < maxRetries; i++) {
     try {
@@ -70,9 +71,9 @@ async function waitForHealth(url, maxRetries = 30, delay = 1000, checkPassword =
       const loginBody = await new Promise((resolve, reject) => {
         const postData = JSON.stringify({ password: 'probe-wrong' })
         const options = {
-          hostname: new URL(apiBase).hostname,
-          port: new URL(apiBase).port,
-          path: new URL(apiBase).pathname + '/admin/login',
+          hostname: new URL(authBase).hostname,
+          port: new URL(authBase).port,
+          path: new URL(authBase).pathname + '/login',
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
         }
@@ -100,22 +101,23 @@ async function waitForHealth(url, maxRetries = 30, delay = 1000, checkPassword =
 }
 
 /**
- * 在内存中备份本地配置，并临时写入验收密码。
+ * 在内存中备份本地配置，并临时写入验收密码和随机 JWT Secret。
  *
  * @param {string} password 管理员密码。
  */
-function backupAndSetAdminPassword(password) {
+function backupAndSetAdminAuth(password) {
   if (!fs.existsSync(CONFIG_LOCAL_PATH)) return
   configLocalBackup = fs.readFileSync(CONFIG_LOCAL_PATH, 'utf-8')
   delete require.cache[require.resolve(CONFIG_LOCAL_PATH)]
   const current = require(CONFIG_LOCAL_PATH)
   current.auth = current.auth || {}
   current.auth.adminPassword = password
+  current.auth.jwtSecret = crypto.randomBytes(32).toString('hex')
   const output = `module.exports = ${JSON.stringify(current, null, 2)}\n`
   fs.writeFileSync(CONFIG_LOCAL_PATH, output, 'utf-8')
   const readBack = fs.readFileSync(CONFIG_LOCAL_PATH, 'utf-8')
   if (readBack !== output) throw new Error('config.local.js 写入验证失败')
-  console.log(`已写入 ${CONFIG_LOCAL_PATH} (auth.adminPassword)`)
+  console.log(`已写入 ${CONFIG_LOCAL_PATH}（临时管理员密码和随机 JWT Secret）`)
 }
 
 /** 从内存备份恢复本地配置文件。 */
@@ -168,6 +170,8 @@ function checkSetup() {
   const requiredPaths = [
     CONFIG_LOCAL_PATH,
     path.join(REPOSITORY_ROOT, 'server', 'src', 'data'),
+    path.join(REPOSITORY_ROOT, 'server', 'src', 'routes', 'adminAuth.js'),
+    path.join(REPOSITORY_ROOT, 'admin-client', 'src', 'auth', 'api.js'),
     ...STEP_FILES.map((file) => path.join(STEPS_DIR, file)),
   ]
   const missing = requiredPaths.filter((target) => !fs.existsSync(target))
@@ -183,17 +187,24 @@ function checkSetup() {
   }
   require.resolve('@playwright/test')
   assertAdminNetworkBoundary(
-    ['http://localhost:8080/api/family-war/admin/status'],
+    [
+      'http://localhost:8080/api/admin-auth/me',
+      'http://localhost:8080/api/admin-auth/login',
+      'http://localhost:8080/api/family-war/admin/status',
+    ],
     '/api/family-war',
+    '/api/admin-auth',
   )
   for (const invalidURL of [
+    'http://localhost:8080/api/family-war/admin/login',
+    'http://localhost:8080/api/admin/login',
     'http://localhost:8080/family-war/api/admin/status',
     'http://localhost:8080/socket/family-war/?EIO=4',
     'http://localhost:8080/family-war/socket.io/?EIO=4',
   ]) {
     let rejected = false
     try {
-      assertAdminNetworkBoundary([invalidURL], '/api/family-war')
+      assertAdminNetworkBoundary([invalidURL], '/api/family-war', '/api/admin-auth')
     } catch {
       rejected = true
     }
@@ -206,9 +217,10 @@ function checkSetup() {
  * 约束管理端只能访问规范的管理 API，且不得建立 Socket.IO 连接。
  *
  * @param {string[]} requestURLs 页面发出的请求地址。
- * @param {string} apiPath 允许的 API 路径前缀。
+ * @param {string} apiPath 允许的 family-war API 路径前缀。
+ * @param {string} authPath 允许的管理员认证 API 路径前缀。
  */
-function assertAdminNetworkBoundary(requestURLs, apiPath) {
+function assertAdminNetworkBoundary(requestURLs, apiPath, authPath) {
   const socketRequests = requestURLs.filter((url) => {
     const parsed = new URL(url)
     return parsed.pathname.includes('/socket.io') || parsed.pathname.startsWith('/socket/')
@@ -220,9 +232,22 @@ function assertAdminNetworkBoundary(requestURLs, apiPath) {
   const invalidAdminAPIs = requestURLs.filter((url) => {
     const pathname = new URL(url).pathname
     if (pathname.startsWith('/family-war/api/')) return true
-    const isAdminAPI = pathname.includes('/api/admin/')
-      || pathname.includes('/api/family-war/admin/')
-    return isAdminAPI && !pathname.startsWith(`${apiPath}/admin/`)
+    if (pathname.startsWith('/api/admin/') || pathname.startsWith(`${apiPath}/admin-auth/`)) {
+      return true
+    }
+    if (
+      pathname === `${apiPath}/admin/login` ||
+      pathname === `${apiPath}/admin/logout`
+    ) {
+      return true
+    }
+    if (pathname.startsWith('/api/admin-auth/')) {
+      return !pathname.startsWith(`${authPath}/`)
+    }
+    if (pathname.includes('/api/family-war/admin/')) {
+      return !pathname.startsWith(`${apiPath}/admin/`)
+    }
+    return false
   })
   if (invalidAdminAPIs.length > 0) {
     throw new Error(`管理 API 未使用 ${apiPath}/：${invalidAdminAPIs.join(', ')}`)
@@ -250,9 +275,18 @@ async function main() {
     sigintCount++
     if (sigintCount === 1) {
       console.log('\n收到中断信号，正在执行恢复...')
-      cleanConfigLocal()
-      console.log('恢复完成，安全退出。再次 Ctrl+C 强制退出。')
-      process.exit(130)
+      Promise.resolve()
+        .then(() => cleanConfigLocal())
+        .then(() => pm2Restart())
+        .then(() => waitForHealth(config.apiBaseURL + '/health', 15, 1000, false))
+        .then(() => {
+          console.log('配置和服务均已恢复，安全退出。再次 Ctrl+C 强制退出。')
+          process.exit(130)
+        })
+        .catch((error) => {
+          console.error(`中断恢复失败：${error.message}`)
+          process.exit(1)
+        })
     } else {
       console.log('\n强制退出')
       process.exit(137)
@@ -264,9 +298,24 @@ async function main() {
   // 如果设置了管理员密码，临时覆写 config.local.js 并重启。
   const hasPassword = config.adminPassword && config.adminPassword !== ''
   if (hasPassword) {
-    try { backupAndSetAdminPassword(config.adminPassword) } catch (e) { console.error('写入 config.local.js 失败:', e.message) }
-    pm2Restart()
-    await waitForHealth(config.apiBaseURL + '/health')
+    try {
+      backupAndSetAdminAuth(config.adminPassword)
+      pm2Restart()
+      await waitForHealth(config.apiBaseURL + '/health')
+    } catch (error) {
+      console.error(`临时认证配置准备失败：${error.message}`)
+      cleanConfigLocal()
+      try {
+        pm2Restart()
+        await waitForHealth(config.apiBaseURL + '/health', 15, 1000, false)
+      } catch (recoveryError) {
+        throw new Error(
+          `临时认证配置准备失败，且原配置恢复失败：${recoveryError.message}`,
+          { cause: error },
+        )
+      }
+      throw error
+    }
   }
 
   if (onlyRestore) {
@@ -292,8 +341,9 @@ async function main() {
     state = stateLib.defaultState()
     state.gitCommit = stateLib.getGitCommit()
     state.adminBaseURL = config.adminBaseURL
+    state.authBaseURL = config.authBaseURL
     state.apiBaseURL = config.apiBaseURL
-    state.planVersion = 'v3.4 Phase 5'
+    state.planVersion = 'v3.5 Phase 3'
     state.startedAt = new Date().toISOString()
     console.log('新建运行指纹')
   } else {
@@ -356,7 +406,7 @@ async function main() {
           /** @type {import('./types').StepContext} */
           const stepContext = { state, page, config, reporter, context }
           await step.run(stepContext)
-          assertAdminNetworkBoundary(requestURLs, config.apiPath)
+          assertAdminNetworkBoundary(requestURLs, config.apiPath, config.authPath)
         }
 
         await runStepWithTimeout(step.id, run(), step.timeoutMs || stepTimeout)

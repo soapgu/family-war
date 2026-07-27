@@ -21,7 +21,7 @@ function getActiveWordCount(config) {
 }
 
 function WordConfigPage() {
-  const { logout } = useAdminAuth()
+  const { expireSession } = useAdminAuth()
   const { message } = App.useApp()
   const voiceRef = useRef(null)
   const utteranceRef = useRef(null)
@@ -66,11 +66,11 @@ function WordConfigPage() {
 
   const reportRequestError = useCallback((requestError, fallback) => {
     if (requestError instanceof ApiRequestError && requestError.status === 401) {
-      logout()
+      expireSession()
       return
     }
     message.error(requestError instanceof ApiRequestError ? requestError.message : fallback)
-  }, [logout, message])
+  }, [expireSession, message])
 
   const fetchConfig = useCallback(async () => {
     setLoading(true)
@@ -80,7 +80,7 @@ function WordConfigPage() {
       setHasUnsavedChanges(false)
     } catch (requestError) {
       if (requestError instanceof ApiRequestError && requestError.status === 401) {
-        logout()
+        expireSession()
         return
       }
       setLoadError(requestError instanceof ApiRequestError
@@ -89,7 +89,7 @@ function WordConfigPage() {
     } finally {
       setLoading(false)
     }
-  }, [logout])
+  }, [expireSession])
 
   useEffect(() => { fetchConfig() }, [fetchConfig])
 

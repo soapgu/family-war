@@ -16,14 +16,14 @@ class LoginPage {
 
   /** @returns {Promise<boolean>} 当前浏览器会话是否已登录。 */
   async isLoggedIn() {
-    return await this.page.evaluate(async (apiPath) => {
+    return await this.page.evaluate(async (authPath) => {
       try {
-        const res = await fetch(`${apiPath}/admin/status`)
+        const res = await fetch(`${authPath}/me`)
         return res.ok
       } catch {
         return false
       }
-    }, this.config.apiPath)
+    }, this.config.authPath)
   }
 
   /** 使用验收配置中的密码完成登录。 */
@@ -32,7 +32,7 @@ class LoginPage {
     await dialog.waitFor({ state: 'visible', timeout: 10000 })
     await dialog.getByPlaceholder('请输入管理密码').fill(this.config.adminPassword)
     const loginResponsePromise = this.page.waitForResponse(
-      (res) => new URL(res.url()).pathname === `${this.config.apiPath}/admin/login`
+      (res) => new URL(res.url()).pathname === `${this.config.authPath}/login`
         && res.request().method() === 'POST'
     )
     await dialog.getByRole('button', { name: /登录/ }).click()

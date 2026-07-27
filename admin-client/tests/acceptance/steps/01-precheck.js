@@ -51,7 +51,7 @@ const step = {
     }
     await page.fill('input[placeholder="请输入管理密码"]', config.adminPassword)
     const loginResponsePromise = page.waitForResponse(
-      (response) => new URL(response.url()).pathname === `${config.apiPath}/admin/login`
+      (response) => new URL(response.url()).pathname === `${config.authPath}/login`
         && response.request().method() === 'POST'
     )
     await page.click('button:has-text("登录")')

@@ -584,6 +584,7 @@ CLIENT_BASE_URL=http://localhost:8080/family-war/ npm run test:e2e
 
 # 预发布完整验收
 ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
+ACCEPTANCE_AUTH_API_URL=http://localhost:8080/api/admin-auth \
 ACCEPTANCE_API_URL=http://localhost:8080/api/family-war \
 ACCEPTANCE_ADMIN_PASSWORD= \
 npm run test:acceptance -- --reset

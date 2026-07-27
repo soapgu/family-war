@@ -8,6 +8,7 @@
 > - `@playwright/test` 现统一安装在根 `node_modules`，两子包（admin-client / client）共用；
 > - runner 仍可准备 `server/config.local.js`、重启 PM2 并恢复词库与图片数据，但这些属于管理端端到端验收的环境编排；
 > - v3.3 起，`ACCEPTANCE_API_URL` 表示完整标准 API 基址，不再表示游戏页面前缀；
+> - v3.5 起，`ACCEPTANCE_AUTH_API_URL` 独立表示管理员认证 API 基址；
 > - Socket.IO 与新旧网关兼容验收由 `server/tests/gateway.js` 承担，管理端仍不安装 Socket.IO 客户端。
 
 ## 1. 当前目标与范围
@@ -89,7 +90,8 @@ npx playwright install chromium
 | 环境变量 | 用途 |
 |---|---|
 | `ACCEPTANCE_ADMIN_URL` | 管理端浏览器地址，例如 `http://localhost:8080/admin` |
-| `ACCEPTANCE_API_URL` | 完整标准 API 基址，例如 `http://localhost:8080/api/family-war` |
+| `ACCEPTANCE_AUTH_API_URL` | 独立管理员认证 API 基址，例如 `http://localhost:8080/api/admin-auth` |
+| `ACCEPTANCE_API_URL` | Family War 标准 API 基址，例如 `http://localhost:8080/api/family-war` |
 | `ACCEPTANCE_ADMIN_PASSWORD` | 验收期间使用的管理员密码，允许传入空字符串 |
 
 可选环境变量：
@@ -110,12 +112,14 @@ npx playwright install chromium
 cd /Users/guhui/Githubs/family-war
 
 ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
+ACCEPTANCE_AUTH_API_URL=http://localhost:8080/api/admin-auth \
 ACCEPTANCE_API_URL=http://localhost:8080/api/family-war \
 ACCEPTANCE_ADMIN_PASSWORD=123456 \
 npm run test:acceptance -- --reset
 ```
 
-浏览器通过 nginx 的独立 `/admin` 站点访问，API 通过标准 `/api/family-war` 入口访问，不使用 Vite 开发地址代替预发布环境。
+浏览器通过 nginx 的独立 `/admin` 站点访问，认证通过 `/api/admin-auth`，Family War
+业务通过 `/api/family-war`，不使用 Vite 开发地址代替预发布环境。
 
 ## 4. runner 当前行为
 
@@ -222,16 +226,21 @@ step.timeoutMs || config.stepTimeoutOverride || 60000
 2. 临时写入 `auth.adminPassword`。
 3. 执行 `pm2 restart family-war-server`。
 4. 等待 `/api/family-war/health` 正常。
-5. 使用错误密码探针确认密码保护已经生效。
-6. 执行验收。
-7. 在全局 `finally` 中恢复原文件、重启 PM2 并等待健康检查。
+5. 同时写入本轮专用的 32 字节随机 JWT Secret，不输出 Secret 内容。
+6. 使用错误密码探针确认密码保护已经生效。
+7. 执行验收。
+8. 在全局 `finally` 中恢复原文件、重启 PM2 并等待健康检查。
 
-正常完成或步骤失败都会进入上述 `finally`。SIGINT 首次触发时只尝试恢复 `config.local.js` 后退出；它不会完整执行浏览器关闭、PM2 重启和 recovery 数据恢复。
+正常完成或步骤失败都会进入上述 `finally`。SIGINT 首次触发时会恢复
+`config.local.js`、重启 PM2 并等待健康检查后退出，避免磁盘中的原 JWT Secret 与运行
+进程中的临时 Secret 不一致；再次 Ctrl+C 才会强制退出。浏览器关闭和 recovery 数据恢复
+仍由正常 `finally` 流程负责。
 
 执行 `--restore-only` 时建议使用空密码变量，避免触发临时密码生命周期：
 
 ```bash
 ACCEPTANCE_ADMIN_URL=http://localhost:8080/admin \
+ACCEPTANCE_AUTH_API_URL=http://localhost:8080/api/admin-auth \
 ACCEPTANCE_API_URL=http://localhost:8080/api/family-war \
 ACCEPTANCE_ADMIN_PASSWORD= \
 npm run test:acceptance:restore
@@ -244,9 +253,9 @@ npm run test:acceptance:restore
 `ensureAuthenticated()`：
 
 1. 打开 `/admin/family-war`。
-2. 请求 `/api/family-war/admin/status` 检查当前 Context 是否已认证。
+2. 请求 `/api/admin-auth/me` 检查当前 Context 是否已认证。
 3. 未认证时等待登录弹窗，填写密码。
-4. 监听 `POST /api/family-war/admin/login`。
+4. 监听 `POST /api/admin-auth/login`。
 5. 非 2xx 时立即报告 HTTP 状态和服务端错误。
 6. 成功后等待弹窗在 10 秒内关闭。
 
@@ -351,7 +360,7 @@ npm run test:acceptance:restore
 - 5a 名称仍包含“预检查”，但当前不会运行 Jest、Vitest、生产构建或 Git 工作区检查；这些需要在验收前单独执行。
 - `AdminDashboard.js` 和 `LoginPage.js` 已存在，但当前步骤主要直接使用 Playwright locator；`WordConfigPage.js` 被 5d 使用。
 - 步骤超时不会取消底层异步任务。
-- SIGINT 不执行完整的全局清理流程。
+- SIGINT 会恢复认证配置并重启 PM2，但不执行浏览器关闭和词库/图片 recovery 的完整全局清理。
 - `--restore-only` 在进程早退前不进入普通验收的全局 `finally`。
 - 没有 `--from`、`--continue-on-failure` 或单步骤执行参数。
 

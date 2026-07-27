@@ -18,14 +18,6 @@ export const familyWarAdminApi = {
     return request('/admin/status')
   },
 
-  login(password) {
-    return jsonRequest('/admin/login', 'POST', { password })
-  },
-
-  logout() {
-    return request('/admin/logout', { method: 'POST' })
-  },
-
   getWordConfig() {
     return request('/admin/word-config')
   },

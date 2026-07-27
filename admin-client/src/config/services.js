@@ -11,10 +11,11 @@ export function joinServicePath(basePath, resourcePath) {
 
 export function createServiceConfig({ isDev }) {
   return Object.freeze({
+    ADMIN_AUTH_API_BASE: '/api/admin-auth',
     FAMILY_WAR_API_BASE: isDev ? '/api' : '/api/family-war',
   })
 }
 
-export const { FAMILY_WAR_API_BASE } = createServiceConfig({
+export const { ADMIN_AUTH_API_BASE, FAMILY_WAR_API_BASE } = createServiceConfig({
   isDev: import.meta.env.DEV,
 })

@@ -25,7 +25,7 @@
     "preview": "本地预览 admin-client/build/ 中的 Vite 生产构建。",
     "test": "以非监听模式执行全部管理端 Vitest 单元测试。",
     "test:watch": "以监听模式运行管理端 Vitest，源码变化后自动重测。",
-    "test:acceptance": "运行管理端 Playwright 预发布验收，需要提供 ACCEPTANCE_ADMIN_URL、ACCEPTANCE_API_URL 和 ACCEPTANCE_ADMIN_PASSWORD。",
+    "test:acceptance": "运行管理端 Playwright 预发布验收，需要分别提供管理页面、认证 API、Family War API 和管理员密码。",
     "test:acceptance:restore": "不运行浏览器步骤，只恢复验收登记的词库配置和图片数据。",
     "test:acceptance:check": "不访问预发布环境，只检查验收目录、步骤模块、服务端路径和 Playwright 依赖。"
   },
