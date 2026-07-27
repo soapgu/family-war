@@ -1182,13 +1182,13 @@ v3.5 不包含：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 1a | 盘点当前登录、退出、状态探测、认证中间件、限流、来源校验和 Cookie 行为，记录 v3.4 响应及错误语义 | `server/src/routes/admin.js`, `server/src/middleware/auth.js`, `admin-client/src/auth/`, 现有测试 | ⬜ |
-| 1b | 冻结 `/api/admin-auth/login`、`/api/admin-auth/me`、`/api/admin-auth/logout` 的方法、请求体、成功响应、401、403、429 和 Cookie 契约 | `step.md`, 服务端测试设计 | ⬜ |
-| 1c | 确定本版本继续使用单一管理员密码和现有管理员 JWT Secret；定义管理员 Token 类型/受众声明，明确未来普通用户 Token 不直接复用该验证边界 | `server/config.js`, 认证设计说明 | ⬜ |
-| 1d | 冻结 `admin_session` Cookie 的名称、有效期、Path、HttpOnly、SameSite、Secure 和删除属性；明确升级后允许管理员重新登录 | 认证设计说明、测试清单 | ⬜ |
-| 1e | 汇总 v3.3—v3.4 兼容日志及发布前增量，排除验收、监控和扫描流量，输出旧 API 与 Socket.IO 是否允许下线的独立结论 | Nginx 兼容日志、`docs/acceptance/v3.5/` | ⬜ |
-| 1f | 导出旧 Nginx location 配置片段，记录恢复命令、验证命令和负责人可执行的回滚清单 | Nginx 配置备份、`docs/acceptance/v3.5/rollback.md` | ⬜ |
-| 1g | 增加契约级失败测试或测试清单，覆盖错误密码、缺少 Cookie、过期/篡改/错误类型 Token、跨源 POST 和限流 | `server/__tests__/`, `admin-client/src/**/*.test.*` | ⬜ |
+| 1a | 盘点当前登录、退出、状态探测、认证中间件、限流、来源校验和 Cookie 行为，记录 v3.4 响应及错误语义 | `server/src/routes/admin.js`, `server/src/middleware/auth.js`, `admin-client/src/auth/`, 现有测试 | ✅ |
+| 1b | 冻结 `/api/admin-auth/login`、`/api/admin-auth/me`、`/api/admin-auth/logout` 的方法、请求体、成功响应、401、403、429 和 Cookie 契约 | `step.md`, 服务端测试设计 | ✅ |
+| 1c | 确定本版本继续使用单一管理员密码和现有管理员 JWT Secret；定义管理员 Token 类型/受众声明，明确未来普通用户 Token 不直接复用该验证边界 | `server/config.js`, 认证设计说明 | ✅ |
+| 1d | 冻结 `admin_session` Cookie 的名称、有效期、Path、HttpOnly、SameSite、Secure 和删除属性；明确升级后允许管理员重新登录 | 认证设计说明、测试清单 | ✅ |
+| 1e | 汇总 v3.3—v3.4 兼容日志及发布前增量，排除验收、监控和扫描流量，输出旧 API 与 Socket.IO 是否允许下线的独立结论 | Nginx 兼容日志、`docs/acceptance/v3.5/` | ✅ |
+| 1f | 导出旧 Nginx location 配置片段，记录恢复命令、验证命令和负责人可执行的回滚清单 | Nginx 配置备份、`docs/acceptance/v3.5/rollback.md` | ✅ |
+| 1g | 增加契约级失败测试或测试清单，覆盖错误密码、缺少 Cookie、过期/篡改/错误类型 Token、跨源 POST 和限流 | `server/__tests__/`, `admin-client/src/**/*.test.*` | ✅ |
 
 ## Phase 2：拆分服务端管理员认证
 
