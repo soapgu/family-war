@@ -12,6 +12,121 @@ function makeNickname(label = 'p') {
   return `e2e-${pid}-${seed}-${label}-${++seq}`
 }
 
+// ─── 诊断监听 ──────────────────────────────────────────────
+
+/**
+ * 去除 URL 中的查询参数和 hash，避免测试附件中泄露 token 等敏感信息。
+ * @param {string} url
+ * @returns {string}
+ */
+function sanitizeUrl(url) {
+  try {
+    const u = new URL(url)
+    return `${u.protocol}//${u.host}${u.pathname}`
+  } catch {
+    return url
+  }
+}
+
+/**
+ * 在 Page 上注册全局诊断监听器（pageerror / console.error / 请求失败 / WebSocket 断连）。
+ * 返回的诊断对象会在测试失败时作为 JSON 附件写入 test-results。
+ * @param {import('@playwright/test').Page} page
+ * @returns {{ errors: Array<Object>, requestFailures: Array<Object>, socketEvents: Array<Object> }}
+ */
+function registerDiagnostics(page) {
+  const MAX = 50
+  const diagnostics = {
+    errors: [],
+    requestFailures: [],
+    socketEvents: [],
+  }
+
+  page.on('pageerror', (error) => {
+    if (diagnostics.errors.length >= MAX) diagnostics.errors.shift()
+    diagnostics.errors.push({
+      type: 'pageerror',
+      message: String(error.message).slice(0, 500),
+      time: new Date().toISOString(),
+    })
+  })
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      if (diagnostics.errors.length >= MAX) diagnostics.errors.shift()
+      diagnostics.errors.push({
+        type: 'console.error',
+        text: String(msg.text()).slice(0, 500),
+        time: new Date().toISOString(),
+      })
+    }
+  })
+
+  page.on('requestfailed', (request) => {
+    if (diagnostics.requestFailures.length >= MAX) diagnostics.requestFailures.shift()
+    diagnostics.requestFailures.push({
+      url: sanitizeUrl(request.url()),
+      method: request.method(),
+      failure: request.failure()?.errorText || 'unknown',
+      time: new Date().toISOString(),
+    })
+  })
+
+  page.on('websocket', (ws) => {
+    ws.on('close', () => {
+      if (diagnostics.socketEvents.length >= MAX) diagnostics.socketEvents.shift()
+      diagnostics.socketEvents.push({
+        type: 'ws.close',
+        url: sanitizeUrl(ws.url()),
+        time: new Date().toISOString(),
+      })
+    })
+    ws.on('frameerror', (error) => {
+      if (diagnostics.socketEvents.length >= MAX) diagnostics.socketEvents.shift()
+      diagnostics.socketEvents.push({
+        type: 'ws.frameerror',
+        url: sanitizeUrl(ws.url()),
+        error: String(error.message).slice(0, 500),
+        time: new Date().toISOString(),
+      })
+    })
+  })
+
+  return diagnostics
+}
+
+/**
+ * 测试失败时，将诊断数据作为 JSON 附件写入 test-results。
+ * 成功场景不生成任何附件。
+ * @param {import('@playwright/test').TestInfo} testInfo
+ * @param {{ errors: Array<Object>, requestFailures: Array<Object>, socketEvents: Array<Object> }} diagnostics
+ * @param {string} [label] - 附件名前缀（双人场景区分 playerA / playerB）
+ */
+async function attachDiagnostics(testInfo, diagnostics, label = '') {
+  if (!testInfo) return
+  const prefix = label ? `${label}-` : ''
+  if (!testInfo.status || testInfo.status === 'passed' || testInfo.status === 'skipped') return
+
+  if (diagnostics.errors.length > 0) {
+    await testInfo.attach(`${prefix}page-errors`, {
+      body: JSON.stringify(diagnostics.errors, null, 2),
+      contentType: 'application/json',
+    })
+  }
+  if (diagnostics.requestFailures.length > 0) {
+    await testInfo.attach(`${prefix}request-failures`, {
+      body: JSON.stringify(diagnostics.requestFailures, null, 2),
+      contentType: 'application/json',
+    })
+  }
+  if (diagnostics.socketEvents.length > 0) {
+    await testInfo.attach(`${prefix}socket-events`, {
+      body: JSON.stringify(diagnostics.socketEvents, null, 2),
+      contentType: 'application/json',
+    })
+  }
+}
+
 // ─── 类型定义（JSDoc，提供 IDE 智能提示）────────────────────
 //
 // 在 test 函数参数中写 ({ dualPlayers }) 时：
@@ -22,9 +137,10 @@ function makeNickname(label = 'p') {
 /**
  * 单人玩家句柄
  * @typedef {Object} PlayerHandle
- * @property {import('@playwright/test').BrowserContext} ctx   - 独立的浏览器上下文
- * @property {import('@playwright/test').Page}            page - 该上下文中的页面
- * @property {string}                                     nickname - 自动生成的唯一昵称
+ * @property {import('@playwright/test').BrowserContext} ctx        - 独立的浏览器上下文
+ * @property {import('@playwright/test').Page}            page      - 该上下文中的页面
+ * @property {string}                                     nickname  - 自动生成的唯一昵称
+ * @property {{ errors: Array<Object>, requestFailures: Array<Object>, socketEvents: Array<Object> }} diagnostics - 诊断数据（测试失败时自动附件）
  */
 
 /**
@@ -111,9 +227,11 @@ export const test = base.extend({
     const ctx = await browser.newContext()
     const page = await ctx.newPage()
     const nickname = makeNickname()
+    const diagnostics = registerDiagnostics(page)
     // ---------- 测试运行 ----------
-    await use({ ctx, page, nickname })
+    await use({ ctx, page, nickname, diagnostics })
     // ---------- cleanup ----------
+    await attachDiagnostics(test.info(), diagnostics)
     await page.close()
     await ctx.close()           // 断开该 Context 对应的 Socket.IO 连接
   },
@@ -134,14 +252,19 @@ export const test = base.extend({
     const ctxB = await browser.newContext()
     const pageA = await ctxA.newPage()
     const pageB = await ctxB.newPage()
+    const diagA = registerDiagnostics(pageA)
+    const diagB = registerDiagnostics(pageB)
     /** @type {DualPlayers} */
     const pair = {
-      a: { ctx: ctxA, page: pageA, nickname: makeNickname('A') },
-      b: { ctx: ctxB, page: pageB, nickname: makeNickname('B') },
+      a: { ctx: ctxA, page: pageA, nickname: makeNickname('A'), diagnostics: diagA },
+      b: { ctx: ctxB, page: pageB, nickname: makeNickname('B'), diagnostics: diagB },
     }
     // ---------- 测试运行 ----------
     await use(pair)
     // ---------- cleanup ----------
+    const info = test.info()
+    await attachDiagnostics(info, diagA, 'playerA')
+    await attachDiagnostics(info, diagB, 'playerB')
     await Promise.all([pageA.close(), pageB.close()])
     await Promise.all([ctxA.close(), ctxB.close()])
   },
