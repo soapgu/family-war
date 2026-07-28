@@ -18,7 +18,12 @@ function registerHandlers(io) {
     const room = roomManager.getRoom(roomId)
     const winnerNick = room?.players[result.winner]?.nickname || result.winner
 
-    logger.info(`[round] 第${result.round}题 — ${winnerNick} 答对`)
+    if (game.type === 'rps') {
+      const outcome = result.winner === 'draw' ? '平局' : `${winnerNick} 胜出`
+      logger.info(`[round] 第${result.round}局 — ${outcome}`)
+    } else {
+      logger.info(`[round] 第${result.round}题 — ${winnerNick} 答对`)
+    }
 
     game.players.forEach((playerId) => {
       io.to(playerId).emit(
@@ -127,10 +132,16 @@ function registerHandlers(io) {
       }
 
       if (outcome.action === 'waiting') {
-        if (game.type === 'rps' && game.players.includes(ROBOT_ID)) {
-          logger.info(`[move] ${getNickname()} → ${input.choice} | 机器人出拳`)
-          const robotResult = gameManager.handleRobotInput(rid)
-          if (robotResult) handleGameResult(rid, robotResult)
+        if (game.type === 'rps') {
+          const hasRobot = game.players.includes(ROBOT_ID)
+          logger.info(`[move] ${getNickname()} → ${input.choice} | ${hasRobot ? '机器人出拳' : '等待对手出拳'}`)
+
+          if (hasRobot) {
+            const robotResult = gameManager.handleRobotInput(rid)
+            if (robotResult) handleGameResult(rid, robotResult)
+          } else {
+            socket.emit('game:waiting')
+          }
           return
         }
 

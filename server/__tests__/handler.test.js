@@ -12,10 +12,14 @@ const registerHandlers = require('../src/socket/handler')
 jest.mock('../src/socket/roomManager')
 jest.mock('../src/socket/gameManager')
 jest.mock('../src/socket/robotScheduler')
+jest.mock('../src/logger', () => ({
+  info: jest.fn(),
+}))
 
 const roomManager = require('../src/socket/roomManager')
 const gameManager = require('../src/socket/gameManager')
 const { createRobotScheduler } = require('../src/socket/robotScheduler')
+const logger = require('../src/logger')
 
 const ROBOT_ID = '__robot__'
 
@@ -192,6 +196,75 @@ describe('handler', () => {
         'game:error',
         { message: '答案必须是非空字符串' }
       )
+    })
+  })
+
+  describe('RPS 日志使用出拳语义', () => {
+    beforeEach(() => {
+      eventHandlers['room:join']({ nickname: '小明' })
+      roomManager.getRoom.mockReturnValue({
+        id: 'default',
+        players: {
+          'socket-1': { nickname: '小明' },
+          'socket-2': { nickname: '小红' },
+        },
+        game: {
+          type: 'rps',
+          players: ['socket-1', 'socket-2'],
+          status: 'playing',
+        },
+      })
+      gameManager.getGame.mockReturnValue({
+        type: 'rps',
+        players: ['socket-1', 'socket-2'],
+        status: 'playing',
+      })
+    })
+
+    it('等待对手出拳时不记录为答错', () => {
+      gameManager.submitInput.mockReturnValue({
+        action: 'waiting',
+        reason: 'waiting_opponent',
+      })
+
+      eventHandlers['game:move']({ choice: 'rock' })
+
+      expect(logger.info).toHaveBeenCalledWith('[move] 小明 → rock | 等待对手出拳')
+      expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('[answer]'))
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:waiting')
+    })
+
+    it('结算时使用“局/胜出”文案', () => {
+      gameManager.submitInput.mockReturnValue({
+        action: 'round_result',
+        result: {
+          round: 1,
+          winner: 'socket-1',
+          moves: { 'socket-1': 'rock', 'socket-2': 'scissors' },
+          scores: { 'socket-1': 1, 'socket-2': 0 },
+        },
+      })
+
+      eventHandlers['game:move']({ choice: 'scissors' })
+
+      expect(logger.info).toHaveBeenCalledWith('[round] 第1局 — 小明 胜出')
+      expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('答对'))
+    })
+
+    it('平局时记录为平局', () => {
+      gameManager.submitInput.mockReturnValue({
+        action: 'round_result',
+        result: {
+          round: 1,
+          winner: 'draw',
+          moves: { 'socket-1': 'rock', 'socket-2': 'rock' },
+          scores: { 'socket-1': 0, 'socket-2': 0 },
+        },
+      })
+
+      eventHandlers['game:move']({ choice: 'rock' })
+
+      expect(logger.info).toHaveBeenCalledWith('[round] 第1局 — 平局')
     })
   })
 
