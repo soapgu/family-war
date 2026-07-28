@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test'
-import { HomePage } from './pages/HomePage.js'
+import { expect } from '@playwright/test'
+import { test, joinRoom } from './fixtures/index.js'
 import { RoomPage } from './pages/RoomPage.js'
 import { GameBoardPage } from './pages/GameBoardPage.js'
 
@@ -20,89 +20,80 @@ const ROUNDS = [
   { a: '剪刀', b: '布',   desc: '第 3 局 爸爸剪刀 vs 妈妈布 → 爸爸胜（2-1 决胜）', expectMe: 2, expectOpp: 1 },
 ]
 
-test('RPS 双人 2 胜制完整比赛（自包含 3 局决胜）', async ({ browser }, testInfo) => {
-  const ctxA = await browser.newContext()
-  const ctxB = await browser.newContext()
-  const pageA = await ctxA.newPage()
-  const pageB = await ctxB.newPage()
-  const baseURL = test.info().project.use.baseURL
+/**
+ * @param {{ dualPlayers: import('./fixtures/index.js').DualPlayers, baseURL: string }} _
+ * @param {import('@playwright/test').TestInfo} testInfo
+ */
+test('RPS 双人 2 胜制完整比赛（自包含 3 局决胜）', async ({ dualPlayers, baseURL }, testInfo) => {
+  const { a, b } = dualPlayers
 
-  try {
-    // 1. 两人进入房间
-    const homeA = new HomePage(pageA)
-    const homeB = new HomePage(pageB)
-    await homeA.join('小明', baseURL)
-    await expect(pageA.getByText('游戏房间')).toBeVisible()
-    await homeB.join('小红', baseURL)
-    await expect(pageB.getByText('游戏房间')).toBeVisible()
+  // 1. 两人进入房间
+  await joinRoom(a.page, a.nickname, baseURL)
+  await joinRoom(b.page, b.nickname, baseURL)
 
-    // 2. 选择角色
-    const roomA = new RoomPage(pageA)
-    const roomB = new RoomPage(pageB)
-    await roomA.selectRole('爸爸')
-    await roomA.waitForRoleSelected()
-    await roomB.selectRole('妈妈')
-    await roomB.waitForRoleSelected()
+  // 2. 选择角色
+  const roomA = new RoomPage(a.page)
+  const roomB = new RoomPage(b.page)
+  await roomA.selectRole('爸爸')
+  await roomA.waitForRoleSelected()
+  await roomB.selectRole('妈妈')
+  await roomB.waitForRoleSelected()
 
-    // 3. 爸爸发起挑战
-    await roomA.waitForChallengeButton()
-    await roomA.clickChallenge('小红')
-    await expect(pageA.getByText('第 1 局')).toBeVisible()
-    await expect(pageB.getByText('第 1 局')).toBeVisible()
+  // 3. 爸爸发起挑战
+  await roomA.waitForChallengeButton()
+  await roomA.clickChallenge(b.nickname)
+  await expect(a.page.getByText('第 1 局')).toBeVisible()
+  await expect(b.page.getByText('第 1 局')).toBeVisible()
 
-    // 4. 3 局决胜（逐局验证）
-    const boardA = new GameBoardPage(pageA)
-    const boardB = new GameBoardPage(pageB)
-    for (let i = 0; i < ROUNDS.length; i++) {
-      const round = ROUNDS[i]
-      const isLast = i === ROUNDS.length - 1
+  // 4. 3 局决胜（逐局验证）
+  const boardA = new GameBoardPage(a.page)
+  const boardB = new GameBoardPage(b.page)
+  for (let i = 0; i < ROUNDS.length; i++) {
+    const round = ROUNDS[i]
+    const isLast = i === ROUNDS.length - 1
 
-      // 4a. 双方都进入第 i+1 局 choosing 阶段（轮次标题 + 按钮双信号）
-      await boardA.waitForChoosingPhase(i + 1)
-      await boardB.waitForChoosingPhase(i + 1)
+    // 4a. 双方都进入第 i+1 局 choosing 阶段（轮次标题 + 按钮双信号）
+    await boardA.waitForChoosingPhase(i + 1)
+    await boardB.waitForChoosingPhase(i + 1)
 
-      // 4b. 验证轮次
-      expect(await boardA.getRoundTitle(), `第 ${i + 1} 局 pageA 轮次`).toBe(i + 1)
-      expect(await boardB.getRoundTitle(), `第 ${i + 1} 局 pageB 轮次`).toBe(i + 1)
+    // 4b. 验证轮次
+    expect(await boardA.getRoundTitle(), `第 ${i + 1} 局 pageA 轮次`).toBe(i + 1)
+    expect(await boardB.getRoundTitle(), `第 ${i + 1} 局 pageB 轮次`).toBe(i + 1)
 
-      // 4c. 出拳（带 socket emit 同步）
-      await boardA.makeChoice(round.a)
-      await boardB.makeChoice(round.b)
+    // 4c. 出拳（带 socket emit 同步）
+    await boardA.makeChoice(round.a)
+    await boardB.makeChoice(round.b)
 
-      // 4d. 等本局结果
-      if (isLast) {
-        await boardA.waitForMatchResult()
-        await boardB.waitForMatchResult()
-      } else {
-        await boardA.waitForNewRound(i + 1)
-        await boardB.waitForNewRound(i + 1)
-        // 4e. 验证中间局比分（双方一致）
-        const scoreA = await boardA.getScore()
-        const scoreB = await boardB.getScore()
-        expect(scoreA.me, `第 ${i + 1} 局后 pageA 自身得分`).toBe(round.expectMe)
-        expect(scoreA.opp, `第 ${i + 1} 局后 pageA 对手得分`).toBe(round.expectOpp)
-        expect(scoreB.me, `第 ${i + 1} 局后 pageB 自身得分（与 pageA 对手一致）`).toBe(round.expectOpp)
-        expect(scoreB.opp, `第 ${i + 1} 局后 pageB 对手得分（与 pageA 自身一致）`).toBe(round.expectMe)
-      }
+    // 4d. 等本局结果
+    if (isLast) {
+      await boardA.waitForMatchResult()
+      await boardB.waitForMatchResult()
+    } else {
+      await boardA.waitForNewRound(i + 1)
+      await boardB.waitForNewRound(i + 1)
+      // 4e. 验证中间局比分（双方一致）
+      const scoreA = await boardA.getScore()
+      const scoreB = await boardB.getScore()
+      expect(scoreA.me, `第 ${i + 1} 局后 pageA 自身得分`).toBe(round.expectMe)
+      expect(scoreA.opp, `第 ${i + 1} 局后 pageA 对手得分`).toBe(round.expectOpp)
+      expect(scoreB.me, `第 ${i + 1} 局后 pageB 自身得分（与 pageA 对手一致）`).toBe(round.expectOpp)
+      expect(scoreB.opp, `第 ${i + 1} 局后 pageB 对手得分（与 pageA 自身一致）`).toBe(round.expectMe)
     }
-
-    // 5. 验证胜方和败方赛果
-    const titleA = await boardA.getMatchResultTitle()
-    const titleB = await boardB.getMatchResultTitle()
-    expect(titleA, 'pageA 胜方赛果').toContain('恭喜你获得比赛胜利！')
-    expect(titleB, 'pageB 败方赛果').toContain('比赛结束，下次加油！')
-
-    // 6. 终局比分
-    const finalA = await boardA.getScore()
-    const finalB = await boardB.getScore()
-    expect(finalA.me, 'pageA 最终得分').toBe(2)
-    expect(finalA.opp, 'pageA 对手最终得分').toBe(1)
-    expect(finalB.me, 'pageB 最终得分').toBe(1)
-    expect(finalB.opp, 'pageB 对手最终得分').toBe(2)
-
-    await pageA.screenshot({ path: testInfo.outputPath('rps-match-result.png') })
-  } finally {
-    await ctxA.close()
-    await ctxB.close()
   }
+
+  // 5. 验证胜方和败方赛果
+  const titleA = await boardA.getMatchResultTitle()
+  const titleB = await boardB.getMatchResultTitle()
+  expect(titleA, 'pageA 胜方赛果').toContain('恭喜你获得比赛胜利！')
+  expect(titleB, 'pageB 败方赛果').toContain('比赛结束，下次加油！')
+
+  // 6. 终局比分
+  const finalA = await boardA.getScore()
+  const finalB = await boardB.getScore()
+  expect(finalA.me, 'pageA 最终得分').toBe(2)
+  expect(finalA.opp, 'pageA 对手最终得分').toBe(1)
+  expect(finalB.me, 'pageB 最终得分').toBe(1)
+  expect(finalB.opp, 'pageB 对手最终得分').toBe(2)
+
+  await a.page.screenshot({ path: testInfo.outputPath('rps-match-result.png') })
 })
