@@ -1380,7 +1380,7 @@ E2E 断言层级还必须遵守以下禁止项：
 | 1f | 扩展 Page Object 公共边界，明确新增 `ArithmeticBoardPage`、`SpellingBoardPage` 和独立 `MatchResultPage`；赛果对象负责胜方/败方、比分或排名、重赛和返回房间，认输仍属于进行中的 `GameBoardPage`；Page Object 只封装稳定动作与等待条件，不隐藏业务断言 | `client/tests/e2e/pages/ArithmeticBoardPage.js`, `SpellingBoardPage.js`, `MatchResultPage.js`, 现有 Page Object | ⬜ |
 | 1g | 必要时为关键控件补充稳定可访问名称或 `data-testid`，覆盖模式选择、难度、角色、题目、答案输入、提交、认输、重赛和返回房间 | `client/src/pages/Room.jsx`, `client/src/components/*.jsx` | ⬜ |
 | 1h | 重构双人猜拳为单个自包含测试：按默认 2 胜制使用 3 局决胜序列（爸爸胜、妈妈胜、爸爸胜），2 胜即终局，本序列在第 3 局后结束；逐局验证轮次与比分，终局后分别验证胜方和败方赛果；不再用 `describe.serial` 拆分共享状态步骤 | `client/tests/e2e/rps-game.spec.js`, Page Object | ✅ |
-| 1i | 重构人机猜拳基线：验证机器人可被挑战、每轮能自动出拳并最终产生合法赛果；不把随机胜负固定为某一方，也不依赖无断言的盲目点击循环 | `client/tests/e2e/rps-vs-robot.spec.js`, Page Object | ⬜ |
+| 1i | 重构人机猜拳基线：验证机器人可被挑战、每轮能自动出拳并最终产生合法赛果；不把随机胜负固定为某一方，也不依赖无断言的盲目点击循环 | `client/tests/e2e/rps-vs-robot.spec.js`, Page Object | ✅ |
 | 1j | 增加房间与角色同步场景：双人在线人数与昵称同步、角色选择、角色占用、角色切换、放弃角色以及模式切换在两个浏览器中一致可见 | `client/tests/e2e/room.spec.js`, `RoomPage.js` | ⬜ |
 | 1k | 增加算术完整比赛场景：选择算术、开始比赛，由 `ArithmeticBoardPage.parseAndEvaluate()` 使用白名单 Token 解析页面表达式，提交错误与正确答案、验证反馈和比分推进，直至最终排名并返回房间；禁止 `eval` 和读取服务端答案 | `client/tests/e2e/arithmetic-game.spec.js`, `ArithmeticBoardPage.js`, `MatchResultPage.js` | ⬜ |
 | 1l | 增加默写核心交互场景：切换简单/普通/困难并验证同步，开始比赛，验证难度、字母输入、发音按钮、图片提示降级和错误答案反馈 | `client/tests/e2e/spelling-game.spec.js`, `SpellingBoardPage.js` | ⬜ |

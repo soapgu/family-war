@@ -65,6 +65,24 @@ export class GameBoardPage {
     await expect(rock).toBeEnabled({ timeout: 5000 })
   }
 
+  async waitForRoundOrMatch(previousRound) {
+    // 等"第 N+1 局"标题 OR `rps-match-result` 面板出现（任一即可）
+    // 用于 2 胜制 + 随机对手场景：可能 i=0/i=1 就触发 match_result
+    // 用 waitForFunction polling，可观察状态变化，不依赖 Promise.race 时序
+    const expectedNext = previousRound + 1
+    await this.page.waitForFunction(
+      (expected) => {
+        const match = document.querySelector('[data-testid="rps-match-result"]')
+        if (match) return true
+        const h4 = document.querySelector('[data-testid="rps-round-title"]')
+        if (h4 && new RegExp(`第\\s*${expected}\\s*局`).test(h4.textContent)) return true
+        return false
+      },
+      expectedNext,
+      { timeout: 30000 }
+    )
+  }
+
   async waitForMatchResult() {
     const panel = this.page.getByTestId('rps-match-result')
     await panel.waitFor({ state: 'visible', timeout: 25000 })
