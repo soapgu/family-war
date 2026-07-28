@@ -1372,7 +1372,7 @@ E2E 断言层级还必须遵守以下禁止项：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 1a | 盘点现有 E2E、客户端单元测试和服务端 Socket.IO 集成测试，产出 `docs/acceptance/v3.6/test-matrix.md`；逐项记录 spec、测试名称、当前源码行号、已有覆盖、E2E 缺口及无需重复覆盖的层级 | `client/tests/e2e/`, `client/src/__tests__/`, `server/tests/integration.js`, `server/__tests__/handler.test.js`, `docs/acceptance/v3.6/test-matrix.md` | ⬜ |
+| 1a | 盘点游戏链路相关的完整测试宇宙，产出 `docs/acceptance/v3.6/test-matrix.md`；按"已有行为覆盖 / E2E 待补 / 单元或集成已有覆盖 E2E 无需重复 / Phase 2 生命周期治理输入 / 与本阶段无关明确排除"五类组织；逐项记录测试或 spec、所在文件路径、当前源码行号、覆盖行为以及与 E2E 场景矩阵的对应关系；非游戏链路测试仅在排除项中说明原因 | `client/tests/e2e/`（全部 E2E、fixture、Page Object）、`client/src/__tests__/`（全部游戏端单测）、`server/tests/integration.js`、`server/__tests/` 中 `roomManager`、`gameManager`、`handler`、`rpsGameMode`、`arithmeticGameMode`、`spellingGameMode`、`robotScheduler` 七个测试；`docs/acceptance/v3.6/test-matrix.md` | ⬜ |
 | 1b | 冻结 Phase 1 场景边界和断言层级：E2E 只验证用户可观察行为与真实跨浏览器同步，并落实本节禁止项；纯算法、输入枚举、内部状态和协议细节继续由单元或集成测试负责 | `step.md`, `docs/acceptance/v3.6/test-matrix.md` | ⬜ |
 | 1c | 整理 Playwright 装配：明确服务启动前置条件、Base URL、单 worker、超时、失败截图、Trace、HTML 报告、本地有头调试方式，以及诊断附件在 `test-results/` 下的落盘规则 | `client/playwright.config.js`, `client/package.json`, E2E 说明 | ⬜ |
 | 1d | 建立场景级 fixture 或辅助工厂，统一创建单人/双人独立 Context、进入房间、关闭 Context，并确保失败时也释放 Socket.IO 连接；昵称统一使用 `e2e-${process.pid}-${运行随机种子}-${递增序号}`，避免跨运行或未来多 worker 冲突 | `client/tests/e2e/fixtures/` 或等价目录 | ⬜ |
