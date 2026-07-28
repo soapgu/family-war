@@ -27,6 +27,12 @@
 - step.md "E2E 断言层级还必须遵守以下禁止项"段落
 - 详细对账见末尾"三、断言层级对账表"
 
+**E2E 装配**（启动前置、Base URL、超时、诊断产物、命令清单、Playwright webServer 自管）：
+
+- `docs/acceptance/v3.6/e2e-setup.md`（step.md 1c 产物，1c-Phase-0 升级版）
+- 关键决策来源：`soapgu/that-math-things@4413100` Phase 0 设计
+- 完成标准：test:e2e 独立完成（不依赖人工 `npm run dev`）+ 端口冲突明确失败 + 测试结束后进程回收
+
 **触发修订的条件**：
 
 - 新增/删除/修改任一缺口矩阵行、禁止项、排除项，必须同步更新 step.md 对应条款和本节

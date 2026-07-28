@@ -20,7 +20,10 @@
     "test:e2e": "playwright test --config playwright.config.js",
     "test:e2e:headed": "HEADED=1 playwright test --config playwright.config.js",
     "test:e2e:check": "playwright test --config playwright.config.js --list",
-    "test:e2e:report": "open tests/e2e/e2e-report/index.html"
+    "test:e2e:report": "open tests/e2e/e2e-report/index.html",
+    "test:e2e:stable": "playwright test --config playwright.config.js --grep @stable",
+    "test:e2e:lifecycle": "playwright test --config playwright.config.js --grep @lifecycle-issue",
+    "test:e2e:ui": "playwright test --config playwright.config.js --ui"
   },
   "scriptsDescription": {
     "start": "启动游戏端 Vite 开发服务，默认监听 3000，并使用开发代理访问 API 和 Socket.IO。",
@@ -31,7 +34,10 @@
     "test:e2e": "运行游戏端 Playwright E2E 测试，需要先启动 npm run dev。",
     "test:e2e:headed": "有头模式运行 Playwright E2E 测试，方便调试。",
     "test:e2e:check": "列出 E2E 测试用例列表，不实际运行。",
-    "test:e2e:report": "在浏览器中打开 E2E HTML 测试报告。"
+    "test:e2e:report": "在浏览器中打开 E2E HTML 测试报告。",
+    "test:e2e:stable": "只跑带 @stable Tag 的 E2E（Phase 1 稳定基线，纳入 1s 三次连续执行）。",
+    "test:e2e:lifecycle": "只跑带 @lifecycle-issue Tag 的 E2E（问题基线，不纳入 1s）。",
+    "test:e2e:ui": "Playwright UI 模式运行 E2E（推荐调试方式）。"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

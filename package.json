@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n server,client,admin -c blue,green,magenta \"npm run dev --prefix server\" \"npm run start --prefix client\" \"npm run start --prefix admin-client\"",
+    "dev:server": "npm run start --prefix server",
+    "dev:client": "npm run start --prefix client",
+    "dev:e2e": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
     "server": "npm run dev --prefix server",
     "client": "npm run start --prefix client",
     "admin": "npm run start --prefix admin-client",
@@ -29,6 +32,9 @@
   },
   "scriptsDescription": {
     "dev": "同时启动服务端、游戏端和管理端开发服务，输出使用不同颜色区分。",
+    "dev:server": "用 node 直接启动服务端（无 nodemon），供 Playwright webServer 调用；默认监听 4000。",
+    "dev:client": "只启动游戏端 Vite 开发服务（无 admin-client），供 Playwright webServer 调用；默认监听 3000。",
+    "dev:e2e": "同时启动 server 和 client（不启 admin-client），本地手动跑 E2E 服务时使用。",
     "server": "只启动服务端 nodemon 开发进程，默认监听 4000。",
     "client": "只启动游戏端 Vite 开发服务，默认监听 3000。",
     "admin": "只启动管理端 Vite 开发服务，默认监听 3001。",

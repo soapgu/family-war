@@ -1,5 +1,13 @@
 import { defineConfig } from '@playwright/test'
 
+/**
+ * v3.6 Phase 1 E2E 装配（step.md 1c，Phase 0 风格：webServer 自管）
+ *
+ * Playwright 通过 `webServer` 自动启停 client + server 进程。
+ * 详细说明见 docs/acceptance/v3.6/e2e-setup.md §10-12。
+ */
+const EXTERNAL_BASE_URL = !!process.env.CLIENT_BASE_URL
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 60000,
@@ -16,7 +24,25 @@ export default defineConfig({
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
   reporter: [
-    ['html', { outputFolder: 'tests/e2e/e2e-report' }],
+    ['html', { outputFolder: 'tests/e2e/e2e-report', open: 'never' }],
     ['list'],
   ],
+  webServer: EXTERNAL_BASE_URL
+    ? undefined
+    : [
+        {
+          command: 'npm run dev:server --prefix ..',
+          url: 'http://localhost:4000/api/health',
+          reuseExistingServer: false,
+          stdout: 'pipe',
+          timeout: 30000,
+        },
+        {
+          command: 'npm run dev:client --prefix ..',
+          url: 'http://localhost:3000/family-war/',
+          reuseExistingServer: false,
+          stdout: 'pipe',
+          timeout: 60000,
+        },
+      ],
 })
