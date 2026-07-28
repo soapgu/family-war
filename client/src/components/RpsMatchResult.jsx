@@ -43,15 +43,16 @@ function RpsMatchResult({ matchWinner, scores, history, myId, onBack, onRematch 
   const iWon = matchWinner === myId
 
   return (
-    <div style={{ textAlign: 'center', padding: '12px 0' }}>
+    <div data-testid="rps-match-result" style={{ textAlign: 'center', padding: '12px 0' }}>
       <div style={{ fontSize: 56, marginBottom: 12 }}>
         {iWon ? '🏆' : '😢'}
       </div>
-      <Typography.Title level={4} style={{ margin: 0 }}>
+      <Typography.Title level={4} data-testid="rps-match-result-title" style={{ margin: 0 }}>
         {iWon ? '恭喜你获得比赛胜利！' : '比赛结束，下次加油！'}
       </Typography.Title>
 
       <div
+        data-testid="rps-match-result-score"
         style={{
           display: 'flex',
           justifyContent: 'center',
@@ -71,10 +72,10 @@ function RpsMatchResult({ matchWinner, scores, history, myId, onBack, onRematch 
       <RoundHistory history={history} myId={myId} />
 
       <Space size="middle">
-        <Button onClick={onBack} size="large">
+        <Button data-testid="rps-return-room" onClick={onBack} size="large">
           返回房间
         </Button>
-        <Button type="primary" size="large" onClick={onRematch}>
+        <Button data-testid="rps-rematch" type="primary" size="large" onClick={onRematch}>
           再来一局
         </Button>
       </Space>

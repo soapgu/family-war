@@ -324,6 +324,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
       {/* Ready Go overlay */}
       {phase === 'readyGo' && (
         <div
+          data-testid="rps-readygo-overlay"
           style={{
             position: 'fixed',
             inset: 0,
@@ -367,7 +368,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
 
       {/* Round title */}
       {!matchEnded && (
-        <Typography.Title level={4} style={{ marginBottom: 24 }}>
+        <Typography.Title level={4} data-testid="rps-round-title" style={{ marginBottom: 24 }}>
           第 {round} 局
         </Typography.Title>
       )}
@@ -393,7 +394,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
             {myMove ? '已出拳' : myRole}
           </div>
           {scores[myId] !== undefined && (
-            <div style={{ fontSize: 13, color: '#52c41a', fontWeight: 600, marginTop: 2 }}>
+            <div data-testid="rps-score-me" style={{ fontSize: 13, color: '#52c41a', fontWeight: 600, marginTop: 2 }}>
               {scores[myId]} 分
             </div>
           )}
@@ -411,7 +412,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
             {oppMove ? '已出拳' : opponent.role}
           </div>
           {scores[opponent.id] !== undefined && (
-            <div style={{ fontSize: 13, color: '#ff4d4f', fontWeight: 600, marginTop: 2 }}>
+            <div data-testid="rps-score-opp" style={{ fontSize: 13, color: '#ff4d4f', fontWeight: 600, marginTop: 2 }}>
               {scores[opponent.id]} 分
             </div>
           )}
@@ -505,6 +506,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
               return (
                 <Button
                   key={c.key}
+                  data-testid={`rps-choice-${c.key}`}
                   size="large"
                   onClick={() => handleChoice(c.key)}
                   disabled={rollStopped}
@@ -549,6 +551,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
             type="text"
             danger
             size="small"
+            data-testid="rps-forfeit"
             onClick={handleForfeit}
             style={{ opacity: 0.5 }}
           >
