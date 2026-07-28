@@ -1372,14 +1372,14 @@ E2E 断言层级还必须遵守以下禁止项：
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 1a | 盘点游戏链路相关的完整测试宇宙，产出 `docs/acceptance/v3.6/test-matrix.md`；按"已有行为覆盖 / E2E 待补 / 单元或集成已有覆盖 E2E 无需重复 / Phase 2 生命周期治理输入 / 与本阶段无关明确排除"五类组织；逐项记录测试或 spec、所在文件路径、当前源码行号、覆盖行为以及与 E2E 场景矩阵的对应关系；非游戏链路测试仅在排除项中说明原因 | `client/tests/e2e/`（全部 E2E、fixture、Page Object）、`client/src/__tests__/`（全部游戏端单测）、`server/tests/integration.js`、`server/__tests/` 中 `roomManager`、`gameManager`、`handler`、`rpsGameMode`、`arithmeticGameMode`、`spellingGameMode`、`robotScheduler` 七个测试；`docs/acceptance/v3.6/test-matrix.md` | ⬜ |
-| 1b | 冻结 Phase 1 场景边界和断言层级：E2E 只验证用户可观察行为与真实跨浏览器同步，并落实本节禁止项；纯算法、输入枚举、内部状态和协议细节继续由单元或集成测试负责 | `step.md`, `docs/acceptance/v3.6/test-matrix.md` | ⬜ |
-| 1c | 整理 Playwright 装配：明确服务启动前置条件、Base URL、单 worker、超时、失败截图、Trace、HTML 报告、本地有头调试方式，以及诊断附件在 `test-results/` 下的落盘规则 | `client/playwright.config.js`, `client/package.json`, E2E 说明 | ⬜ |
+| 1a | 盘点游戏链路相关的完整测试宇宙，产出 `docs/acceptance/v3.6/test-matrix.md`；按"已有行为覆盖 / E2E 待补 / 单元或集成已有覆盖 E2E 无需重复 / Phase 2 生命周期治理输入 / 与本阶段无关明确排除"五类组织；逐项记录测试或 spec、所在文件路径、当前源码行号、覆盖行为以及与 E2E 场景矩阵的对应关系；非游戏链路测试仅在排除项中说明原因 | `client/tests/e2e/`（全部 E2E、fixture、Page Object）、`client/src/__tests__/`（全部游戏端单测）、`server/tests/integration.js`、`server/__tests/` 中 `roomManager`、`gameManager`、`handler`、`rpsGameMode`、`arithmeticGameMode`、`spellingGameMode`、`robotScheduler` 七个测试；`docs/acceptance/v3.6/test-matrix.md` | ✅ |
+| 1b | 冻结 Phase 1 场景边界和断言层级：E2E 只验证用户可观察行为与真实跨浏览器同步，并落实本节禁止项；纯算法、输入枚举、内部状态和协议细节继续由单元或集成测试负责 | `step.md`, `docs/acceptance/v3.6/test-matrix.md` | ✅ |
+| 1c | 整理 Playwright 装配：明确服务启动前置条件、Base URL、单 worker、超时、失败截图、Trace、HTML 报告、本地有头调试方式，以及诊断附件在 `test-results/` 下的落盘规则 | `client/playwright.config.js`, `client/package.json`, E2E 说明 | ✅ |
 | 1d | 建立场景级 fixture 或辅助工厂，统一创建单人/双人独立 Context、进入房间、关闭 Context，并确保失败时也释放 Socket.IO 连接；昵称统一使用 `e2e-${process.pid}-${运行随机种子}-${递增序号}`，避免跨运行或未来多 worker 冲突 | `client/tests/e2e/fixtures/` 或等价目录 | ⬜ |
 | 1e | 在公共 fixture 注册全局 `pageerror`、关键 `console.error`、请求失败和必要的 Socket.IO 断连监听；失败时将脱敏诊断作为附件写入 `test-results/`，成功场景不制造冗余日志 | `client/tests/e2e/fixtures/`, `client/playwright.config.js` | ⬜ |
 | 1f | 扩展 Page Object 公共边界，明确新增 `ArithmeticBoardPage`、`SpellingBoardPage` 和独立 `MatchResultPage`；赛果对象负责胜方/败方、比分或排名、重赛和返回房间，认输仍属于进行中的 `GameBoardPage`；Page Object 只封装稳定动作与等待条件，不隐藏业务断言 | `client/tests/e2e/pages/ArithmeticBoardPage.js`, `SpellingBoardPage.js`, `MatchResultPage.js`, 现有 Page Object | ⬜ |
 | 1g | 必要时为关键控件补充稳定可访问名称或 `data-testid`，覆盖模式选择、难度、角色、题目、答案输入、提交、认输、重赛和返回房间 | `client/src/pages/Room.jsx`, `client/src/components/*.jsx` | ⬜ |
-| 1h | 重构双人猜拳为单个自包含测试：按默认 2 胜制使用 3 局决胜序列（爸爸胜、妈妈胜、爸爸胜），2 胜即终局，本序列在第 3 局后结束；逐局验证轮次与比分，终局后分别验证胜方和败方赛果；不再用 `describe.serial` 拆分共享状态步骤 | `client/tests/e2e/rps-game.spec.js`, Page Object | ⬜ |
+| 1h | 重构双人猜拳为单个自包含测试：按默认 2 胜制使用 3 局决胜序列（爸爸胜、妈妈胜、爸爸胜），2 胜即终局，本序列在第 3 局后结束；逐局验证轮次与比分，终局后分别验证胜方和败方赛果；不再用 `describe.serial` 拆分共享状态步骤 | `client/tests/e2e/rps-game.spec.js`, Page Object | ✅ |
 | 1i | 重构人机猜拳基线：验证机器人可被挑战、每轮能自动出拳并最终产生合法赛果；不把随机胜负固定为某一方，也不依赖无断言的盲目点击循环 | `client/tests/e2e/rps-vs-robot.spec.js`, Page Object | ⬜ |
 | 1j | 增加房间与角色同步场景：双人在线人数与昵称同步、角色选择、角色占用、角色切换、放弃角色以及模式切换在两个浏览器中一致可见 | `client/tests/e2e/room.spec.js`, `RoomPage.js` | ⬜ |
 | 1k | 增加算术完整比赛场景：选择算术、开始比赛，由 `ArithmeticBoardPage.parseAndEvaluate()` 使用白名单 Token 解析页面表达式，提交错误与正确答案、验证反馈和比分推进，直至最终排名并返回房间；禁止 `eval` 和读取服务端答案 | `client/tests/e2e/arithmetic-game.spec.js`, `ArithmeticBoardPage.js`, `MatchResultPage.js` | ⬜ |
