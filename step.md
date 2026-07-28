@@ -1349,6 +1349,7 @@ v3.5 不包含：
 - 继续通过真实浏览器、Vite 代理和真实 Socket.IO 服务验证业务，不 mock `useSocket`；
 - 测试不得依赖机器人随机出拳决定固定胜负；需要固定赛果时优先使用双人可控输入；
 - 算术答案由当前页面展示的表达式计算得到，不读取服务端内存或调用测试专用答案接口；
+- 算术 Page Object 应提供 `parseAndEvaluate()` 或等价能力，只接受数字、空格、括号及白名单运算符，并按正式题目规则处理 `×`、`÷`；禁止使用 `eval`、`Function` 或读取页面全局变量；
 - 默写测试通过公开 UI 完成输入与反馈验证，不从隐藏 DOM、前端状态或 Socket.IO Payload 窃取正确答案；
 - 如完整比赛耗时超过稳定回归可接受范围，可以增加仅由测试启动命令启用的游戏配置覆盖，但必须复用正式业务逻辑，不得增加测试专用业务分支或跳关接口；
 - 测试配置覆盖必须对普通 `npm run dev` 和生产构建无影响，并在测试进程退出后自动失效；
@@ -1356,37 +1357,47 @@ v3.5 不包含：
 - 等待条件以可观察的页面状态或事件结果为准，不使用固定时长 `waitForTimeout` 推测业务完成；
 - 当前服务端缺陷应记录为带预期行为的待修复场景；不得降低断言、吞掉异常或接受两种互相矛盾的结果。
 
+E2E 断言层级还必须遵守以下禁止项：
+
+- 禁止断言 Socket.IO 内部事件 Payload 的完整结构或严格顺序；只有用户可观察的跨浏览器同步时序可以作为 E2E 结果；
+- 禁止直接读取 `roomManager`、`gameManager`、机器人调度器或其他服务端内存状态；
+- 禁止直接读取 React State、Hook、全局 Socket 单例或未来可能引入的 Redux/Zustand Store；
+- 禁止断言倒计时的逐秒精度，只验证倒计时开始、停止以及超时后进入下一用户可观察状态；
+- 禁止在 E2E 重复穷举算法输入；运算规则、判胜组合和输入校验枚举继续放在单元测试；
+- 禁止只以按钮最终出现作为完整链路证据，主链路必须至少验证开始、一次关键过程状态和最终结果。
+
 ## Phase 1：建立游戏端 E2E 基线
 
 目标：先建立能够稳定验证当前三种游戏模式和房间核心交互的浏览器行为契约，为后续服务端生命周期优化提供回归保护。
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 1a | 盘点现有 E2E、客户端单元测试和服务端 Socket.IO 集成测试，形成“已有覆盖、E2E 缺口、无需重复覆盖”的测试矩阵 | `client/tests/e2e/`, `client/src/__tests__/`, `server/tests/integration.js`, `server/__tests__/handler.test.js` | ⬜ |
-| 1b | 冻结 Phase 1 场景边界和断言层级：E2E 只验证用户可观察行为与真实跨浏览器同步；纯算法、输入枚举和协议细节继续由单元或集成测试负责 | `step.md`, E2E 测试矩阵 | ⬜ |
-| 1c | 整理 Playwright 装配：明确服务启动前置条件、Base URL、单 worker、超时、失败截图、Trace、HTML 报告和本地有头调试方式 | `client/playwright.config.js`, `client/package.json`, E2E 说明 | ⬜ |
-| 1d | 建立场景级 fixture 或辅助工厂，统一创建单人/双人独立 Context、生成不冲突昵称、进入房间、关闭 Context，并确保失败时也释放 Socket.IO 连接 | `client/tests/e2e/fixtures/` 或等价目录 | ⬜ |
-| 1e | 为页面异常建立统一诊断：收集 `pageerror`、关键 `console.error`、请求失败和必要的 Socket.IO 连接信息；失败时保留足够证据但不输出敏感数据 | `client/tests/e2e/fixtures/`, `client/playwright.config.js` | ⬜ |
-| 1f | 扩展 Page Object 公共边界，拆分首页、房间、猜拳、算术、默写和赛果操作；只封装稳定用户动作与等待条件，不在 Page Object 中隐藏业务断言 | `client/tests/e2e/pages/` | ⬜ |
+| 1a | 盘点现有 E2E、客户端单元测试和服务端 Socket.IO 集成测试，产出 `docs/acceptance/v3.6/test-matrix.md`；逐项记录 spec、测试名称、当前源码行号、已有覆盖、E2E 缺口及无需重复覆盖的层级 | `client/tests/e2e/`, `client/src/__tests__/`, `server/tests/integration.js`, `server/__tests__/handler.test.js`, `docs/acceptance/v3.6/test-matrix.md` | ⬜ |
+| 1b | 冻结 Phase 1 场景边界和断言层级：E2E 只验证用户可观察行为与真实跨浏览器同步，并落实本节禁止项；纯算法、输入枚举、内部状态和协议细节继续由单元或集成测试负责 | `step.md`, `docs/acceptance/v3.6/test-matrix.md` | ⬜ |
+| 1c | 整理 Playwright 装配：明确服务启动前置条件、Base URL、单 worker、超时、失败截图、Trace、HTML 报告、本地有头调试方式，以及诊断附件在 `test-results/` 下的落盘规则 | `client/playwright.config.js`, `client/package.json`, E2E 说明 | ⬜ |
+| 1d | 建立场景级 fixture 或辅助工厂，统一创建单人/双人独立 Context、进入房间、关闭 Context，并确保失败时也释放 Socket.IO 连接；昵称统一使用 `e2e-${process.pid}-${运行随机种子}-${递增序号}`，避免跨运行或未来多 worker 冲突 | `client/tests/e2e/fixtures/` 或等价目录 | ⬜ |
+| 1e | 在公共 fixture 注册全局 `pageerror`、关键 `console.error`、请求失败和必要的 Socket.IO 断连监听；失败时将脱敏诊断作为附件写入 `test-results/`，成功场景不制造冗余日志 | `client/tests/e2e/fixtures/`, `client/playwright.config.js` | ⬜ |
+| 1f | 扩展 Page Object 公共边界，明确新增 `ArithmeticBoardPage`、`SpellingBoardPage` 和独立 `MatchResultPage`；赛果对象负责胜方/败方、比分或排名、重赛和返回房间，认输仍属于进行中的 `GameBoardPage`；Page Object 只封装稳定动作与等待条件，不隐藏业务断言 | `client/tests/e2e/pages/ArithmeticBoardPage.js`, `SpellingBoardPage.js`, `MatchResultPage.js`, 现有 Page Object | ⬜ |
 | 1g | 必要时为关键控件补充稳定可访问名称或 `data-testid`，覆盖模式选择、难度、角色、题目、答案输入、提交、认输、重赛和返回房间 | `client/src/pages/Room.jsx`, `client/src/components/*.jsx` | ⬜ |
-| 1h | 重构双人猜拳为自包含场景：两人进入、选择不同角色、发起挑战、按确定出拳序列完成比赛，并分别验证轮次、比分、胜方和败方赛果 | `client/tests/e2e/rps-game.spec.js`, Page Object | ⬜ |
+| 1h | 重构双人猜拳为单个自包含测试：按默认 2 胜制使用 3 局决胜序列（爸爸胜、妈妈胜、爸爸胜），2 胜即终局，本序列在第 3 局后结束；逐局验证轮次与比分，终局后分别验证胜方和败方赛果；不再用 `describe.serial` 拆分共享状态步骤 | `client/tests/e2e/rps-game.spec.js`, Page Object | ⬜ |
 | 1i | 重构人机猜拳基线：验证机器人可被挑战、每轮能自动出拳并最终产生合法赛果；不把随机胜负固定为某一方，也不依赖无断言的盲目点击循环 | `client/tests/e2e/rps-vs-robot.spec.js`, Page Object | ⬜ |
 | 1j | 增加房间与角色同步场景：双人在线人数与昵称同步、角色选择、角色占用、角色切换、放弃角色以及模式切换在两个浏览器中一致可见 | `client/tests/e2e/room.spec.js`, `RoomPage.js` | ⬜ |
-| 1k | 增加算术完整比赛场景：选择算术、开始比赛、读取并计算表达式、提交错误与正确答案、验证反馈和比分推进，直至最终排名并返回房间 | `client/tests/e2e/arithmetic-game.spec.js`, `ArithmeticBoardPage.js`, 赛果 Page Object | ⬜ |
+| 1k | 增加算术完整比赛场景：选择算术、开始比赛，由 `ArithmeticBoardPage.parseAndEvaluate()` 使用白名单 Token 解析页面表达式，提交错误与正确答案、验证反馈和比分推进，直至最终排名并返回房间；禁止 `eval` 和读取服务端答案 | `client/tests/e2e/arithmetic-game.spec.js`, `ArithmeticBoardPage.js`, `MatchResultPage.js` | ⬜ |
 | 1l | 增加默写核心交互场景：切换简单/普通/困难并验证同步，开始比赛，验证难度、字母输入、发音按钮、图片提示降级和错误答案反馈 | `client/tests/e2e/spelling-game.spec.js`, `SpellingBoardPage.js` | ⬜ |
-| 1m | 建立默写完整赛果路径；若只能等待默认机器人完成导致用例过慢，则增加隔离的 E2E 游戏配置覆盖，缩短取胜分数和机器人延迟，但保持真实出题、判定、计分及 Socket.IO 流程 | `server/config.js` 或配置入口, E2E 启动脚本, `client/tests/e2e/spelling-game.spec.js` | ⬜ |
+| 1m | 建立默写完整赛果路径；若默认耗时过长，使用服务端启动环境变量 `E2E_FAST=1` 加载只覆盖取胜分数、题目时限和机器人延迟的快速 Profile。覆盖仅在该服务端进程内生效，普通 `npm run dev`、生产构建及其他测试不受影响；仍复用正式出题、判定、计分和 Socket.IO 逻辑，禁止测试专用答案或跳关分支 | `server/config.js` 或独立配置 Profile, E2E 启动脚本, `client/tests/e2e/spelling-game.spec.js` | ⬜ |
 | 1n | 增加猜拳结束后的返回房间与重赛场景，验证新比赛从初始轮次和比分开始，两个参赛页面状态保持一致 | `client/tests/e2e/rps-rematch.spec.js`, Page Object | ⬜ |
 | 1o | 增加猜拳认输基线：参赛者认输后对手收到明确提示，双方退出游戏面板，房间恢复到可再次发起比赛的状态 | `client/tests/e2e/rps-forfeit.spec.js`, Page Object | ⬜ |
-| 1p | 增加主动退出房间的正常基线：另一浏览器看到在线人数、玩家和角色释放；退出者返回首页；该场景只冻结无进行中比赛时的当前正确行为 | `client/tests/e2e/room-leave.spec.js`, `HomePage.js`, `RoomPage.js` | ⬜ |
-| 1q | 为断线、比赛中离开、非参赛者操作、重复提交、过期题目等行为建立问题清单和最小复现；当前行为不符合目标时标记为待服务端修复，不纳入“必须通过”的基线集 | `client/tests/e2e/lifecycle/`, `docs/acceptance/v3.6/` 或等价问题记录 | ⬜ |
-| 1r | 增加测试清单离线检查，确认所有 spec 可被 Playwright 收集，命名、Tag 或项目分组能够区分稳定基线与待修复生命周期场景 | `client/package.json`, `client/playwright.config.js`, E2E spec | ⬜ |
-| 1s | 连续执行稳定 E2E 基线至少 3 次，排除随机失败、残留房间状态、固定等待和测试顺序依赖；记录耗时、失败诊断和已知生命周期问题 | `client/tests/e2e/`, `docs/acceptance/v3.6/e2e-baseline-report.md` | ⬜ |
+| 1p | 增加主动退出房间的正常基线：只覆盖无进行中比赛的退出，另一浏览器看到在线人数、玩家和角色释放，退出者返回首页；比赛进行中退出明确归入 1q 生命周期问题基线，不在此场景接受多种结果 | `client/tests/e2e/room-leave.spec.js`, `HomePage.js`, `RoomPage.js` | ⬜ |
+| 1q | 为断线、比赛中离开、非参赛者操作、重复提交、过期题目等行为建立问题清单和最小复现；每个独立问题至少对应一个 `lifecycle/<name>.spec.js`，并带 `@lifecycle-issue` Tag；当前行为不符合目标时标记为待服务端修复，不纳入“必须通过”的基线集及 1s 的三次连续执行 | `client/tests/e2e/lifecycle/`, `docs/acceptance/v3.6/` 或等价问题记录 | ⬜ |
+| 1r | 约定 `@stable` 和 `@lifecycle-issue` Tag；稳定集不得使用 `describe.configure({ mode: 'serial' })` 共享状态，生命周期问题集可串行但每个测试仍须自包含；补充 `test:e2e:check`、按 Tag 列表和按 Tag 执行命令，确保 Playwright 清单可明确过滤两类场景 | `client/package.json`, `client/playwright.config.js`, E2E spec | ⬜ |
+| 1s | 连续执行 `@stable` 基线至少 3 次，排除随机失败、残留房间状态、固定等待和测试顺序依赖；按报告模板记录覆盖、环境、每次结果、耗时统计、失败列表和已知生命周期问题 | `client/tests/e2e/`, `docs/acceptance/v3.6/e2e-baseline-report.md` | ⬜ |
 
 ## Phase 1 场景矩阵
 
 | 领域 | 场景 | 浏览器 | 基线类型 | 预期结果 |
 |------|------|--------|----------|----------|
-| 首页 | 空昵称、正常进入 | 1 | 稳定基线 | 空昵称不可进入；有效昵称进入默认房间 |
+| 首页 | 空昵称不可进入 | 1 | 稳定基线 | 保持首页并显示可观察的校验反馈 |
+| 首页 | 有效昵称正常进入 | 1 | 稳定基线 | 进入默认房间并显示当前昵称或玩家状态 |
 | 房间 | 玩家加入与离开同步 | 2 | 稳定基线 | 在线人数、昵称和离开状态在双方同步 |
 | 角色 | 选择、占用、切换、放弃 | 2 | 稳定基线 | 同一角色不可重复占用，角色状态实时一致 |
 | 模式 | 猜拳、算术、默写及默写难度切换 | 2 | 稳定基线 | 模式和难度在房间内同步 |
@@ -1399,6 +1410,18 @@ v3.5 不包含：
 | 生命周期 | 比赛中离开或断线 | 2 | 问题基线 | 记录当前结果及下一阶段目标行为 |
 | 权限 | 非参赛者操作当前对局 | 3 | 问题基线 | 记录是否能够影响比赛及目标限制 |
 | 幂等 | 重复提交、过期题目、快速重复操作 | 1–2 | 问题基线 | 记录是否重复计分或造成状态卡死 |
+
+## Phase 1 报告模板
+
+`docs/acceptance/v3.6/e2e-baseline-report.md` 至少包含：
+
+1. **范围与结论**：本次基线覆盖范围、是否达到 Phase 1 完成条件、未通过项；
+2. **覆盖矩阵**：`spec → test/场景 → 源码行号 → @stable/@lifecycle-issue → 结果`；
+3. **运行环境**：操作系统、Node.js、Playwright/Chromium 版本、Base URL、服务启动方式、是否启用 `E2E_FAST`；
+4. **连续运行结果**：3 次执行的开始时间、通过/失败/跳过数量、通过率、总耗时、场景耗时 p50/p95 和失败 spec 列表；
+5. **诊断结果**：页面异常、控制台错误、请求失败、Trace/截图/附件位置及是否存在非阻断噪声；
+6. **生命周期问题清单**：`spec/场景 → 现象 → 最小复现步骤 → 当前结果 → 目标行为 → 严重级别 → 后续归属阶段`；
+7. **下一阶段输入**：需要服务端生命周期治理解决的问题及对应回归用例。
 
 ## Phase 1 完成条件
 
