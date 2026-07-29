@@ -219,7 +219,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                 返回首页
               </Button>
             )}
-            <Button onClick={handleLeave} danger ghost size="small">
+            <Button onClick={handleLeave} danger ghost size="small" data-testid="room-leave-btn">
               退出房间
             </Button>
           </Space>
@@ -251,6 +251,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
               gap: 10,
             }}>
               <Segmented
+                data-testid="room-mode-segmented"
                 value={roomState?.gameMode || 'rps'}
                 options={[
                   { label: '✊ 猜拳', value: 'rps' },
@@ -279,6 +280,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                     return (
                       <Button
                         key={item.value}
+                        data-testid={`room-difficulty-${item.value}`}
                         type={active ? 'primary' : 'default'}
                         onClick={() => socket.emit('game:setMode', { mode: 'spelling', difficulty: item.value })}
                         style={{
@@ -376,6 +378,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                     {roomState?.gameMode === 'spelling' ? '默写比赛 ✏️' : '算术比赛 🧮'}
                   </Typography.Text>
                   <Button
+                    data-testid="room-start-match-btn"
                     type="primary"
                     size="large"
                     onClick={() => {

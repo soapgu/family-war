@@ -19,7 +19,7 @@ function ScoreboardPanel({
   const cellCount = maxScore + 1
 
   return (
-    <div className="scoreboard-panel">
+    <div className="scoreboard-panel" data-testid="scoreboard-panel">
       {players.map((player, index) => {
         const isRobot = player.id === '__robot__'
         const isLeading = player.score === topScore && topScore > 0

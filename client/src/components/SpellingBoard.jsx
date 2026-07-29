@@ -443,7 +443,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
     <div className="spelling-board">
       <div className="spelling-board-title">
         <Typography.Title level={3} style={{ margin: 0 }}>🔤 爱拼才会赢</Typography.Title>
-        <Tag color="blue">{DIFFICULTY_LABELS[difficulty] || difficulty}</Tag>
+        <Tag data-testid="spelling-difficulty-tag" color="blue">{DIFFICULTY_LABELS[difficulty] || difficulty}</Tag>
       </div>
 
       <ScoreboardPanel
@@ -459,6 +459,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
             <Typography.Text type="secondary">第 {question.round} 题</Typography.Text>
             <Button
               aria-label="再听一次"
+              data-testid="spelling-replay-btn"
               className="spelling-replay-button"
               icon={<SoundOutlined />}
               onClick={() => speak(question.ttsText)}
@@ -466,7 +467,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
             />
           </div>
 
-          <div className="spelling-clue">
+          <div data-testid="spelling-image-clue" className="spelling-clue">
             {imageUrl && !imageError ? (
               <Image
                 src={imageUrl}
@@ -479,7 +480,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
             )}
           </div>
 
-          <div className="spelling-composer" aria-label={`填空 ${question.blanks}`}>
+          <div data-testid="spelling-composer" className="spelling-composer" aria-label={`填空 ${question.blanks}`}>
             {(() => {
               let blankIndex = 0
               return splitBlankWords(question.blanks).map((word, wordIndex) => (
@@ -515,6 +516,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
                               aria-label={`第 ${currentIndex + 1} 个空格`}
                               autoComplete="off"
                               className="spelling-letter-input is-correct"
+                              data-testid={`spelling-letter-input-${currentIndex}`}
                               disabled
                               inputMode="text"
                               maxLength={1}
@@ -531,6 +533,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
                             aria-label={`第 ${currentIndex + 1} 个空格`}
                             autoComplete="off"
                             className="spelling-letter-input"
+                            data-testid={`spelling-letter-input-${currentIndex}`}
                             disabled={submitting}
                             inputMode="text"
                             maxLength={1}
@@ -556,7 +559,7 @@ function SpellingBoard({ gameInfo, onFinish }) {
           </Typography.Text>
         </div>
       ) : (
-        <Typography.Text type="secondary">等待题目…</Typography.Text>
+        <Typography.Text data-testid="spelling-waiting" type="secondary">等待题目…</Typography.Text>
       )}
     </div>
   )

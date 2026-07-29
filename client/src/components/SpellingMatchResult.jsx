@@ -61,13 +61,13 @@ function SpellingMatchResult({ matchWinner, ranking, history, myId, onBack, onRe
   })
 
   return (
-    <div style={{ textAlign: 'center', padding: '12px 0' }}>
+    <div data-testid="spelling-match-result" style={{ textAlign: 'center', padding: '12px 0' }}>
       <div style={{ fontSize: 56, marginBottom: 12 }}>{iWon ? '🏆' : '😢'}</div>
-      <Typography.Title level={4} style={{ margin: 0 }}>
+      <Typography.Title data-testid="spelling-match-result-title" level={4} style={{ margin: 0 }}>
         {iWon ? '恭喜你获得比赛胜利！' : `${winnerName} 获胜！`}
       </Typography.Title>
 
-      <div style={{
+      <div data-testid="spelling-ranking" style={{
         background: '#fafafa',
         borderRadius: 12,
         border: '1px solid #f0f0f0',
@@ -110,8 +110,8 @@ function SpellingMatchResult({ matchWinner, ranking, history, myId, onBack, onRe
       )}
 
       <Space size="middle" style={{ marginTop: 8 }}>
-        <Button onClick={onBack} size="large">返回房间</Button>
-        <Button type="primary" size="large" onClick={onRematch}>再来一局</Button>
+        <Button data-testid="spelling-return-room-btn" onClick={onBack} size="large">返回房间</Button>
+        <Button data-testid="spelling-rematch-btn" type="primary" size="large" onClick={onRematch}>再来一局</Button>
       </Space>
     </div>
   )

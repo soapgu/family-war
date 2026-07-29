@@ -303,12 +303,13 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
           <Typography.Text type="secondary" style={{ fontSize: 14 }}>
             第 {question.round} 题
           </Typography.Text>
-          <div style={{ fontSize: 32, fontWeight: 700, margin: '16px 0', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: 32, fontWeight: 700, margin: '16px 0', fontFamily: 'monospace' }} data-testid="arithmetic-expression">
             {question.expression} = ?
           </div>
 
           <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
             <Input
+              data-testid="arithmetic-answer-input"
               ref={inputRef}
               size="large"
               placeholder="输入答案"
@@ -319,6 +320,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
               style={{ textAlign: 'center', fontSize: 18, fontWeight: 600 }}
             />
             <Button
+              data-testid="arithmetic-submit-btn"
               type="primary"
               size="large"
               onClick={handleSubmit}
@@ -350,7 +352,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
           </Typography.Text>
 
           {feedback && (
-            <div style={{ marginTop: 16, padding: 12, borderRadius: 8, background: feedback.correct ? '#f6ffed' : '#fff2f0' }}>
+            <div data-testid="arithmetic-feedback" style={{ marginTop: 16, padding: 12, borderRadius: 8, background: feedback.correct ? '#f6ffed' : '#fff2f0' }}>
               <Typography.Text style={{ fontSize: 18, color: feedback.correct ? '#52c41a' : '#ff4d4f' }}>
                 {feedback.correct ? '✅ 正确！' : '❌ 错误'}
               </Typography.Text>
@@ -368,7 +370,7 @@ function ArithmeticBoard({ gameInfo, onFinish }) {
           )}
         </div>
       ) : (
-        <div style={{ padding: '40px 0' }}>
+        <div data-testid="arithmetic-waiting" style={{ padding: '40px 0' }}>
           <Typography.Text type="secondary" style={{ fontSize: 16 }}>
             等待题目…
           </Typography.Text>

@@ -102,6 +102,7 @@ function Home({ onEnter }) {
 
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <Input
+            data-testid="home-nickname-input"
             placeholder="输入昵称"
             size="large"
             value={nickname}
@@ -112,6 +113,7 @@ function Home({ onEnter }) {
             style={{ borderRadius: 8, height: 44 }}
           />
           <Button
+            data-testid="home-enter-room-btn"
             type="primary"
             size="large"
             block

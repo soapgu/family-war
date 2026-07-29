@@ -1378,7 +1378,7 @@ E2E 断言层级还必须遵守以下禁止项：
 | 1d | 建立场景级 fixture 或辅助工厂，统一创建单人/双人独立 Context、进入房间、关闭 Context，并确保失败时也释放 Socket.IO 连接；昵称统一使用 `e2e-${process.pid}-${运行随机种子}-${递增序号}`，避免跨运行或未来多 worker 冲突 | `client/tests/e2e/fixtures/` 或等价目录 | ✅ |
 | 1e | 在公共 fixture 注册全局 `pageerror`、关键 `console.error`、请求失败和必要的 Socket.IO 断连监听；失败时将脱敏诊断作为附件写入 `test-results/`，成功场景不制造冗余日志 | `client/tests/e2e/fixtures/`, `client/playwright.config.js` | ✅ |
 | 1f | 扩展 Page Object 公共边界，明确新增 `ArithmeticBoardPage`、`SpellingBoardPage` 和独立 `MatchResultPage`；赛果对象负责胜方/败方、比分或排名、重赛和返回房间，认输仍属于进行中的 `GameBoardPage`；Page Object 只封装稳定动作与等待条件，不隐藏业务断言 | `client/tests/e2e/pages/ArithmeticBoardPage.js`, `SpellingBoardPage.js`, `MatchResultPage.js`, 现有 Page Object | ⬜ |
-| 1g | 必要时为关键控件补充稳定可访问名称或 `data-testid`，覆盖模式选择、难度、角色、题目、答案输入、提交、认输、重赛和返回房间 | `client/src/pages/Room.jsx`, `client/src/components/*.jsx` | ⬜ |
+| 1g | 必要时为关键控件补充稳定可访问名称或 `data-testid`，覆盖模式选择、难度、角色、题目、答案输入、提交、认输、重赛和返回房间 | `client/src/pages/Room.jsx`, `client/src/components/*.jsx` | ✅ |
 | 1h | 重构双人猜拳为单个自包含测试：按默认 2 胜制使用 3 局决胜序列（爸爸胜、妈妈胜、爸爸胜），2 胜即终局，本序列在第 3 局后结束；逐局验证轮次与比分，终局后分别验证胜方和败方赛果；不再用 `describe.serial` 拆分共享状态步骤 | `client/tests/e2e/rps-game.spec.js`, Page Object | ✅ |
 | 1i | 重构人机猜拳基线：验证机器人可被挑战、每轮能自动出拳并最终产生合法赛果；不把随机胜负固定为某一方，也不依赖无断言的盲目点击循环 | `client/tests/e2e/rps-vs-robot.spec.js`, Page Object | ✅ |
 | 1j | 增加房间与角色同步场景：双人在线人数与昵称同步、角色选择、角色占用、角色切换、放弃角色以及模式切换在两个浏览器中一致可见 | `client/tests/e2e/room.spec.js`, `RoomPage.js` | ⬜ |
