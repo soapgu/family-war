@@ -3,6 +3,8 @@
  *
  * 封装：难度检查 → 拼写输入 → TTS 重播 → 图片加载 → 赛果等待
  */
+import { expect } from '@playwright/test'
+
 export class SpellingBoardPage {
   constructor(page) {
     this.page = page
@@ -28,6 +30,8 @@ export class SpellingBoardPage {
     const input = this.page.getByTestId(`spelling-letter-input-${index}`)
     await input.click()
     await input.fill(char)
+    // 最后一格填满后自动提交，输入框值可能已被替换为正确答案
+    await expect(input).toHaveValue(char, { timeout: 3000 }).catch(() => {})
   }
 
   async getLetterValue(index) {
