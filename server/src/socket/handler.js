@@ -191,6 +191,7 @@ function registerHandlers(io) {
         id: socket.id,
         nickname: nickname.trim(),
       })
+      roomManager.broadcastRoomState(roomId, io)
     })
 
     socket.on('room:leave', () => {
