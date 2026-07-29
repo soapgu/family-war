@@ -67,14 +67,16 @@ if (fs.existsSync(localPath)) {
 
 // E2E_FAST 环境变量：加速默写比赛的分数门槛、题目时限和机器人延迟
 // 仅在 Playwright E2E 测试中启用，普通 dev / prod 不受影响
+// robotAnswerDelayMs 设为 5000ms：与 5s 题目时限相等，机器人恰在题末作答，
+// 给玩家留足填字时间，避免机器人在玩家还没填完时提前推进题目造成竞态。
 if (process.env.E2E_FAST === '1') {
   config.games = deepMerge(config.games, {
     spelling: {
       winningScore: 2,
       difficulties: {
-        easy:   { questionTimeLimitMs: 5000, robotAnswerDelayMs: 3000 },
-        normal: { questionTimeLimitMs: 5000, robotAnswerDelayMs: 3000 },
-        hard:   { questionTimeLimitMs: 5000, robotAnswerDelayMs: 3000 },
+        easy:   { questionTimeLimitMs: 5000, robotAnswerDelayMs: 5000 },
+        normal: { questionTimeLimitMs: 5000, robotAnswerDelayMs: 5000 },
+        hard:   { questionTimeLimitMs: 5000, robotAnswerDelayMs: 5000 },
       },
     },
   })

@@ -3,7 +3,6 @@
  *
  * 封装：难度检查 → 拼写输入 → TTS 重播 → 图片加载 → 赛果等待
  */
-import { expect } from '@playwright/test'
 
 export class SpellingBoardPage {
   constructor(page) {
@@ -26,18 +25,51 @@ export class SpellingBoardPage {
     return await this.page.locator('[data-testid^="spelling-letter-input-"]').count()
   }
 
+  /**
+   * 填入单个字母。不吞异常——调用方应先用 waitForInputReady 确认该格可用。
+   */
   async fillLetter(index, char) {
     const input = this.page.getByTestId(`spelling-letter-input-${index}`)
-    await input.fill(char).catch(() => {})
-    try {
-      await expect(input).toHaveValue(char, { timeout: 3000 })
-    } catch {
-      // 最后一格填满后自动提交，输入框可能已被替换为正确答案
-    }
+    await input.fill(char)
   }
 
   async getLetterValue(index) {
     return await this.page.getByTestId(`spelling-letter-input-${index}`).inputValue()
+  }
+
+  /**
+   * 等待指定格输入框出现且可编辑（可观察状态，而非固定等待）。
+   * 在机器人推进题目、整组输入框被替换的瞬间，用此方法感知"当前题是否就绪"。
+   */
+  async waitForInputReady(index, timeout = 10000) {
+    await this.page.waitForFunction(
+      (i) => {
+        const input = document.querySelector(`[data-testid="spelling-letter-input-${i}"]`)
+        return !!input && !input.disabled
+      },
+      index,
+      { timeout }
+    )
+  }
+
+  /**
+   * 一轮内尽可能把所有空格都填成 char（故意答错）。
+   *
+   * 用「输入框是否仍属于当前题」这一可观察状态判断：
+   * 若填到中途机器人已答对并推进到下一题，当前题的输入框会消失，
+   * 此时直接结束本轮（机器人已经得分，无需再填），而不是静默吞掉 fill 异常。
+   */
+  async answerAllWrong(char) {
+    const count = await this.getLetterInputCount()
+    for (let i = 0; i < count; i++) {
+      try {
+        await this.waitForInputReady(i, 5000)
+        await this.fillLetter(i, char)
+      } catch {
+        // 输入框已消失 → 机器人已推进题目，本轮无需继续
+        return
+      }
+    }
   }
 
   async isImageVisible() {

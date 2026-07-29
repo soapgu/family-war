@@ -55,17 +55,18 @@ test('默写核心交互：难度切换、发音、字母输入、图片提示�
   expect(count, '至少有一个空格').toBeGreaterThan(0)
 
   // 填入错误字母 → 自动提交触发（填满最后一格后 auto-submit 发 game:answer）
+  // 先等第一格可用，再逐格填错；填满最后一格后 auto-submit 触发提交
   for (let i = 0; i < count; i++) {
+    await board.waitForInputReady(i)
     await board.fillLetter(i, 'z')
   }
-  // E2E_FAST 下机器人 3s 回答，可能会在填入完成后立即打开下一题，不强制验证 disabled 状态
 })
 
 /**
  * 1m 默写完整赛果：错误作答 → 机器人 2 分取胜 → 验证排名 → 返回房间。
  *
  * 服务端通过 E2E_FAST=1 环境变量将默写 winningScore 降为 2、
- * robotDelay 降为 3s，总耗时约 15 秒。
+ * robotDelay 降为 5s（与 5s 题目时限相等），总耗时约 20 秒。
  */
 test('默写完整比赛：错误作答 → 机器人胜 → 最终排名 → 返回房间', async ({ singlePlayer, baseURL }) => {
   const { page, nickname } = singlePlayer
@@ -82,25 +83,32 @@ test('默写完整比赛：错误作答 → 机器人胜 → 最终排名 → �
   await board.waitForQuestion()
 
   // ── 2. 两轮错误作答 → 机器人 2 分取胜 ────────────────────────
+  // answerAllWrong 会逐格填错并提交；若机器人已提前答对推进题目，则提前结束本轮
   for (let round = 0; round < 2; round++) {
-    const count = await board.getLetterInputCount()
-    for (let i = 0; i < count; i++) {
-      await board.fillLetter(i, 'z')
-    }
-
+    await board.answerAllWrong('z')
     if (round === 0) {
       await board.waitForNextQuestion()
     }
   }
 
-  // ── 3. 验证赛果 ─────────────────────────────────────────────
+  // ── 3. 验证赛果（标题 + 排名） ──────────────────────────────
   await board.waitForMatchResult()
   const matchResult = new MatchResultPage(page, 'spelling')
   await matchResult.waitForVisible()
+
   const title = await matchResult.getTitle()
   expect(title, '赛果标题含"获胜"').toMatch(/获胜/)
 
+  // 排名：机器人 2 分居首，玩家 0 分垫底（验证真实计分与排名）
+  const ranking = await matchResult.getRanking()
+  expect(ranking.length, '排名包含所有玩家').toBeGreaterThanOrEqual(2)
+  expect(ranking[0].score, '机器人 2 分取胜').toBe(2)
+  expect(ranking[0].text, '第一名是机器人').toContain('机器人')
+  const me = ranking.find((r) => r.text.includes('我'))
+  expect(me?.score, '玩家 0 分垫底').toBe(0)
+
   // ── 4. 返回房间 ─────────────────────────────────────────────
+  // "游戏房间"是 Room.jsx 房间标题文案，RoomPage.waitForRoomReady 也用同一文案作为房间就绪标识
   await matchResult.clickReturnRoom()
   await expect(page.getByText('游戏房间')).toBeVisible()
 })
