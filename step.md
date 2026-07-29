@@ -1381,7 +1381,7 @@ E2E 断言层级还必须遵守以下禁止项：
 | 1g | 必要时为关键控件补充稳定可访问名称或 `data-testid`，覆盖模式选择、难度、角色、题目、答案输入、提交、认输、重赛和返回房间 | `client/src/pages/Room.jsx`, `client/src/components/*.jsx` | ✅ |
 | 1h | 重构双人猜拳为单个自包含测试：按默认 2 胜制使用 3 局决胜序列（爸爸胜、妈妈胜、爸爸胜），2 胜即终局，本序列在第 3 局后结束；逐局验证轮次与比分，终局后分别验证胜方和败方赛果；不再用 `describe.serial` 拆分共享状态步骤 | `client/tests/e2e/rps-game.spec.js`, Page Object | ✅ |
 | 1i | 重构人机猜拳基线：验证机器人可被挑战、每轮能自动出拳并最终产生合法赛果；不把随机胜负固定为某一方，也不依赖无断言的盲目点击循环 | `client/tests/e2e/rps-vs-robot.spec.js`, Page Object | ✅ |
-| 1j | 增加房间与角色同步场景：双人在线人数与昵称同步、角色选择、角色占用、角色切换、放弃角色以及模式切换在两个浏览器中一致可见 | `client/tests/e2e/room.spec.js`, `RoomPage.js` | ⬜ |
+| 1j | 增加房间与角色同步场景：双人在线人数与昵称同步、角色选择、角色占用、角色切换、放弃角色以及模式切换在两个浏览器中一致可见 | `client/tests/e2e/room.spec.js`, `RoomPage.js` | ✅ |
 | 1k | 增加算术完整比赛场景：选择算术、开始比赛，由 `ArithmeticBoardPage.parseAndEvaluate()` 使用白名单 Token 解析页面表达式，提交错误与正确答案、验证反馈和比分推进，直至最终排名并返回房间；禁止 `eval` 和读取服务端答案 | `client/tests/e2e/arithmetic-game.spec.js`, `ArithmeticBoardPage.js`, `MatchResultPage.js` | ⬜ |
 | 1l | 增加默写核心交互场景：切换简单/普通/困难并验证同步，开始比赛，验证难度、字母输入、发音按钮、图片提示降级和错误答案反馈 | `client/tests/e2e/spelling-game.spec.js`, `SpellingBoardPage.js` | ⬜ |
 | 1m | 建立默写完整赛果路径；若默认耗时过长，使用服务端启动环境变量 `E2E_FAST=1` 加载只覆盖取胜分数、题目时限和机器人延迟的快速 Profile。覆盖仅在该服务端进程内生效，普通 `npm run dev`、生产构建及其他测试不受影响；仍复用正式出题、判定、计分和 Socket.IO 逻辑，禁止测试专用答案或跳关分支 | `server/config.js` 或独立配置 Profile, E2E 启动脚本, `client/tests/e2e/spelling-game.spec.js` | ⬜ |

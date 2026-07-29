@@ -26,4 +26,19 @@ export class RoomPage {
   async waitForGameStart() {
     await this.page.getByText('第 1 局').waitFor({ state: 'visible', timeout: 15000 })
   }
+
+  async switchToMode(mode) {
+    const labels = { rps: '猜拳', arithmetic: '算术', spelling: '默写' }
+    const seg = this.page.getByTestId('room-mode-segmented')
+    await seg.locator('.ant-segmented-item').filter({ hasText: labels[mode] }).click()
+  }
+
+  async switchDifficulty(level) {
+    await this.page.getByTestId(`room-difficulty-${level}`).click()
+  }
+
+  async deselectRole() {
+    const myCard = this.page.getByTestId('role-cards').locator('.ant-tag').filter({ hasText: '我' })
+    await myCard.locator('..').locator('..').click()
+  }
 }
