@@ -1384,7 +1384,7 @@ E2E 断言层级还必须遵守以下禁止项：
 | 1j | 增加房间与角色同步场景：双人在线人数与昵称同步、角色选择、角色占用、角色切换、放弃角色以及模式切换在两个浏览器中一致可见 | `client/tests/e2e/room.spec.js`, `RoomPage.js` | ✅ |
 | 1k | 增加算术完整比赛场景：选择算术、开始比赛，由 `ArithmeticBoardPage.parseAndEvaluate()` 使用白名单 Token 解析页面表达式，提交错误与正确答案、验证反馈和比分推进，直至最终排名并返回房间；禁止 `eval` 和读取服务端答案 | `client/tests/e2e/arithmetic-game.spec.js`, `ArithmeticBoardPage.js`, `MatchResultPage.js` | ✅ |
 | 1l | 增加默写核心交互场景：切换简单/普通/困难并验证同步，开始比赛，验证难度、字母输入、发音按钮、图片提示降级和错误答案反馈 | `client/tests/e2e/spelling-game.spec.js`, `SpellingBoardPage.js` | ✅ |
-| 1m | 建立默写完整赛果路径；若默认耗时过长，使用服务端启动环境变量 `E2E_FAST=1` 加载只覆盖取胜分数、题目时限和机器人延迟的快速 Profile。覆盖仅在该服务端进程内生效，普通 `npm run dev`、生产构建及其他测试不受影响；仍复用正式出题、判定、计分和 Socket.IO 逻辑，禁止测试专用答案或跳关分支 | `server/config.js` 或独立配置 Profile, E2E 启动脚本, `client/tests/e2e/spelling-game.spec.js` | ⬜ |
+| 1m | 建立默写完整赛果路径；若默认耗时过长，使用服务端启动环境变量 `E2E_FAST=1` 加载只覆盖取胜分数、题目时限和机器人延迟的快速 Profile。覆盖仅在该服务端进程内生效，普通 `npm run dev`、生产构建及其他测试不受影响；仍复用正式出题、判定、计分和 Socket.IO 逻辑，禁止测试专用答案或跳关分支 | `server/config.js` 或独立配置 Profile, E2E 启动脚本, `client/tests/e2e/spelling-game.spec.js` | ✅ |
 | 1n | 增加猜拳结束后的返回房间与重赛场景，验证新比赛从初始轮次和比分开始，两个参赛页面状态保持一致 | `client/tests/e2e/rps-rematch.spec.js`, Page Object | ⬜ |
 | 1o | 增加猜拳认输基线：参赛者认输后对手收到明确提示，双方退出游戏面板，房间恢复到可再次发起比赛的状态 | `client/tests/e2e/rps-forfeit.spec.js`, Page Object | ⬜ |
 | 1p | 增加主动退出房间的正常基线：只覆盖无进行中比赛的退出，另一浏览器看到在线人数、玩家和角色释放，退出者返回首页；比赛进行中退出明确归入 1q 生命周期问题基线，不在此场景接受多种结果 | `client/tests/e2e/room-leave.spec.js`, `HomePage.js`, `RoomPage.js` | ⬜ |

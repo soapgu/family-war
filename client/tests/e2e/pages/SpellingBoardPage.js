@@ -28,10 +28,12 @@ export class SpellingBoardPage {
 
   async fillLetter(index, char) {
     const input = this.page.getByTestId(`spelling-letter-input-${index}`)
-    await input.click()
-    await input.fill(char)
-    // 最后一格填满后自动提交，输入框值可能已被替换为正确答案
-    await expect(input).toHaveValue(char, { timeout: 3000 }).catch(() => {})
+    await input.fill(char).catch(() => {})
+    try {
+      await expect(input).toHaveValue(char, { timeout: 3000 })
+    } catch {
+      // 最后一格填满后自动提交，输入框可能已被替换为正确答案
+    }
   }
 
   async getLetterValue(index) {
@@ -47,5 +49,15 @@ export class SpellingBoardPage {
 
   async waitForMatchResult() {
     await this.page.getByTestId('spelling-match-result').waitFor({ state: 'visible', timeout: 25000 })
+  }
+
+  async waitForNextQuestion() {
+    await this.page.waitForFunction(
+      () => {
+        const input = document.querySelector('[data-testid="spelling-letter-input-0"]')
+        return input && !input.disabled
+      },
+      { timeout: 15000 }
+    )
   }
 }

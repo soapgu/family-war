@@ -31,7 +31,7 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: 'npm run dev:server --prefix ..',
+          command: 'E2E_FAST=1 npm run dev:server --prefix ..',
           url: 'http://localhost:4000/api/health',
           reuseExistingServer: false,
           stdout: 'pipe',

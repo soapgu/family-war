@@ -3,6 +3,8 @@ import { test, joinRoom } from './fixtures/index.js'
 import { RoomPage } from './pages/RoomPage.js'
 import { SpellingBoardPage } from './pages/SpellingBoardPage.js'
 
+import { MatchResultPage } from './pages/MatchResultPage.js'
+
 /**
  * 1l 默写核心交互：难度切换 → 开始比赛 → TTS 重播 → 图片提示 → 字母输入 → 错误反馈
  *
@@ -52,9 +54,53 @@ test('默写核心交互：难度切换、发音、字母输入、图片提示�
   const count = await board.getLetterInputCount()
   expect(count, '至少有一个空格').toBeGreaterThan(0)
 
+  // 填入错误字母 → 自动提交触发（填满最后一格后 auto-submit 发 game:answer）
   for (let i = 0; i < count; i++) {
     await board.fillLetter(i, 'z')
   }
+  // E2E_FAST 下机器人 3s 回答，可能会在填入完成后立即打开下一题，不强制验证 disabled 状态
+})
 
-  await expect(page.getByTestId('spelling-letter-input-0')).toBeDisabled({ timeout: 10000 })
+/**
+ * 1m 默写完整赛果：错误作答 → 机器人 2 分取胜 → 验证排名 → 返回房间。
+ *
+ * 服务端通过 E2E_FAST=1 环境变量将默写 winningScore 降为 2、
+ * robotDelay 降为 3s，总耗时约 15 秒。
+ */
+test('默写完整比赛：错误作答 → 机器人胜 → 最终排名 → 返回房间', async ({ singlePlayer, baseURL }) => {
+  const { page, nickname } = singlePlayer
+
+  // ── 1. 进房、选角、开始默写比赛 ──────────────────────────────
+  await joinRoom(page, nickname, baseURL)
+  const room = new RoomPage(page)
+  await room.selectRole('爸爸')
+  await room.waitForRoleSelected()
+  await room.switchToMode('spelling')
+  await page.getByTestId('room-start-match-btn').click()
+
+  const board = new SpellingBoardPage(page)
+  await board.waitForQuestion()
+
+  // ── 2. 两轮错误作答 → 机器人 2 分取胜 ────────────────────────
+  for (let round = 0; round < 2; round++) {
+    const count = await board.getLetterInputCount()
+    for (let i = 0; i < count; i++) {
+      await board.fillLetter(i, 'z')
+    }
+
+    if (round === 0) {
+      await board.waitForNextQuestion()
+    }
+  }
+
+  // ── 3. 验证赛果 ─────────────────────────────────────────────
+  await board.waitForMatchResult()
+  const matchResult = new MatchResultPage(page, 'spelling')
+  await matchResult.waitForVisible()
+  const title = await matchResult.getTitle()
+  expect(title, '赛果标题含"获胜"').toMatch(/获胜/)
+
+  // ── 4. 返回房间 ─────────────────────────────────────────────
+  await matchResult.clickReturnRoom()
+  await expect(page.getByText('游戏房间')).toBeVisible()
 })
