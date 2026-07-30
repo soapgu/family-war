@@ -80,7 +80,7 @@ function ArithmeticMatchResult({ matchWinner, scores, ranking, history, myId, on
           📊 最终排名
         </Typography.Text>
         {ranking.map((entry, idx) => (
-          <div key={entry.playerId} style={{
+          <div key={entry.playerId} data-testid="arithmetic-ranking-row" style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',

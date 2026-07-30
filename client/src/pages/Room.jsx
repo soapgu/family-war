@@ -208,7 +208,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
             </Typography.Title>
             <Typography.Text type="secondary" style={{ fontSize: 13 }}>
               房间 ID: <Typography.Text code>default</Typography.Text>
-                <Tag style={{ marginLeft: 8 }}>
+                <Tag data-testid="room-online-count" style={{ marginLeft: 8 }}>
                   {humanCount} 人在线
                 </Tag>
             </Typography.Text>
@@ -281,6 +281,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                       <Button
                         key={item.value}
                         data-testid={`room-difficulty-${item.value}`}
+                        aria-pressed={active}
                         type={active ? 'primary' : 'default'}
                         onClick={() => socket.emit('game:setMode', { mode: 'spelling', difficulty: item.value })}
                         style={{
@@ -406,6 +407,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                       return (
                         <Button
                           key={role}
+                          data-testid={`room-challenge-${role}`}
                           danger
                           size="large"
                           icon={<span style={{ fontSize: 18 }}>⚔️</span>}

@@ -11,3 +11,4 @@ admin-client/tests/acceptance/recovery/backups/
 admin-client/tests/acceptance/recovery/recovery.json
 client/tests/e2e/e2e-report/
 client/tests/e2e/test-results/
+.zcode/

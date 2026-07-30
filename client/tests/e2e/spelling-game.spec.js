@@ -22,15 +22,15 @@ test('默写核心交互：难度切换、发音、字母输入、图片提示�
   // ── 2. 切换为默写模式 ────────────────────────────────────────
   await room.switchToMode('spelling')
 
-  // ── 3. 难度切换：验证按钮变 primary ─────────────────────────
+  // ── 3. 难度切换：验证按钮 aria-pressed 选中态 ───────────────
   await room.switchDifficulty('normal')
-  await expect(page.getByTestId('room-difficulty-normal')).toHaveClass(/ant-btn-primary/, { timeout: 5000 })
+  await expect(page.getByTestId('room-difficulty-normal')).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
 
   await room.switchDifficulty('hard')
-  await expect(page.getByTestId('room-difficulty-hard')).toHaveClass(/ant-btn-primary/, { timeout: 5000 })
+  await expect(page.getByTestId('room-difficulty-hard')).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
 
   await room.switchDifficulty('easy')
-  await expect(page.getByTestId('room-difficulty-easy')).toHaveClass(/ant-btn-primary/, { timeout: 5000 })
+  await expect(page.getByTestId('room-difficulty-easy')).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 })
 
   // ── 4. 开始比赛 ──────────────────────────────────────────────
   await page.getByTestId('room-start-match-btn').click()

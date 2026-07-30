@@ -79,7 +79,7 @@ function SpellingMatchResult({ matchWinner, ranking, history, myId, onBack, onRe
           📊 最终排名
         </Typography.Text>
         {ranking.map((entry, index) => (
-          <div key={entry.playerId} style={{
+          <div key={entry.playerId} data-testid="spelling-ranking-row" style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',

@@ -53,7 +53,7 @@ function RoleCard({ role, occupant, isMine, onClick }) {
         }
       }}
     >
-      <div onClick={handleClick} style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}>
+      <div onClick={handleClick} data-testid={`role-card-${role}`} style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}>
         {/* Raised hand badge when selected */}
           {isMine && (
             <div
@@ -77,9 +77,9 @@ function RoleCard({ role, occupant, isMine, onClick }) {
           <div style={{ fontSize: 13, fontWeight: 600, margin: '4px 0 6px' }}>{role}</div>
           <div style={{ marginBottom: 2 }}>
           {isFree ? (
-            <Tag>空闲</Tag>
+            <Tag data-testid={`role-card-status-${role}`}>空闲</Tag>
           ) : (
-            <Tag color={isMine ? 'blue' : 'default'}>{isMine ? '我' : occupant.nickname}</Tag>
+            <Tag data-testid={`role-card-status-${role}`} color={isMine ? 'blue' : 'default'}>{isMine ? '我' : occupant.nickname}</Tag>
           )}
         </div>
       </div>

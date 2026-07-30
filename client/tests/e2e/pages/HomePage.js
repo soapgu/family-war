@@ -8,11 +8,11 @@ export class HomePage {
   }
 
   async enterNickname(name) {
-    await this.page.fill('input[placeholder="输入昵称"]', name)
+    await this.page.getByTestId('home-nickname-input').fill(name)
   }
 
   async clickEnter() {
-    await this.page.click('button:has-text("进入房间")')
+    await this.page.getByTestId('home-enter-room-btn').click()
   }
 
   async join(name, baseURL) {

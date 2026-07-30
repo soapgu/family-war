@@ -234,10 +234,14 @@ export const test = base.extend({
     // ---------- 测试运行 ----------
     await use({ ctx, page, nickname, diagnostics })
     // ---------- cleanup ----------
+    // 用 try/finally 确保诊断写入失败也不阻断资源释放与 Socket.IO 断开
     diagnostics.expectedClose = true
-    await attachDiagnostics(test.info(), diagnostics)
-    await page.close()
-    await ctx.close()           // 断开该 Context 对应的 Socket.IO 连接
+    try {
+      await attachDiagnostics(test.info(), diagnostics)
+    } finally {
+      await page.close().catch(() => {})
+      await ctx.close().catch(() => {})  // 断开该 Context 对应的 Socket.IO 连接
+    }
   },
 
   /**
@@ -266,13 +270,17 @@ export const test = base.extend({
     // ---------- 测试运行 ----------
     await use(pair)
     // ---------- cleanup ----------
+    // 用 allSettled + try/finally：某个 page.close reject 不影响其余资源释放
     diagA.expectedClose = true
     diagB.expectedClose = true
     const info = test.info()
-    await attachDiagnostics(info, diagA, 'playerA')
-    await attachDiagnostics(info, diagB, 'playerB')
-    await Promise.all([pageA.close(), pageB.close()])
-    await Promise.all([ctxA.close(), ctxB.close()])
+    try {
+      await attachDiagnostics(info, diagA, 'playerA')
+      await attachDiagnostics(info, diagB, 'playerB')
+    } finally {
+      await Promise.allSettled([pageA.close(), pageB.close()])
+      await Promise.allSettled([ctxA.close(), ctxB.close()])
+    }
   },
 
 })

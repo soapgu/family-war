@@ -26,7 +26,7 @@ export class MatchResultPage {
 
   async getRanking() {
     const container = this.page.getByTestId(`${this.prefix}-ranking`)
-    const rows = container.locator('> div')
+    const rows = container.getByTestId(`${this.prefix}-ranking-row`)
     const count = await rows.count()
     const ranking = []
     for (let i = 0; i < count; i++) {
