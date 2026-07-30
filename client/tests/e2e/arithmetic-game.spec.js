@@ -54,11 +54,17 @@ test('算术完整比赛：解析表达式、正确/错误作答、最终排名�
   await board.submitCorrectAnswer()
   await board.waitForMatchResult()
 
-  // ── 6. 验证赛果 ─────────────────────────────────────────────
+  // ── 6. 验证赛果（标题 + 排名） ──────────────────────────────
   const matchResult = new MatchResultPage(page, 'arithmetic')
   await matchResult.waitForVisible()
   const title = await matchResult.getTitle()
   expect(title, '赛果标题含"恭喜"').toContain('恭喜')
+
+  // 排名：玩家 5 分居首（含"我"标签），机器人未得分垫底
+  const ranking = await matchResult.getRanking()
+  expect(ranking.length, '排名包含所有玩家').toBeGreaterThanOrEqual(2)
+  expect(ranking[0].score, '玩家 5 分取胜').toBe(5)
+  expect(ranking[0].text, '第一名是玩家本人').toContain('我')
 
   // ── 7. 返回房间 ─────────────────────────────────────────────
   await matchResult.clickReturnRoom()

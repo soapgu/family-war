@@ -53,6 +53,20 @@ export class SpellingBoardPage {
   }
 
   /**
+   * 等待答错反馈出现：提交错误答案后输入框变 disabled+readOnly（answered 态）。
+   * 这是用户可观察的"已作答"信号，不依赖隐藏 DOM 或 Socket Payload。
+   */
+  async waitForAnsweredFeedback(timeout = 10000) {
+    await this.page.waitForFunction(
+      () => {
+        const input = document.querySelector('[data-testid="spelling-letter-input-0"]')
+        return !!input && input.disabled
+      },
+      { timeout }
+    )
+  }
+
+  /**
    * 一轮内尽可能把所有空格都填成 char（故意答错）。
    *
    * 用「输入框是否仍属于当前题」这一可观察状态判断：

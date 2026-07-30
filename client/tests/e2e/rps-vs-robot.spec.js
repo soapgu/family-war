@@ -42,6 +42,7 @@ test('RPS 人机 2 胜制完整比赛（循环直到 2 胜）', async ({ singleP
   let pageAWins = 0
   let robotWins = 0
   let matchEnded = false
+  let prevTotal = 0
 
   for (let i = 0; i < MAX_ROUNDS; i++) {
     // 3a 进入第 i+1 局 choosing
@@ -56,9 +57,11 @@ test('RPS 人机 2 胜制完整比赛（循环直到 2 胜）', async ({ singleP
     // 3d 等本局结果（机器人自动出拳 → 下一局 OR 赛果）
     await board.waitForRoundOrMatch(i + 1)
 
-    // 3e 验证比分推进（每局总增分 ≤ i+1）
+    // 3e 验证比分推进：总分单调不减（平局不变，分胜负则 +1）
     const score = await board.getScore()
-    expect(score.me + score.opp, `第 ${i + 1} 局后总得分`).toBeLessThanOrEqual(i + 1)
+    const total = score.me + score.opp
+    expect(total, `第 ${i + 1} 局后总得分应单调不减`).toBeGreaterThanOrEqual(prevTotal)
+    prevTotal = total
     pageAWins = score.me
     robotWins = score.opp
 

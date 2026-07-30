@@ -52,13 +52,16 @@ export class ArithmeticBoardPage {
 
   async submitAnswer() {
     await this.page.getByTestId('arithmetic-submit-btn').click()
+    // 等提交按钮消失或被禁用（提交后防重复，表示答案已提交）
     await this.page.waitForFunction(
       () => {
         const btn = document.querySelector('[data-testid="arithmetic-submit-btn"]')
-        return !btn || btn.disabled !== false
+        return !btn || btn.disabled === true
       },
       { timeout: 5000 }
-    ).catch(() => {})
+    ).catch(() => {
+      // 正确作答时按钮可能被新题直接替换（React 批处理），超时可接受
+    })
   }
 
   /**

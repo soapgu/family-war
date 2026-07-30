@@ -40,6 +40,7 @@ function registerDiagnostics(page) {
     errors: [],
     requestFailures: [],
     socketEvents: [],
+    expectedClose: false, // cleanup 主动关闭 Context 前置 true，避免正常关闭被记为断连噪声
   }
 
   page.on('pageerror', (error) => {
@@ -74,6 +75,8 @@ function registerDiagnostics(page) {
 
   page.on('websocket', (ws) => {
     ws.on('close', () => {
+      // 跳过 cleanup 阶段的预期关闭，避免失败附件混入清理噪声
+      if (diagnostics.expectedClose) return
       if (diagnostics.socketEvents.length >= MAX) diagnostics.socketEvents.shift()
       diagnostics.socketEvents.push({
         type: 'ws.close',
@@ -231,6 +234,7 @@ export const test = base.extend({
     // ---------- 测试运行 ----------
     await use({ ctx, page, nickname, diagnostics })
     // ---------- cleanup ----------
+    diagnostics.expectedClose = true
     await attachDiagnostics(test.info(), diagnostics)
     await page.close()
     await ctx.close()           // 断开该 Context 对应的 Socket.IO 连接
@@ -262,6 +266,8 @@ export const test = base.extend({
     // ---------- 测试运行 ----------
     await use(pair)
     // ---------- cleanup ----------
+    diagA.expectedClose = true
+    diagB.expectedClose = true
     const info = test.info()
     await attachDiagnostics(info, diagA, 'playerA')
     await attachDiagnostics(info, diagB, 'playerB')

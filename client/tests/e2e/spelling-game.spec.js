@@ -60,6 +60,9 @@ test('默写核心交互：难度切换、发音、字母输入、图片提示�
     await board.waitForInputReady(i)
     await board.fillLetter(i, 'z')
   }
+
+  // 错误反馈：提交后输入框变 disabled（answered 态），证明错误答案已被服务端接收并反馈
+  await board.waitForAnsweredFeedback()
 })
 
 /**
