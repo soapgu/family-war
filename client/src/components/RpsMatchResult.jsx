@@ -72,10 +72,10 @@ function RpsMatchResult({ matchWinner, scores, history, myId, onBack, onRematch 
       <RoundHistory history={history} myId={myId} />
 
       <Space size="middle">
-        <Button data-testid="rps-return-room" onClick={onBack} size="large">
+        <Button data-testid="rps-return-room-btn" onClick={onBack} size="large">
           返回房间
         </Button>
-        <Button data-testid="rps-rematch" type="primary" size="large" onClick={onRematch}>
+        <Button data-testid="rps-rematch-btn" type="primary" size="large" onClick={onRematch}>
           再来一局
         </Button>
       </Space>

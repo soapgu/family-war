@@ -24,7 +24,11 @@ export class MatchResultPage {
     return await this.page.getByTestId(`${this.prefix}-match-result-title`).textContent()
   }
 
+  /**
+   * 读取排名行。仅 arithmetic/spelling 有排名块；rps 是 1v1 比分制无排名，返回空数组。
+   */
   async getRanking() {
+    if (this.prefix === 'rps') return []
     const container = this.page.getByTestId(`${this.prefix}-ranking`)
     const rows = container.getByTestId(`${this.prefix}-ranking-row`)
     const count = await rows.count()

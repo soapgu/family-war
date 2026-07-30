@@ -96,11 +96,5 @@ export class GameBoardPage {
     await this.page.getByTestId('rps-forfeit').click()
   }
 
-  async clickReturnRoom() {
-    await this.page.getByTestId('rps-return-room').click()
-  }
-
-  async clickRematch() {
-    await this.page.getByTestId('rps-rematch').click()
-  }
+  // 返回房间 / 重赛动作已迁移至 MatchResultPage（prefix='rps'），统一三模式赛果边界
 }
