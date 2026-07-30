@@ -64,7 +64,7 @@ async function completeRpsMatch(boardA, boardB) {
   return { resultA, resultB }
 }
 
-test('RPS 赛后双方返回房间并保留角色 @stable', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
+test('RPS 赛后双方返回房间并保留角色', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
   const { a, b } = dualPlayers
   const { roomA, roomB, boardA, boardB } = await startRpsMatch(dualPlayers, baseURL)
   const { resultA, resultB } = await completeRpsMatch(boardA, boardB)
@@ -84,7 +84,7 @@ test('RPS 赛后双方返回房间并保留角色 @stable', { tag: '@stable' }, 
   await roomB.waitForChallengeButton()
 })
 
-test('RPS 一方发起重赛后双方从第 1 局和 0:0 重新开始 @stable', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
+test('RPS 一方发起重赛后双方从第 1 局和 0:0 重新开始', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
   const { boardA, boardB } = await startRpsMatch(dualPlayers, baseURL)
   const { resultA, resultB } = await completeRpsMatch(boardA, boardB)
 

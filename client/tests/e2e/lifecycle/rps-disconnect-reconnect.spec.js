@@ -23,7 +23,7 @@ async function startRpsMatch(dualPlayers, baseURL) {
   return { roomA, roomB, boardA }
 }
 
-test('RPS 参赛者断线后取消比赛，恢复网络后以无角色状态重入房间 @lifecycle-issue', { tag: '@lifecycle-issue' }, async ({ dualPlayers, baseURL }) => {
+test('RPS 参赛者断线后取消比赛，恢复网络后以无角色状态重入房间', { tag: '@lifecycle-issue' }, async ({ dualPlayers, baseURL }) => {
   test.setTimeout(120000)
 
   const { a, b } = dualPlayers

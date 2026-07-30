@@ -3,7 +3,7 @@ import { test, joinRoom } from './fixtures/index.js'
 import { HomePage } from './pages/HomePage.js'
 import { RoomPage } from './pages/RoomPage.js'
 
-test('主动退出房间后其他玩家看到人数、玩家和角色同步释放 @stable', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
+test('主动退出房间后其他玩家看到人数、玩家和角色同步释放', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
   const { a, b } = dualPlayers
   await joinRoom(a.page, a.nickname, baseURL)
   await joinRoom(b.page, b.nickname, baseURL)
@@ -30,7 +30,7 @@ test('主动退出房间后其他玩家看到人数、玩家和角色同步释�
   await roomB.waitForRoleStatus('妈妈', '我')
 })
 
-test('最后玩家退出后重新进入得到无残留的干净房间 @stable', { tag: '@stable' }, async ({ singlePlayer, baseURL }) => {
+test('最后玩家退出后重新进入得到无残留的干净房间', { tag: '@stable' }, async ({ singlePlayer, baseURL }) => {
   const { page, nickname } = singlePlayer
   await joinRoom(page, nickname, baseURL)
 

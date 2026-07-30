@@ -4,7 +4,7 @@ import { ArithmeticBoardPage } from '../pages/ArithmeticBoardPage.js'
 import { HomePage } from '../pages/HomePage.js'
 import { RoomPage } from '../pages/RoomPage.js'
 
-test('LIFE-001：算术参赛者退出后剩余玩家结束旧对局并返回房间 @lifecycle-issue', { tag: '@lifecycle-issue' }, async ({ dualPlayers, baseURL }) => {
+test('LIFE-001：算术参赛者退出后剩余玩家结束旧对局并返回房间', { tag: '@lifecycle-issue' }, async ({ dualPlayers, baseURL }) => {
   test.fail(true, 'LIFE-001：当前算术/默写参赛者离开不会取消旧对局')
 
   const { a, b } = dualPlayers

@@ -24,7 +24,7 @@ const ROUNDS = [
  * @param {{ dualPlayers: import('./fixtures/index.js').DualPlayers, baseURL: string }} _
  * @param {import('@playwright/test').TestInfo} testInfo
  */
-test('RPS 双人 2 胜制完整比赛（自包含 3 局决胜）', async ({ dualPlayers, baseURL }, testInfo) => {
+test('RPS 双人 2 胜制完整比赛（自包含 3 局决胜）', { tag: '@stable' }, async ({ dualPlayers, baseURL }, testInfo) => {
   const { a, b } = dualPlayers
 
   // 1. 两人进入房间

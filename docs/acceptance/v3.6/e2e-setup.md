@@ -103,9 +103,15 @@ PWDEBUG=1 npm run test:e2e
 | `npm run test:e2e:report` | 打开 HTML 报告 |
 | `npm run test:e2e:stable` | 只跑 `@stable` Tag（Phase 1 稳定基线，纳入 1s 三次连续执行）|
 | `npm run test:e2e:lifecycle` | 只跑 `@lifecycle-issue` Tag（问题基线，**不**纳入 1s）|
+| `npm run test:e2e:check:stable` | 离线列出 `@stable`，预期 11 个测试 |
+| `npm run test:e2e:check:lifecycle` | 离线列出 `@lifecycle-issue`，预期 3 个测试 |
+| `npm run test:e2e:check:untagged` | 离线列出未分类测试，预期 0 个测试 |
 | `npm run test:e2e:ui` | Playwright UI 模式（推荐调试方式）|
 
-> `@stable` / `@lifecycle-issue` Tag 规范见 step.md 1r；当前 Tag 还没生效，1r 实施时同步为 spec 加 Tag。
+`@stable` / `@lifecycle-issue` Tag 只通过 Playwright `test` 的 `tag` 配置声明，不写入测试标题。每个场景必须且只能属于一个分组：
+
+- `@stable`：当前正确且必须通过的浏览器行为，纳入 1s 三次连续执行；
+- `@lifecycle-issue`：生命周期治理输入；已知缺陷使用目标行为断言和 `test.fail()`，不纳入 1s。
 
 ## 9. 与 1a 矩阵的对应
 

@@ -15,7 +15,7 @@ import { MatchResultPage } from './pages/MatchResultPage.js'
  *   feedback 元素从未渲染，通过 waitForNewQuestion 验证下一题到达（= 比分已更新）。
  * - 错误作答：feedback 在机器人回答前持续可见，直接验证 ❌ 错误文案。
  */
-test('算术完整比赛：解析表达式、正确/错误作答、最终排名、返回房间', async ({ singlePlayer, baseURL }) => {
+test('算术完整比赛：解析表达式、正确/错误作答、最终排名、返回房间', { tag: '@stable' }, async ({ singlePlayer, baseURL }) => {
   const { page, nickname } = singlePlayer
 
   // ── 1. 进入房间、选角、切换算术模式、开始比赛 ────────────────

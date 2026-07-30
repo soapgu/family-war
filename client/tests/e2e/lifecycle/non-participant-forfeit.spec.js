@@ -6,7 +6,7 @@ import {
   waitForSocketEvent,
 } from './socketClient.js'
 
-test('LIFE-002：非参赛者不能认输并清理他人的 RPS 对局 @lifecycle-issue', { tag: '@lifecycle-issue' }, async () => {
+test('LIFE-002：非参赛者不能认输并清理他人的 RPS 对局', { tag: '@lifecycle-issue' }, async () => {
   test.fail(true, 'LIFE-002：当前 game:forfeit 未验证发起者是否属于对局')
 
   const sockets = []

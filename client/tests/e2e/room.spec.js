@@ -8,7 +8,7 @@ import { RoomPage } from './pages/RoomPage.js'
  * 所有验证点均跨两个独立浏览器上下文，利用 Playwright expect 的 auto-retry 等待
  * Socket.IO 事件传播完成。
  */
-test('房间与角色同步：双人进房、角色选择占用切换放弃、模式/难度切换', async ({ dualPlayers, baseURL }) => {
+test('房间与角色同步：双人进房、角色选择占用切换放弃、模式/难度切换', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
   const { a, b } = dualPlayers
 
   // ── 1. 两人进入房间 ─────────────────────────────────────────

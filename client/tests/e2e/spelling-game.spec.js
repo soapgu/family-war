@@ -10,7 +10,7 @@ import { MatchResultPage } from './pages/MatchResultPage.js'
  *
  * 不追求完赛（留给 1m），只验证关键 UI 元素的可见性和交互性。
  */
-test('默写核心交互：难度切换、发音、字母输入、图片提示、错误反馈', async ({ singlePlayer, baseURL }) => {
+test('默写核心交互：难度切换、发音、字母输入、图片提示、错误反馈', { tag: '@stable' }, async ({ singlePlayer, baseURL }) => {
   const { page, nickname } = singlePlayer
 
   // ── 1. 进入房间、选角 ────────────────────────────────────────
@@ -71,7 +71,7 @@ test('默写核心交互：难度切换、发音、字母输入、图片提示�
  * 服务端通过 E2E_FAST=1 环境变量将默写 winningScore 降为 2、
  * robotDelay 降为 5s（与 5s 题目时限相等），总耗时约 20 秒。
  */
-test('默写完整比赛：错误作答 → 机器人胜 → 最终排名 → 返回房间', async ({ singlePlayer, baseURL }) => {
+test('默写完整比赛：错误作答 → 机器人胜 → 最终排名 → 返回房间', { tag: '@stable' }, async ({ singlePlayer, baseURL }) => {
   const { page, nickname } = singlePlayer
 
   // ── 1. 进房、选角、开始默写比赛 ──────────────────────────────

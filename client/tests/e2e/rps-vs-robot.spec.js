@@ -22,7 +22,7 @@ const WINNING_SCORE = 2
  * @param {{ singlePlayer: import('./fixtures/index.js').PlayerHandle, baseURL: string }} _
  * @param {import('@playwright/test').TestInfo} testInfo
  */
-test('RPS 人机 2 胜制完整比赛（循环直到 2 胜）', async ({ singlePlayer, baseURL }, testInfo) => {
+test('RPS 人机 2 胜制完整比赛（循环直到 2 胜）', { tag: '@stable' }, async ({ singlePlayer, baseURL }, testInfo) => {
   const { page, nickname } = singlePlayer
 
   // 1. 进入房间并选角色

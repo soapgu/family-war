@@ -26,7 +26,7 @@ async function startRpsMatch(dualPlayers, baseURL) {
   return { roomA, roomB, boardA, boardB }
 }
 
-test('RPS 认输后双方返回房间并可重新发起比赛 @stable', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
+test('RPS 认输后双方返回房间并可重新发起比赛', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
   const { a, b } = dualPlayers
   const { roomA, roomB, boardA, boardB } = await startRpsMatch(dualPlayers, baseURL)
 
