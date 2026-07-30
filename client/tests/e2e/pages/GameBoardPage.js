@@ -46,11 +46,15 @@ export class GameBoardPage {
   }
 
   async getScore() {
-    const me = await this.page.getByTestId('rps-score-me').textContent().catch(() => '0')
-    const opp = await this.page.getByTestId('rps-score-opp').textContent().catch(() => '0')
+    const readScore = async (testId) => {
+      const score = this.page.getByTestId(testId)
+      if (await score.count() === 0) return 0
+      const text = await score.textContent()
+      return Number(text.match(/\d+/)?.[0] || 0)
+    }
     return {
-      me: Number(me.match(/\d+/)?.[0] || 0),
-      opp: Number(opp.match(/\d+/)?.[0] || 0),
+      me: await readScore('rps-score-me'),
+      opp: await readScore('rps-score-opp'),
     }
   }
 

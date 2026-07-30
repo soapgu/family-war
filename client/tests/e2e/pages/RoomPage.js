@@ -16,6 +16,12 @@ export class RoomPage {
     await this.page.locator('[data-testid^="role-card-status-"]').filter({ hasText: '我' }).waitFor({ state: 'visible', timeout: 10000 })
   }
 
+  async waitForRoleStatus(roleName, expectedText) {
+    await this.page.getByTestId(`role-card-status-${roleName}`)
+      .filter({ hasText: expectedText })
+      .waitFor({ state: 'visible', timeout: 10000 })
+  }
+
   async waitForChallengeButton() {
     await this.page.locator('[data-testid^="room-challenge-"]').first().waitFor({ state: 'visible', timeout: 15000 })
   }

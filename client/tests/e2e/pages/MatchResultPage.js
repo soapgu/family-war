@@ -20,6 +20,10 @@ export class MatchResultPage {
     await this.page.getByTestId(`${this.prefix}-match-result`).waitFor({ state: 'visible', timeout: 25000 })
   }
 
+  async waitForHidden() {
+    await this.page.getByTestId(`${this.prefix}-match-result`).waitFor({ state: 'hidden', timeout: 10000 })
+  }
+
   async getTitle() {
     return await this.page.getByTestId(`${this.prefix}-match-result-title`).textContent()
   }
