@@ -7,6 +7,15 @@ export class HomePage {
     await this.page.goto(baseURL, { waitUntil: 'networkidle' })
   }
 
+  async waitForReady() {
+    await this.page.getByTestId('home-nickname-input')
+      .waitFor({ state: 'visible', timeout: 10000 })
+  }
+
+  async getNicknameValue() {
+    return await this.page.getByTestId('home-nickname-input').inputValue()
+  }
+
   async enterNickname(name) {
     await this.page.getByTestId('home-nickname-input').fill(name)
   }

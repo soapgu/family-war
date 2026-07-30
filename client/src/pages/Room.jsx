@@ -317,6 +317,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
 
             {/* Player List */}
             <div
+              data-testid="room-player-list"
               style={{
                 background: '#fafafa',
                 borderRadius: 10,
@@ -332,6 +333,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
                 {playerList.map((p) => (
                   <Tag
                     key={p.id}
+                    data-testid="room-player"
                     color={p.role ? ROLE_COLORS[p.role] : 'default'}
                     style={{ padding: '2px 10px', borderRadius: 12 }}
                   >

@@ -1,3 +1,5 @@
+import { expect } from '@playwright/test'
+
 export class RoomPage {
   constructor(page) {
     this.page = page
@@ -5,6 +7,30 @@ export class RoomPage {
 
   async waitForRoomReady() {
     await this.page.getByText('游戏房间').waitFor({ state: 'visible', timeout: 10000 })
+  }
+
+  async clickLeave() {
+    await this.page.getByTestId('room-leave-btn').click()
+  }
+
+  async waitForOnlineCount(count) {
+    await expect(this.page.getByTestId('room-online-count'))
+      .toHaveText(new RegExp(`^\\s*${count}\\s*人在线\\s*$`), { timeout: 10000 })
+  }
+
+  async waitForPlayerVisible(nickname) {
+    await this.page.getByTestId('room-player-list')
+      .getByTestId('room-player')
+      .filter({ hasText: nickname })
+      .waitFor({ state: 'visible', timeout: 10000 })
+  }
+
+  async waitForPlayerHidden(nickname) {
+    await expect(
+      this.page.getByTestId('room-player-list')
+        .getByTestId('room-player')
+        .filter({ hasText: nickname })
+    ).toHaveCount(0, { timeout: 10000 })
   }
 
   async selectRole(roleName) {
