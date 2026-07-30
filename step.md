@@ -1388,7 +1388,7 @@ E2E 断言层级还必须遵守以下禁止项：
 | 1n | 增加猜拳结束后的返回房间与重赛场景，验证新比赛从初始轮次和比分开始，两个参赛页面状态保持一致 | `client/tests/e2e/rps-rematch.spec.js`, Page Object | ✅ |
 | 1o | 增加猜拳认输基线：参赛者认输后对手收到明确提示，双方退出游戏面板，房间恢复到可再次发起比赛的状态 | `client/tests/e2e/rps-forfeit.spec.js`, Page Object | ✅ |
 | 1p | 增加主动退出房间的正常基线：只覆盖无进行中比赛的退出，另一浏览器看到在线人数、玩家和角色释放，退出者返回首页；比赛进行中退出明确归入 1q 生命周期问题基线，不在此场景接受多种结果 | `client/tests/e2e/room-leave.spec.js`, `HomePage.js`, `RoomPage.js` | ✅ |
-| 1q | 为断线、比赛中离开、非参赛者操作、重复提交、过期题目等行为建立问题清单和最小复现；每个独立问题至少对应一个 `lifecycle/<name>.spec.js`，并带 `@lifecycle-issue` Tag；当前行为不符合目标时标记为待服务端修复，不纳入“必须通过”的基线集及 1s 的三次连续执行 | `client/tests/e2e/lifecycle/`, `docs/acceptance/v3.6/` 或等价问题记录 | ⬜ |
+| 1q | 为断线、比赛中离开、非参赛者操作、重复提交、过期题目等行为建立问题清单和最小复现；每个独立问题至少对应一个 `lifecycle/<name>.spec.js`，并带 `@lifecycle-issue` Tag；当前行为不符合目标时标记为待服务端修复，不纳入“必须通过”的基线集及 1s 的三次连续执行 | `client/tests/e2e/lifecycle/`, `docs/acceptance/v3.6/` 或等价问题记录 | ✅ |
 | 1r | 约定 `@stable` 和 `@lifecycle-issue` Tag；稳定集不得使用 `describe.configure({ mode: 'serial' })` 共享状态，生命周期问题集可串行但每个测试仍须自包含；补充 `test:e2e:check`、按 Tag 列表和按 Tag 执行命令，确保 Playwright 清单可明确过滤两类场景 | `client/package.json`, `client/playwright.config.js`, E2E spec | ⬜ |
 | 1s | 连续执行 `@stable` 基线至少 3 次，排除随机失败、残留房间状态、固定等待和测试顺序依赖；按报告模板记录覆盖、环境、每次结果、耗时统计、失败列表和已知生命周期问题 | `client/tests/e2e/`, `docs/acceptance/v3.6/e2e-baseline-report.md` | ⬜ |
 
