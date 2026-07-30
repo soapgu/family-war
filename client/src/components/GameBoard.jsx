@@ -320,7 +320,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
   if (!opponent) return null
 
   return (
-    <div style={{ textAlign: 'center', padding: '24px 0', animation: 'fadeInUp 0.4s ease' }}>
+    <div data-testid="rps-game-board" style={{ textAlign: 'center', padding: '24px 0', animation: 'fadeInUp 0.4s ease' }}>
       {/* Ready Go overlay */}
       {phase === 'readyGo' && (
         <div
@@ -435,6 +435,7 @@ function GameBoard({ nickname, myRole, opponent, onFinish, onReturnToRoom }) {
       {/* Forfeit message */}
       {phase === 'forfeited' && (
         <div
+          data-testid="rps-forfeit-message"
           style={{
             fontSize: 18,
             fontWeight: 600,

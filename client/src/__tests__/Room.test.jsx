@@ -47,6 +47,7 @@ function renderRoom(roomState = MOCK_ROOM_STATE) {
 describe('Room', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useSocket().id = 'test-socket-id'
   })
 
   it('renders room title', () => {
@@ -230,7 +231,7 @@ describe('Room', () => {
 })
 
 describe('Room 断线重连', () => {
-  it('room:state 无 game 时清除 gameInfo', () => {
+  it('Socket 身份变化时清除旧 gameInfo', () => {
     const { rerender } = render(
       <App>
         <Room
@@ -249,6 +250,7 @@ describe('Room 断线重连', () => {
     })
     expect(screen.getByText('算术面板')).toBeInTheDocument()
 
+    useSocket().id = 'reconnected-socket-id'
     rerender(
       <App>
         <Room

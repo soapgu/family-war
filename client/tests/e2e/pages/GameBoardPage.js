@@ -100,5 +100,15 @@ export class GameBoardPage {
     await this.page.getByTestId('rps-forfeit').click()
   }
 
+  async waitForForfeitMessage(expectedText = '对手认输了') {
+    await this.page.getByTestId('rps-forfeit-message')
+      .filter({ hasText: expectedText })
+      .waitFor({ state: 'visible', timeout: 5000 })
+  }
+
+  async waitForGameBoardHidden() {
+    await this.page.getByTestId('rps-game-board').waitFor({ state: 'hidden', timeout: 10000 })
+  }
+
   // 返回房间 / 重赛动作已迁移至 MatchResultPage（prefix='rps'），统一三模式赛果边界
 }

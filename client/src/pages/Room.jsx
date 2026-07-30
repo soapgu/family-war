@@ -155,7 +155,9 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
     const isReconnect = prevSocketIdRef.current !== socket.id
     prevSocketIdRef.current = socket.id
 
-    if (gameInfo && (!roomState.game || isReconnect)) {
+    // 正常结束由 game:forfeited / game:cancelled / onFinish 各自控制 UI 时序；
+    // 这里只在 Socket 身份变化时兜底清理旧面板，避免 room.game 清空抢先吞掉对手提示。
+    if (gameInfo && isReconnect) {
       setGameInfo(null)
       setGameKey((k) => k + 1)
     }
