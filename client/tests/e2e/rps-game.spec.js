@@ -40,7 +40,7 @@ test('RPS 双人 2 胜制完整比赛（自包含 3 局决胜）', { tag: '@stab
   await roomB.waitForRoleSelected()
 
   // 3. 爸爸发起挑战
-  await roomA.waitForChallengeButton()
+  await roomA.waitForChallengeButton(b.nickname)
   await roomA.clickChallenge(b.nickname)
   await expect(a.page.getByText('第 1 局')).toBeVisible()
   await expect(b.page.getByText('第 1 局')).toBeVisible()

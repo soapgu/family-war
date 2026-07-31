@@ -370,7 +370,7 @@ function Room({ nickname, roomState, onBack, onReturnToRoom }) {
             </div>
 
             {me && !myRole && (
-              <div style={{ marginTop: 20, textAlign: 'center', color: '#999' }}>
+              <div data-testid="room-role-required-message" style={{ marginTop: 20, textAlign: 'center', color: '#999' }}>
                 选择一个角色加入游戏
               </div>
             )}

@@ -14,16 +14,16 @@ Phase 1 已达到 E2E 基线完成条件。`@lifecycle-issue` 不纳入本次稳
 | `room-leave.spec.js:6` | 非最后玩家主动退出 | `@stable` | 3/3 通过 |
 | `room-leave.spec.js:33` | 最后玩家退出后干净重入 | `@stable` | 3/3 通过 |
 | `room.spec.js:11` | 房间、角色、模式与难度同步 | `@stable` | 3/3 通过 |
-| `rps-forfeit.spec.js:29` | RPS 认输后恢复房间 | `@stable` | 3/3 通过 |
+| `rps-forfeit.spec.js:5` | RPS 认输后恢复房间 | `@stable` | 3/3 通过 |
 | `rps-game.spec.js:27` | RPS 双人完整比赛 | `@stable` | 3/3 通过 |
-| `rps-rematch.spec.js:67` | RPS 赛后返回房间 | `@stable` | 3/3 通过 |
-| `rps-rematch.spec.js:87` | RPS 重赛状态重置 | `@stable` | 3/3 通过 |
+| `rps-rematch.spec.js:43` | RPS 赛后返回房间 | `@stable` | 3/3 通过 |
+| `rps-rematch.spec.js:63` | RPS 重赛状态重置 | `@stable` | 3/3 通过 |
 | `rps-vs-robot.spec.js:25` | RPS 人机完整比赛 | `@stable` | 3/3 通过 |
 | `spelling-game.spec.js:13` | 默写核心交互 | `@stable` | 3/3 通过 |
 | `spelling-game.spec.js:74` | 默写完整比赛与赛果 | `@stable` | 3/3 通过 |
-| `lifecycle/non-participant-forfeit.spec.js:9` | LIFE-002 非参赛者认输权限 | `@lifecycle-issue` | 已知问题，预期失败 |
+| `lifecycle/non-participant-forfeit.spec.js:3` | LIFE-002 非参赛者认输权限 | `@lifecycle-issue` | 已知问题，预期失败 |
 | `lifecycle/quiz-player-leave.spec.js:7` | LIFE-001 答题比赛中离开 | `@lifecycle-issue` | 已知问题，预期失败 |
-| `lifecycle/rps-disconnect-reconnect.spec.js:26` | RPS 断线取消与自动重入 | `@lifecycle-issue` | 当前行为通过 |
+| `lifecycle/rps-disconnect-reconnect.spec.js:5` | RPS 断线取消与自动重入 | `@lifecycle-issue` | 当前行为通过 |
 
 ## 3. 运行环境
 
@@ -32,13 +32,15 @@ Phase 1 已达到 E2E 基线完成条件。`@lifecycle-issue` 不纳入本次稳
 | 操作系统 | macOS Darwin 25.5.0 arm64 |
 | Node.js | v24.2.0 |
 | Playwright | 1.62.0 |
-| Chromium | Chrome for Testing 151.0.7922.34（Playwright chromium v1234） |
+| Chromium | Chrome for Testing 151.0.7922.34（Playwright Chromium revision 1234） |
 | Browser Project | `chromium`，headless，单 worker |
 | Base URL | `http://localhost:3000/family-war/` |
 | 服务启动 | `client/playwright.config.js` `webServer` 自动启动 client/server |
 | Server | `http://localhost:4000` |
 | 快速 Profile | `E2E_FAST=1`，仅测试服务进程生效 |
 | 执行命令 | `npm run test:e2e:stable --prefix client -- --reporter=list,json` |
+
+> 历史基线执行时通过 CLI 启用 JSON Reporter；Phase 1 审核收尾后已将 JSON Reporter 固化到 `client/playwright.config.js`，常规 E2E 命令会自动输出 `tests/e2e/test-results/e2e-results.json`。revision 1234 来自 Playwright 1.62.0 的 `browsers.json`，不是占位值。
 
 ## 4. 连续运行结果
 
@@ -75,5 +77,17 @@ Playwright 运行时存在 `NO_COLOR` 被 `FORCE_COLOR` 覆盖的 Node 警告，
 
 1. 统一治理 RPS、算术、默写的参赛者离开和断线清理语义，优先修复 LIFE-001。
 2. 为认输、重赛、输入等游戏事件增加统一参赛者权限校验，修复 LIFE-002。
-3. 修复后删除对应 `test.fail()`，先在 `@lifecycle-issue` 下验证目标行为，再根据稳定性转入 `@stable`。
+3. LIFE-001 修复后删除 `test.fail()` 并转入浏览器 `@stable`；LIFE-002 修复后迁入服务端真实 Socket.IO 集成测试，删除无 UI 的 Playwright 问题 spec。
 4. 后续服务端“房间与对局生命周期”优化必须运行 11 个 `@stable` 场景回归。
+
+## 8. Phase 1 审核收尾
+
+2026-07-31 针对 1n–1s 完成二次审核和收尾：
+
+- 明确 Node Socket 只是无 UI 权限缺陷的 `@lifecycle-issue` 例外，不得进入 `@stable` 或替代浏览器主链路；
+- LIFE-002 的 Node Socket fixture 已统一连接清理，并在失败结果中附加脱敏的连接、`connect_error` 和 `disconnect` 诊断；
+- 挑战等待、角色放弃和无角色提示已改为明确目标或稳定 testid，RPS 认输、重赛和断线场景共用同一开局 helper；
+- JSON Reporter 已固化到 Playwright 配置，输出目录已由 `.gitignore` 排除；
+- 收尾后客户端 87 个单测全部通过，11 个 `@stable` 全部通过，3 个 `@lifecycle-issue` 按预期通过，未分类用例为 0。
+
+Phase 1 验收结论保持“通过”，本次收尾未修改游戏业务或 Socket.IO 协议。

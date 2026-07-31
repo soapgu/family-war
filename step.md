@@ -1346,6 +1346,7 @@ Phase 2 的直接治理输入：
 - 每个测试独立创建 Browser Context，并在 `finally`、fixture teardown 或等价清理中关闭页面和连接；
 - 多玩家场景使用多个独立 Browser Context，禁止用同一 Context 的多个页面模拟不同家庭成员；
 - 继续通过真实浏览器、Vite 代理和真实 Socket.IO 服务验证业务，不 mock `useSocket`；
+- 仅当服务端权限缺陷没有任何前端 UI 入口时，允许在 `@lifecycle-issue` 中使用 Node `socket.io-client` 连接真实服务做最小协议复现；该例外不得用于 `@stable`、游戏主链路或替代可通过公开 UI 完成的操作；
 - 测试不得依赖机器人随机出拳决定固定胜负；需要固定赛果时优先使用双人可控输入；
 - 算术答案由当前页面展示的表达式计算得到，不读取服务端内存或调用测试专用答案接口；
 - 算术 Page Object 应提供 `parseAndEvaluate()` 或等价能力，只接受数字、空格、括号及白名单运算符，并按正式题目规则处理 `×`、`÷`；禁止使用 `eval`、`Function` 或读取页面全局变量；
@@ -1486,7 +1487,7 @@ E2E 断言层级还必须遵守以下禁止项：
 | 2g | 治理终局与重赛：终局对局的原参赛者主动离开或断线时清除旧对局和调度但不发送进行中取消通知；重赛发起者必须属于上一局，且所有原真人参赛者仍在线并属于当前房间，禁止使用过期 Socket 创建新局 | `server/src/socket/handler.js`, `server/__tests__/handler.test.js`, `server/tests/integration.js`, RPS 重赛 E2E | ⬜ |
 | 2h | 补齐幂等和竞态基线：覆盖重复认输、重复离开、离开后输入、过期题目、快速重复操作和旧清理与新开局交错；验证无重复通知、重复计分、重复结算、错误清除新局或机器人定时器残留 | Handler/GameMode/robotScheduler 单测, `server/tests/integration.js` | ⬜ |
 | 2i | 增加生命周期诊断日志：对开局、拒绝操作、对局取消、终局清理和重赛记录稳定字段，包括事件、`roomId`、游戏类型、操作者、结果和原因；记录脱敏规则并为关键日志补单测 | `server/src/socket/handler.js` 或生命周期辅助模块, `server/__tests__/handler.test.js` | ⬜ |
-| 2j | 回归并关闭问题：移除 LIFE-001、LIFE-002 对应 E2E 的 `test.fail()`，改为 `@stable`；RPS 断线重连继续保留 `@lifecycle-issue`；更新问题清单、测试矩阵和 Phase 2 报告，执行本节全部验收命令 | `client/tests/e2e/lifecycle/`, `client/package.json`, `docs/acceptance/v3.6/test-matrix.md`, `lifecycle-issues.md`, `phase-2-report.md` | ⬜ |
+| 2j | 回归并关闭问题：LIFE-001 移除 `test.fail()` 并改为浏览器 `@stable`；LIFE-002 迁入 `server/tests/integration.js` 作为真实 Socket.IO 权限回归，删除原 Playwright 问题 spec；RPS 断线重连继续保留 `@lifecycle-issue`；更新问题清单、测试矩阵和 Phase 2 报告 | `client/tests/e2e/lifecycle/`, `server/tests/integration.js`, `docs/acceptance/v3.6/test-matrix.md`, `lifecycle-issues.md`, `phase-2-report.md` | ⬜ |
 
 ## Phase 2 状态与权限矩阵
 
@@ -1508,7 +1509,7 @@ E2E 断言层级还必须遵守以下禁止项：
 - **GameMode 单测**：继续负责出拳判胜、答案校验、过期题目、重复输入和计分算法，不在 Handler 测试复制算法枚举；
 - **robotScheduler 单测**：验证清理幂等、旧任务失效，以及旧对局清理不会影响新对局任务；
 - **真实 Socket.IO 集成测试**：覆盖跨 Socket 的通知顺序和最终可观察状态，包括算术/默写中途离开、旁观者认输、参赛者断线及终局重赛失效；
-- **Playwright E2E**：只验证用户可观察行为与跨浏览器同步；修复后的 LIFE-001、LIFE-002 转为稳定基线，不读取服务端内存或协议内部状态。
+- **Playwright E2E**：只验证用户可观察行为与跨浏览器同步；修复后的 LIFE-001 转为稳定基线，LIFE-002 改由真实 Socket.IO 集成测试回归，不读取服务端内存或协议内部状态。
 
 ## Phase 2 报告模板
 
@@ -1538,7 +1539,7 @@ git diff --check
 
 - 生命周期状态与权限矩阵具有明确实现和自动化测试映射；
 - LIFE-001、LIFE-002 的目标断言正常通过，不再使用 `test.fail()`；
-- LIFE-001、LIFE-002 对应场景已转为 `@stable`，RPS 断线重连继续作为 `@lifecycle-issue` 专项场景；
+- LIFE-001 已转为浏览器 `@stable`，LIFE-002 已迁入服务端真实 Socket.IO 集成测试，RPS 断线重连继续作为 `@lifecycle-issue` 专项场景；
 - 三种模式的真人参赛者在进行中离开或断线后，旧对局和机器人调度均被清除，剩余真人参赛者收到一次取消通知；
 - 旁观者离开、断线、认输或提交游戏输入均不能改变他人对局；
 - 终局参赛者离开后不能通过过期 Socket 重赛，合法重赛从全新轮次、比分和题目状态开始；

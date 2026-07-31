@@ -27,7 +27,7 @@
 3. 非参赛者 C 发送 `game:forfeit`。
 4. 服务端清除 A/B 的当前游戏，且没有向 C 返回权限错误。
 
-该问题没有可用的旁观者 UI 入口，因此使用 Node 侧 `socket.io-client` 做真实服务集成复现，不向浏览器暴露测试专用 Socket 接口。
+该问题没有可用的旁观者 UI 入口，因此使用 Node 侧 `socket.io-client` 做真实服务集成复现，不向浏览器暴露测试专用 Socket 接口。这是仅限 `@lifecycle-issue` 且无 UI 入口的权限缺陷例外，不得替代浏览器主链路；Phase 2 修复后将该回归迁入 `server/tests/integration.js`，不转为 Playwright `@stable`。
 
 ## 已冻结行为
 

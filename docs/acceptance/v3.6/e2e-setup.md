@@ -53,16 +53,21 @@ CLIENT_BASE_URL=http://localhost:3001/family-war/ npm run test:e2e
 | 失败截图 | `client/tests/e2e/test-results/*/test-failed-*.png` | `screenshot: 'only-on-failure'` |
 | Trace | `client/tests/e2e/test-results/*/trace.zip` | `trace: 'retain-on-failure'` |
 | HTML 报告 | `client/tests/e2e/e2e-report/index.html` | 始终生成，`open: 'never'` |
-| 诊断附件 | `client/tests/e2e/test-results/*/diagnostics.json` | 1e 公共 fixture 注册 `pageerror`/`console.error`/`requestfailed` 监听，失败时落盘 |
+| JSON 结果 | `client/tests/e2e/test-results/e2e-results.json` | 始终生成，用于覆盖数量和耗时统计 |
+| 页面诊断附件 | `client/tests/e2e/test-results/*/` | 公共 fixture 注册 `pageerror`/`console.error`/`requestfailed`/WebSocket 监听，失败时附加 JSON |
+| Node Socket 诊断 | `client/tests/e2e/test-results/*/` | 无 UI 权限问题失败时附加连接、`connect_error` 和 `disconnect` 诊断 |
+
+Node Socket 权限问题不创建 Page，因此没有页面截图和 Trace；连接级 JSON 诊断是该受控例外的等价失败产物。
 
 ## 5. 诊断附件脱敏规则
 
-由 1e 公共 fixture 在 `client/tests/e2e/fixtures/diagnostics.js` 中实现。脱敏字段（不允许写入 `diagnostics.json`）：
+页面诊断由 1e 公共 fixture 在 `client/tests/e2e/fixtures/index.js` 中实现，Node Socket 诊断在 `client/tests/e2e/lifecycle/socketClient.js` 中实现。脱敏字段（不允许写入诊断附件）：
 
 - `cookie`、`set-cookie`、`authorization` 请求头
 - `localStorage`、`sessionStorage` 全部内容
 - Socket.IO `auth` 字段、token
 - 玩家昵称（仅保留前缀 `e2e-` 与长度，便于追踪但不暴露真实身份）
+- Socket.IO 业务事件 Payload 和完整答案
 
 非阻断噪声清单（允许在 `diagnostics.json` 中标记 `nonBlocking: true`，不计入失败判定）：
 
@@ -113,11 +118,14 @@ PWDEBUG=1 npm run test:e2e
 - `@stable`：当前正确且必须通过的浏览器行为，纳入 1s 三次连续执行；
 - `@lifecycle-issue`：生命周期治理输入；已知缺陷使用目标行为断言和 `test.fail()`，不纳入 1s。
 
+无 UI 入口的服务端权限缺陷可在 `@lifecycle-issue` 中使用 Node `socket.io-client` 连接真实服务做最小复现。该例外不得用于 `@stable`、主链路或存在公开 UI 入口的场景；缺陷修复后应迁入服务端集成测试。
+
 ## 9. 与 1a 矩阵的对应
 
 - E2E 范围：test-matrix.md 二·2.1 缺口矩阵 22 行
 - E2E 装配参数：本文 § 2-4
-- 1e 诊断附件实现：`client/tests/e2e/fixtures/diagnostics.js`
+- 1e 页面诊断实现：`client/tests/e2e/fixtures/index.js`
+- Node Socket 诊断实现：`client/tests/e2e/lifecycle/socketClient.js`
 - 1s 三次连续执行：仅针对 `npm run test:e2e:stable`
 
 ## 10. Playwright webServer 自管（1c-Phase-0 升级）

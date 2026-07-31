@@ -1,27 +1,6 @@
 import { expect } from '@playwright/test'
-import { test, joinRoom } from '../fixtures/index.js'
-import { GameBoardPage } from '../pages/GameBoardPage.js'
-import { RoomPage } from '../pages/RoomPage.js'
-
-async function startRpsMatch(dualPlayers, baseURL) {
-  const { a, b } = dualPlayers
-  await joinRoom(a.page, a.nickname, baseURL)
-  await joinRoom(b.page, b.nickname, baseURL)
-
-  const roomA = new RoomPage(a.page)
-  const roomB = new RoomPage(b.page)
-  await roomA.selectRole('爸爸')
-  await roomA.waitForRoleStatus('爸爸', '我')
-  await roomB.selectRole('妈妈')
-  await roomB.waitForRoleStatus('妈妈', '我')
-  await roomA.clickChallenge(b.nickname)
-
-  const boardA = new GameBoardPage(a.page)
-  const boardB = new GameBoardPage(b.page)
-  await boardA.waitForChoosingPhase(1)
-  await boardB.waitForChoosingPhase(1)
-  return { roomA, roomB, boardA }
-}
+import { test } from '../fixtures/index.js'
+import { startRpsMatch } from '../helpers/rps.js'
 
 test('RPS 参赛者断线后取消比赛，恢复网络后以无角色状态重入房间', { tag: '@lifecycle-issue' }, async ({ dualPlayers, baseURL }) => {
   test.setTimeout(120000)
@@ -45,5 +24,5 @@ test('RPS 参赛者断线后取消比赛，恢复网络后以无角色状态重�
   await boardA.waitForGameBoardHidden()
   await roomA.waitForRoleStatus('爸爸', '空闲')
   await roomA.waitForRoleStatus('妈妈', b.nickname)
-  await expect(a.page.getByText('选择一个角色加入游戏')).toBeVisible()
+  await roomA.waitForRoleRequiredMessage()
 })

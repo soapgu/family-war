@@ -53,9 +53,9 @@ test('房间与角色同步：双人进房、角色选择占用切换放弃、�
   ).toContainText(a.nickname, { timeout: 10000 })
 
   // ── 7. A 放弃角色 ──────────────────────────────────────────
-  await roomA.deselectRole()
+  await roomA.deselectRole('儿子')
   // A 看到提示文字
-  await expect(a.page.getByText('选择一个角色加入游戏')).toBeVisible({ timeout: 10000 })
+  await roomA.waitForRoleRequiredMessage()
   // B 看到 儿子 释放
   await expect(
     b.page.getByTestId('role-card-status-儿子')

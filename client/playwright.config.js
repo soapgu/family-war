@@ -26,6 +26,7 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: 'tests/e2e/e2e-report', open: 'never' }],
     ['list'],
+    ['json', { outputFile: 'tests/e2e/test-results/e2e-results.json' }],
   ],
   webServer: EXTERNAL_BASE_URL
     ? undefined

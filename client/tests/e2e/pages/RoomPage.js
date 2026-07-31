@@ -48,20 +48,16 @@ export class RoomPage {
       .waitFor({ state: 'visible', timeout: 10000 })
   }
 
-  async waitForChallengeButton() {
-    await this.page.locator('[data-testid^="room-challenge-"]').first().waitFor({ state: 'visible', timeout: 15000 })
+  async waitForChallengeButton(targetRoleOrNickname) {
+    await this.getChallengeButton(targetRoleOrNickname).waitFor({ state: 'visible', timeout: 15000 })
   }
 
   async clickChallenge(targetRoleOrNickname) {
-    // 优先按角色 testid 定位（如"机器人"），否则按昵称文本匹配
-    const byRole = this.page.getByTestId(`room-challenge-${targetRoleOrNickname}`)
-    const count = await byRole.count()
-    if (count > 0) {
-      await byRole.click()
-      return
-    }
-    // 昵称场景：挑战按钮文案含昵称
-    await this.page.locator('[data-testid^="room-challenge-"]').filter({ hasText: targetRoleOrNickname }).click()
+    await this.getChallengeButton(targetRoleOrNickname).click()
+  }
+
+  getChallengeButton(targetRoleOrNickname) {
+    return this.page.locator('[data-testid^="room-challenge-"]').filter({ hasText: targetRoleOrNickname })
   }
 
   async waitForGameStart() {
@@ -79,10 +75,11 @@ export class RoomPage {
     await this.page.getByTestId(`room-difficulty-${level}`).click()
   }
 
-  async deselectRole() {
-    // 找到带"我"标签的角色卡片，点击该卡片取消选中（不再用 .ant-tag + DOM 父级回溯）
-    const myCard = this.page.locator('[data-testid^="role-card-status-"]').filter({ hasText: '我' })
-    // status 在 role-card 可点击 div 内，点击其所属卡片
-    await myCard.locator('..').click()
+  async deselectRole(roleName) {
+    await this.page.getByTestId(`role-card-${roleName}`).click()
+  }
+
+  async waitForRoleRequiredMessage() {
+    await this.page.getByTestId('room-role-required-message').waitFor({ state: 'visible', timeout: 10000 })
   }
 }

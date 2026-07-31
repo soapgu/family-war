@@ -33,7 +33,7 @@ test('RPS 人机 2 胜制完整比赛（循环直到 2 胜）', { tag: '@stable'
   await room.waitForRoleSelected()
 
   // 2. 挑战机器人
-  await room.waitForChallengeButton()
+  await room.waitForChallengeButton('机器人')
   await room.clickChallenge('机器人')
   await expect(page.getByText('第 1 局')).toBeVisible()
 

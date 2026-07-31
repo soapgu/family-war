@@ -1,7 +1,6 @@
 import { expect } from '@playwright/test'
-import { test, joinRoom } from './fixtures/index.js'
-import { RoomPage } from './pages/RoomPage.js'
-import { GameBoardPage } from './pages/GameBoardPage.js'
+import { test } from './fixtures/index.js'
+import { startRpsMatch } from './helpers/rps.js'
 import { MatchResultPage } from './pages/MatchResultPage.js'
 
 const DECIDING_ROUNDS = [
@@ -9,29 +8,6 @@ const DECIDING_ROUNDS = [
   { a: '石头', b: '布' },
   { a: '剪刀', b: '布' },
 ]
-
-async function startRpsMatch(dualPlayers, baseURL) {
-  const { a, b } = dualPlayers
-  await joinRoom(a.page, a.nickname, baseURL)
-  await joinRoom(b.page, b.nickname, baseURL)
-
-  const roomA = new RoomPage(a.page)
-  const roomB = new RoomPage(b.page)
-  await roomA.selectRole('爸爸')
-  await roomA.waitForRoleSelected()
-  await roomB.selectRole('妈妈')
-  await roomB.waitForRoleSelected()
-
-  await roomA.waitForChallengeButton()
-  await roomA.clickChallenge(b.nickname)
-
-  const boardA = new GameBoardPage(a.page)
-  const boardB = new GameBoardPage(b.page)
-  await boardA.waitForChoosingPhase(1)
-  await boardB.waitForChoosingPhase(1)
-
-  return { roomA, roomB, boardA, boardB }
-}
 
 async function completeRpsMatch(boardA, boardB) {
   for (let index = 0; index < DECIDING_ROUNDS.length; index++) {
@@ -80,8 +56,8 @@ test('RPS 赛后双方返回房间并保留角色', { tag: '@stable' }, async ({
   await roomA.waitForRoleStatus('妈妈', b.nickname)
   await roomB.waitForRoleStatus('爸爸', a.nickname)
   await roomB.waitForRoleStatus('妈妈', '我')
-  await roomA.waitForChallengeButton()
-  await roomB.waitForChallengeButton()
+  await roomA.waitForChallengeButton(b.nickname)
+  await roomB.waitForChallengeButton(a.nickname)
 })
 
 test('RPS 一方发起重赛后双方从第 1 局和 0:0 重新开始', { tag: '@stable' }, async ({ dualPlayers, baseURL }) => {
