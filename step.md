@@ -1437,7 +1437,32 @@ E2E 断言层级还必须遵守以下禁止项：
 - 已发现的服务端生命周期问题具有最小复现、目标行为和后续归属，但不阻断 Phase 1 稳定基线；
 - 形成 `docs/acceptance/v3.6/e2e-baseline-report.md`，记录覆盖矩阵、运行耗时、连续执行结果和下一阶段输入。
 
-## 4. Phase 2 范围
+## 4. Phase 1.5：答题比赛统计实验（非阻断）
+
+目标：在 Phase 1 真实浏览器基线上，手动观察算术、默写双玩家同时正确作答时的比赛/回合胜率，并验证双方消极作答时机器人能否以 5:0:0 完成比赛。该阶段不是 Phase 2 前置门禁，可在生命周期治理前后按需重复运行。
+
+| 步骤 | 内容 | 涉及文件 | 状态 |
+|------|------|----------|------|
+| 1.5a | 建立独立 Playwright 实验目录、配置和手动命令；普通 `test:e2e`、`@stable`、`@lifecycle-issue` 和 CI 均不收集实验 | `client/tests/experiments/`, `client/playwright.experiment.config.js`, `client/package.json` | ✅ |
+| 1.5b | 增加仅 `E2E_EXPERIMENT=1` 生效的 5 分制 Profile：算术/默写题目时限 5s、机器人延迟 2.5s，不影响普通 E2E、dev 或生产环境 | `server/config.js` | ✅ |
+| 1.5c | 实现 A/B 独立 Context 和页面时间屏障：双方先准备答案，再在各自页面事件循环按同一目标时间提交，记录实际触发偏差 | 实验 fixture/helper | ✅ |
+| 1.5d | 算术公平竞争默认运行 10 场；逐场交换爸爸/妈妈角色，统计 Browser、角色、机器人的比赛和累计回合胜率 | `client/tests/experiments/quiz-race.spec.js` | ✅ |
+| 1.5e | 默写公平竞争默认运行 10 场；实验 Context 只捕获用户可听的 `SpeechSynthesisUtterance.text`，禁止读取 Socket Payload、服务端内存或隐藏应用状态 | `client/tests/experiments/quiz-race.spec.js`, 实验 helper | ✅ |
+| 1.5f | 算术、默写各运行 1 场消极比赛；A/B 每题提交保证错误的答案，硬断言机器人连续取得 5 个回合且最终 5:0:0 | `client/tests/experiments/quiz-race.spec.js` | ✅ |
+| 1.5g | 输出逐场数据、胜率、角色分布、屏障偏差和警告到 Git 忽略目录；胜率区间只报告不阻断，流程/比分不一致仍为硬失败 | `client/tests/e2e/test-results/experiments/` | ✅ |
+
+### Phase 1.5 默认规模与判定
+
+| 实验 | 场数 | 判定 |
+|------|---:|------|
+| 算术 A/B 公平竞争 | 10 | A/B 比赛胜率超出 30%-70%、人类回合胜率超出 40%-60% 或机器人获胜时只警告 |
+| 默写 A/B 公平竞争 | 10 | 与算术相同，并记录 TTS 捕获和最后字母提交屏障 |
+| 算术消极比赛 | 1 | 必须机器人 5、A 0、B 0 |
+| 默写消极比赛 | 1 | 必须机器人 5、A 0、B 0 |
+
+公平竞争场数可通过 `EXPERIMENT_MATCH_COUNT` 调整，默认为 10；消极比赛始终每模式 1 场。本实验只反映当前机器、本地浏览器 Context 和 Socket.IO 链路下的调度分布，不作为公网环境绝对公平性证明。
+
+## 5. Phase 2 范围
 
 目标：以 Phase 1 建立的浏览器基线和生命周期问题清单为输入，统一房间成员、对局参与者和游戏状态的服务端校验及清理规则，修复 LIFE-001、LIFE-002，并把修复后的目标行为转为稳定回归。
 
@@ -1462,7 +1487,7 @@ E2E 断言层级还必须遵守以下禁止项：
 - 增加测试专用 Socket.IO 事件、跳关接口或直接操作服务端内存的 E2E；
 - 管理端、Nginx、公网网关、发布标签和生产部署验收。
 
-## 5. Phase 2 生命周期约束
+## 6. Phase 2 生命周期约束
 
 - `roomManager` 继续作为房间成员和角色归属的事实来源，`gameManager` 继续作为对局状态和输入判定的事实来源；
 - Handler 在执行游戏操作前必须区分“当前房间成员”和“当前对局参与者”，不得仅凭客户端传入的 `roomId`、`targetId` 或游戏类型授权；

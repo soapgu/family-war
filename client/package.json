@@ -26,7 +26,11 @@
     "test:e2e:check:stable": "playwright test --config playwright.config.js --list --grep @stable",
     "test:e2e:check:lifecycle": "playwright test --config playwright.config.js --list --grep @lifecycle-issue",
     "test:e2e:check:untagged": "playwright test --config playwright.config.js --list --grep-invert \"@stable|@lifecycle-issue\" --pass-with-no-tests",
-    "test:e2e:ui": "playwright test --config playwright.config.js --ui"
+    "test:e2e:ui": "playwright test --config playwright.config.js --ui",
+    "test:e2e:experiment:check": "playwright test --config playwright.experiment.config.js --list",
+    "test:e2e:experiment": "playwright test --config playwright.experiment.config.js",
+    "test:e2e:experiment:fairness": "playwright test --config playwright.experiment.config.js --grep \"fairness\"",
+    "test:e2e:experiment:passive": "playwright test --config playwright.experiment.config.js --grep \"passive\""
   },
   "scriptsDescription": {
     "start": "启动游戏端 Vite 开发服务，默认监听 3000，并使用开发代理访问 API 和 Socket.IO。",
@@ -43,7 +47,11 @@
     "test:e2e:check:stable": "离线列出 @stable 稳定基线，不实际运行。",
     "test:e2e:check:lifecycle": "离线列出 @lifecycle-issue 问题基线，不实际运行。",
     "test:e2e:check:untagged": "离线列出未归入稳定或生命周期分组的 E2E，正常应为 0。",
-    "test:e2e:ui": "Playwright UI 模式运行 E2E（推荐调试方式）。"
+    "test:e2e:ui": "Playwright UI 模式运行 E2E（推荐调试方式）。",
+    "test:e2e:experiment:check": "只收集 Phase 1.5 答题比赛统计实验，不实际运行。",
+    "test:e2e:experiment": "手动运行 Phase 1.5 全部统计实验，不属于常规回归。",
+    "test:e2e:experiment:fairness": "只运行算术和默写的 A/B 公平竞争实验。",
+    "test:e2e:experiment:passive": "只运行算术和默写的消极比赛实验。"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

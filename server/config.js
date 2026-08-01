@@ -82,5 +82,25 @@ if (process.env.E2E_FAST === '1') {
   })
 }
 
+// Phase 1.5 手动统计实验：保持 5 分制，只缩短题目和机器人等待时间。
+// 仅独立 Playwright 实验配置启用，不影响普通 E2E、dev 或生产环境。
+if (process.env.E2E_EXPERIMENT === '1') {
+  config.games = deepMerge(config.games, {
+    arithmetic: {
+      winningScore: 5,
+      questionTimeLimitMs: 5000,
+      robotAnswerDelayMs: 2500,
+    },
+    spelling: {
+      winningScore: 5,
+      difficulties: {
+        easy: { questionTimeLimitMs: 5000, robotAnswerDelayMs: 2500 },
+        normal: { questionTimeLimitMs: 5000, robotAnswerDelayMs: 2500 },
+        hard: { questionTimeLimitMs: 5000, robotAnswerDelayMs: 2500 },
+      },
+    },
+  })
+}
+
 module.exports = config
 module.exports.DEFAULT_GAME_CONFIG = defaultGameConfig
