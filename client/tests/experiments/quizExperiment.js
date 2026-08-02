@@ -8,8 +8,13 @@ import { SpellingBoardPage } from '../e2e/pages/SpellingBoardPage.js'
 import { MatchResultPage } from '../e2e/pages/MatchResultPage.js'
 
 const ROBOT_LABEL = '机器人'
+// 给两个页面预留安装定时动作的时间；装配不足 100ms 余量时视为屏障失效。
 const BARRIER_LEAD_MS = 500
 
+/**
+ * 在页面业务脚本执行前替换 Web Speech API，记录用户原本可以听到的 TTS 文本。
+ * 该捕获只存在于实验 Context，不读取 Socket Payload、服务端内存或隐藏应用状态。
+ */
 function installSpeechCapture() {
   const entries = []
   class ExperimentUtterance {
@@ -43,12 +48,17 @@ function installSpeechCapture() {
   window.__quizExperimentSpeech = entries
 }
 
+/** 失败时尽力保存页面截图；诊断失败不得覆盖真正的测试错误。 */
 async function captureFailure(page, testInfo, label) {
   const screenshotPath = testInfo.outputPath(`${label}.png`)
   await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {})
   await testInfo.attach(`${label}-screenshot`, { path: screenshotPath, contentType: 'image/png' }).catch(() => {})
 }
 
+/**
+ * 为单场比赛创建完全隔离的 A/B Context、页面、Socket.IO 连接和唯一昵称。
+ * 如果进房失败，先为双方留存截图，再关闭已经创建的 Context。
+ */
 async function createMatchPlayers(browser, baseURL, testInfo, matchIndex) {
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
@@ -82,11 +92,16 @@ async function createMatchPlayers(browser, baseURL, testInfo, matchIndex) {
   }
 }
 
+/** 同时清理双方 Context；一方关闭失败不能阻止另一方继续清理。 */
 async function closeMatchPlayers(players) {
   const contexts = [players.a.context, players.b.context]
   await Promise.allSettled(contexts.map((context) => context.close()))
 }
 
+/**
+ * 逐场交换爸爸/妈妈角色，设置答题模式并开始比赛。
+ * 默写固定使用 hard 难度，随后等待双方都拿到第一题。
+ */
 async function startQuizMatch(players, mode, matchIndex) {
   const roleA = matchIndex % 2 === 0 ? '爸爸' : '妈妈'
   const roleB = matchIndex % 2 === 0 ? '妈妈' : '爸爸'
@@ -115,6 +130,9 @@ async function startQuizMatch(players, mode, matchIndex) {
   return { roleA, roleB, roomA, roomB, boardA, boardB }
 }
 
+/**
+ * 读取当前题最后一次公开朗读的文本，并原地清空捕获数组，避免下一题读到旧数据。
+ */
 async function getSpokenWord(page) {
   await page.waitForFunction(
     () => {
@@ -132,6 +150,10 @@ async function getSpokenWord(page) {
   })
 }
 
+/**
+ * 根据页面 aria-label 中的填空结构，从完整 TTS 答案提取所有缺失字母。
+ * “_”表示输入框，“·”及已显示文本只推进完整答案的位置。
+ */
 function missingLetters(blanks, answer) {
   let position = 0
   const result = []
@@ -148,6 +170,10 @@ function missingLetters(blanks, answer) {
   return result
 }
 
+/**
+ * 准备默写答案，但保留最后一个字母给时间屏障触发正式自动提交。
+ * 消极策略使用 z/x 替换，确保每一个缺失字母都与正确答案不同。
+ */
 async function prepareSpellingAnswer(board, word, correct) {
   const ariaLabel = await board.page.getByTestId('spelling-composer').getAttribute('aria-label')
   const blanks = String(ariaLabel || '').replace(/^填空\s*/, '')
@@ -167,6 +193,10 @@ async function prepareSpellingAnswer(board, word, correct) {
   }
 }
 
+/**
+ * 使用安全表达式解析器准备算术答案；消极策略在正确答案上加 1000。
+ * 此处只填答案，正式点击由两个页面的共同时间屏障完成。
+ */
 async function prepareArithmeticAnswer(board, correct) {
   const expression = await board.getExpression()
   const answer = ArithmeticBoardPage.parseAndEvaluate(expression)
@@ -179,6 +209,10 @@ async function prepareArithmeticAnswer(board, correct) {
   }
 }
 
+/**
+ * 在单个浏览器页面的事件循环中安装绝对目标时间动作。
+ * value 为 null 时点击按钮，否则用原生 input setter 和 InputEvent 模拟真实输入。
+ */
 async function armPageAction(page, token, targetTime, action) {
   return await page.evaluate(({ token: actionToken, target, action: nextAction }) => {
     window.__quizExperimentActions ||= {}
@@ -214,6 +248,7 @@ async function armPageAction(page, token, targetTime, action) {
   }, { token, target: targetTime, action })
 }
 
+/** 等待页面动作触发并返回 armedAt/targetTime/firedAt；DOM 操作失败属于硬失败。 */
 async function waitPageAction(page, token) {
   await page.waitForFunction(
     (actionToken) => !!window.__quizExperimentActions?.[actionToken]?.firedAt,
@@ -228,6 +263,10 @@ async function waitPageAction(page, token) {
   return result
 }
 
+/**
+ * 把同一个未来目标时间下发给两个独立页面，并等待双方各自在页面内触发。
+ * 返回的 skewMs 是 A/B 实际触发时间之差，而不是 Playwright 命令发送时间之差。
+ */
 async function submitAtBarrier(pageA, pageB, actionA, actionB, roundKey) {
   const targetTime = Date.now() + BARRIER_LEAD_MS
   const tokenA = `${roundKey}-A`
@@ -250,10 +289,15 @@ async function submitAtBarrier(pageA, pageB, actionA, actionB, roundKey) {
   }
 }
 
+/** 把当前计分板压缩成可比较签名，用于观察服务端是否已结算本轮。 */
 async function getScoreSignature(page) {
   return await page.locator('.scoreboard-score').allTextContents().then((items) => items.join('|'))
 }
 
+/**
+ * 等待比赛进入赛果页，或等待比分变化且下一题输入重新可用。
+ * 使用用户可观察状态代替固定时长等待。
+ */
 async function waitForRoundAdvance(page, mode, previousScoreSignature) {
   const resultTestId = `${mode}-match-result`
   await page.waitForFunction(
@@ -273,6 +317,7 @@ async function waitForRoundAdvance(page, mode, previousScoreSignature) {
   )
 }
 
+/** 把包含动态昵称的赛果排名转换为稳定的 A/B/robot 分数结构。 */
 function rankingMap(ranking, players) {
   const findScore = (text) => ranking.find((row) => row.text.includes(text))?.score ?? null
   return {
@@ -282,10 +327,14 @@ function rankingMap(ranking, players) {
   }
 }
 
+/** 按最终分数确定 A、B 或 robot 胜者；正常 5 分制终局不会并列第一。 */
 function winnerFromScores(scores) {
   return Object.entries(scores).sort(([, left], [, right]) => right - left)[0][0]
 }
 
+/**
+ * 交叉读取双方赛果页，硬断言最终排名一致且第一名达到实验 Profile 的 5 分。
+ */
 async function collectResult(players, mode) {
   const resultA = new MatchResultPage(players.a.page, mode)
   const resultB = new MatchResultPage(players.b.page, mode)
@@ -299,6 +348,10 @@ async function collectResult(players, mode) {
   return { resultA, resultB, scores: scoresA, winner }
 }
 
+/**
+ * 执行一场完整答题比赛：建房、准备答案、同步提交、逐轮结算并收集赛果。
+ * 50 轮是防止异常状态无限循环的安全上限；无论成功失败都会关闭双方 Context。
+ */
 async function runMatch({ browser, baseURL, testInfo, mode, strategy, matchIndex }) {
   const players = await createMatchPlayers(browser, baseURL, testInfo, matchIndex)
   try {
@@ -321,6 +374,7 @@ async function runMatch({ browser, baseURL, testInfo, mode, strategy, matchIndex
           prepareArithmeticAnswer(session.boardB, strategy === 'fairness'),
         ])
       } else {
+        // 双方分别捕获自己的公开 TTS，并先确认收到的是同一个单词。
         const [wordA, wordB] = await Promise.all([
           getSpokenWord(players.a.page),
           getSpokenWord(players.b.page),
@@ -342,6 +396,7 @@ async function runMatch({ browser, baseURL, testInfo, mode, strategy, matchIndex
       barriers.push(barrier)
 
       if (strategy === 'passive') {
+        // 先确认 A/B 的错误答案已被正式处理，再等待机器人调度得分。
         if (mode === 'arithmetic') {
           await Promise.all([session.boardA.waitForFeedback(), session.boardB.waitForFeedback()])
         } else {
@@ -361,6 +416,7 @@ async function runMatch({ browser, baseURL, testInfo, mode, strategy, matchIndex
 
     const result = await collectResult(players, mode)
     if (strategy === 'passive') {
+      // 消极比赛是确定性规则验证，比分和返回房间能力均属于硬断言。
       expect(result.scores, `${mode} 消极比赛必须是机器人 5:0:0`).toEqual({ A: 0, B: 0, robot: 5 })
       await Promise.all([result.resultA.clickReturnRoom(), result.resultB.clickReturnRoom()])
       await Promise.all([session.roomA.waitForRoomReady(), session.roomB.waitForRoomReady()])
@@ -387,6 +443,10 @@ async function runMatch({ browser, baseURL, testInfo, mode, strategy, matchIndex
   }
 }
 
+/**
+ * 执行一个“模式 × 策略”实验组。公平竞争默认串行 10 场，消极比赛固定 1 场。
+ * 单场不能并行，因为项目当前所有真人玩家都进入同一个 default 房间。
+ */
 export async function runExperiment(params) {
   const count = params.strategy === 'fairness'
     ? Number.parseInt(process.env.EXPERIMENT_MATCH_COUNT || '10', 10)
@@ -398,10 +458,15 @@ export async function runExperiment(params) {
   return { mode: params.mode, strategy: params.strategy, matches }
 }
 
+/** 计算保留一位小数的百分比；空样本返回 0。 */
 function percentage(value, total) {
   return total === 0 ? 0 : Number(((value / total) * 100).toFixed(1))
 }
 
+/**
+ * 将逐场数据汇总为 Browser、角色、机器人、累计回合和屏障偏差统计。
+ * 公平比例超出观察区间只生成 warning；流程和赛果一致性已在 runMatch 中硬断言。
+ */
 function summarizeExperiment(experiment) {
   const totals = { A: 0, B: 0, robot: 0 }
   const wins = { A: 0, B: 0, robot: 0 }
@@ -441,6 +506,10 @@ function summarizeExperiment(experiment) {
   }
 }
 
+/**
+ * 输出本次运行的完整 JSON 和便于阅读的 Markdown 汇总，并附加 JSON 到 Playwright 报告。
+ * 文件使用固定名称，因此 test-results 中只保留最新一次；长期数据需另行归档到 docs。
+ */
 export async function writeExperimentReport(experiments, testInfo) {
   const summaries = experiments.map(summarizeExperiment)
   const report = {
