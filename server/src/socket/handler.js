@@ -1,6 +1,7 @@
 const roomManager = require('./roomManager')
 const gameManager = require('./gameManager')
 const { createRobotScheduler } = require('./robotScheduler')
+const { Lifecycle } = require('./lifecycle')
 const logger = require('../logger')
 const ROBOT_ID = roomManager.ROBOT_ID
 
@@ -98,6 +99,9 @@ function registerHandlers(io) {
       handleGameResult(rid, result)
     },
   })
+
+  // v3.6 Phase 2 步骤 2c：统一对局清理入口（带 gameId 防护）
+  const lifecycle = new Lifecycle({ io, roomManager, gameManager, robotScheduler, ROBOT_ID })
 
   io.on('connection', (socket) => {
     logger.info(`[connect] ${socket.id}`)
@@ -291,7 +295,7 @@ function registerHandlers(io) {
         socket.emit('game:error', { message: '当前房间已有进行中的比赛' })
         return
       }
-      if (room.game) clearGameAndRobotSchedule(rid)
+      if (room.game) lifecycle.cleanupGame(rid, room.game.id, { reason: 'replace_by_challenge' })
 
       if (mode === 'rps') {
         const challenger = room.players[socket.id]
@@ -330,7 +334,7 @@ function registerHandlers(io) {
         try {
           firstQuestion = gameManager.createNextQuestion(rid)
         } catch (error) {
-          clearGameAndRobotSchedule(rid)
+          lifecycle.cleanupGame(rid, game.id, { reason: 'first_question_failed' })
           socket.emit('game:error', { message: error.message })
           return
         }
@@ -394,7 +398,7 @@ function registerHandlers(io) {
       const p1 = existingGame.players[0]
       const p2 = existingGame.players[1]
 
-      clearGameAndRobotSchedule(rid)
+      lifecycle.cleanupGame(rid, existingGame.id, { reason: 'replace_by_rematch' })
       const game = gameManager.createGame(rid, [p1, p2], 'rps')
 
       logger.info(`[rematch] ${getNickname()}`)

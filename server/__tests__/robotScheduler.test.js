@@ -94,6 +94,28 @@ describe('clear', () => {
     rs.clear(RID)
     expect(rs.getEndAt(RID)).toBeUndefined()
   })
+
+  it('重复 clear 幂等，不抛错且状态保持 cleared', () => {
+    const rs = createRobotScheduler({ gameManager: mockGameManager(), onRobotResult: jest.fn() })
+    rs.schedule(RID, QID)
+    rs.clear(RID)
+    expect(() => rs.clear(RID)).not.toThrow()
+    expect(rs.getEndAt(RID)).toBeUndefined()
+    expect(rs.getRemainingMs(RID)).toBe(0)
+  })
+
+  it('clear 后再 schedule 新对局任务，旧回调不触发', () => {
+    const gm = mockGameManager()
+    const rs = createRobotScheduler({ gameManager: gm, onRobotResult: jest.fn() })
+
+    rs.schedule(RID, QID)
+    rs.clear(RID)
+    rs.schedule(RID, 'q2')
+    jest.advanceTimersByTime(20000)
+
+    expect(gm.handleRobotInput).toHaveBeenCalledWith(RID, 'q2')
+    expect(gm.handleRobotInput).not.toHaveBeenCalledWith(RID, QID)
+  })
 })
 
 describe('clearAll', () => {

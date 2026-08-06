@@ -671,6 +671,24 @@ describe('handler', () => {
       expect(mockSocket.emit).toHaveBeenCalledWith('player:left', { socketId: 'socket-1' })
     })
 
+    it('终局挑战替换清理旧终局并创建新对局', () => {
+      joinAndReset('小明')
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']),
+          roles: { 爸爸: 'socket-1', 妈妈: 'socket-2' },
+          game: makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end', id: 'g-old' }),
+          gameMode: 'rps',
+        })
+      )
+      gameManager.createGame.mockReturnValue(makeGame({ players: ['socket-1', 'socket-2'], id: 'g-new' }))
+
+      eventHandlers['game:challenge']({ mode: 'rps', targetId: 'socket-2' })
+
+      expect(roomManager.clearGame).toHaveBeenCalledWith('default')
+      expect(gameManager.createGame).toHaveBeenCalledWith('default', ['socket-1', 'socket-2'], 'rps')
+    })
+
     failing('终局原参赛者离开应清除旧终局且不发取消通知', 'LIFE-FINAL', '当前 cancelGameIfActive 只处理 playing，match_end 不清理终局', () => {
       joinAndReset('小明')
       const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end' })
