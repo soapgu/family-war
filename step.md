@@ -1504,7 +1504,7 @@ E2E 断言层级还必须遵守以下禁止项：
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
 | 2a | 冻结生命周期状态与权限矩阵：逐项定义等待中、进行中、终局状态下挑战、输入、认输、主动离开、断线和重赛的合法调用者、状态变化、通知对象和清理结果；把 LIFE-001、LIFE-002 映射到目标规则 | `step.md`, `docs/acceptance/v3.6/lifecycle-design.md`, `docs/acceptance/v3.6/lifecycle-issues.md` | ✅ |
-| 2b | 建立服务端生命周期测试基线：先用 Handler 单测固定参与者/旁观者、真人/机器人、主动离开/断线、进行中/终局组合的当前结果和目标结果；缺陷目标测试在修复前必须明确标识，不得通过降低断言接受旧行为 | `server/__tests__/handler.test.js`, 必要的测试辅助 | ⬜ |
+| 2b | 建立服务端生命周期测试基线：先用 Handler 单测固定参与者/旁观者、真人/机器人、主动离开/断线、进行中/终局组合的当前结果和目标结果；缺陷目标测试在修复前必须明确标识，不得通过降低断言接受旧行为 | `server/__tests__/handler.test.js`, 必要的测试辅助 | ✅ |
 | 2c | 统一对局清理入口：集中获取游戏快照、确定在线真人通知对象、清除机器人调度和 `room.game`；保证同一旧对局只清理一次，清理旧对局不得误伤随后创建的新对局 | `server/src/socket/handler.js` 或独立生命周期辅助模块, `server/__tests__/handler.test.js`, `server/__tests__/robotScheduler.test.js` | ⬜ |
 | 2d | 修复 LIFE-001：RPS、算术、默写进行中，只要真人参赛者主动离开或断线，就取消整场比赛并通知所有仍在线的真人参赛者；旁观者离开不得取消比赛；完成后双方退出旧游戏面板并恢复房间操作 | `server/src/socket/handler.js`, Handler 单测, `server/tests/integration.js`, `client/tests/e2e/lifecycle/quiz-player-leave.spec.js` | ⬜ |
 | 2e | 修复 LIFE-002：`game:forfeit` 必须校验调用者是当前进行中对局的参赛者；非参赛者收到“你不是本局玩家”，原对局仍可继续完成当前轮；合法认输仍按现有客户端语义清理比赛并通知其他参赛者 | `server/src/socket/handler.js`, Handler 单测, `server/tests/integration.js`, `client/tests/e2e/lifecycle/non-participant-forfeit.spec.js` | ⬜ |
