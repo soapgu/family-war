@@ -446,6 +446,64 @@ async function run() {
 
   console.log('')
 
+  // ========== 11. 旁观者认输被拒 + A/B 继续对局（LIFE-002） ==========
+
+  // s1 已在 section 10 末重新加入；s2 重新加入 + s3 新加入
+  const s3 = client(url, { transports: ['websocket'] })
+  await waitFor(s3, 'connect')
+  s2.emit('room:join', { nickname: '小红' })
+  s3.emit('room:join', { nickname: '小刚' })
+  await waitForRoomState(s1, (s) => s.players.length >= 4)
+
+  // 三人选角色
+  s1.emit('role:select', { role: '爸爸' })
+  await waitForRoomState(s1, (s) => s.roles['爸爸']?.nickname === '小明')
+  s2.emit('role:select', { role: '妈妈' })
+  await waitForRoomState(s2, (s) => s.roles['妈妈']?.nickname === '小红')
+  s3.emit('role:select', { role: '儿子' })
+  await waitForRoomState(s3, (s) => s.roles['儿子']?.nickname === '小刚')
+
+  // 切 RPS + s1 挑战 s2
+  s1.emit('game:setMode', { mode: 'rps' })
+  await waitForRoomState(s1, (s) => s.gameMode === 'rps')
+  const startA = waitFor(s1, 'game:start')
+  const startB = waitFor(s2, 'game:start')
+  s1.emit('game:challenge', { mode: 'rps', targetId: s2.id })
+  await Promise.all([startA, startB])
+
+  // s3 旁观者认输 -> 应被拒
+  const spectatorErrPromise = waitFor(s3, 'game:error')
+  s3.emit('game:forfeit')
+  const spectatorErr = await spectatorErrPromise
+  assert(spectatorErr.message === '你不是本局玩家', '旁观者认输被拒（你不是本局玩家）')
+
+  // 原对局不变：s1/s2 不收 game:cancelled/forfeited（短超时探针）
+  let unexpected = false
+  const onUnexpected = () => { unexpected = true }
+  s1.once('game:cancelled', onUnexpected)
+  s1.once('game:forfeited', onUnexpected)
+  s2.once('game:cancelled', onUnexpected)
+  s2.once('game:forfeited', onUnexpected)
+  await sleep(300)
+  assert(!unexpected, '旁观者认输后 A/B 对局未被取消')
+  s1.off('game:cancelled', onUnexpected)
+  s1.off('game:forfeited', onUnexpected)
+  s2.off('game:cancelled', onUnexpected)
+  s2.off('game:forfeited', onUnexpected)
+
+  // A/B 继续当前轮并完成第 1 局
+  s1.emit('game:move', { choice: 'rock' })
+  await waitFor(s1, 'game:waiting')
+  s2.emit('game:move', { choice: 'scissors' })
+  const [resultA, resultB] = await Promise.all([
+    waitFor(s1, 'game:roundResult'),
+    waitFor(s2, 'game:roundResult'),
+  ])
+  assert(resultA.round === 1 && resultB.round === 1, '旁观者认输后 A/B 完成第 1 局')
+
+  s3.close()
+  console.log('')
+
   // ========== 结果 ==========
 
   s1.close()

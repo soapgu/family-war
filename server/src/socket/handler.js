@@ -86,12 +86,6 @@ function registerHandlers(io) {
     }
   }
 
-  /** 清除房间游戏及其绑定的机器人定时器 */
-  function clearGameAndRobotSchedule(roomId) {
-    robotScheduler.clear(roomId)
-    roomManager.clearGame(roomId)
-  }
-
   // 创建 Robot Scheduler
   const robotScheduler = createRobotScheduler({
     gameManager,
@@ -417,18 +411,23 @@ function registerHandlers(io) {
       if (!rid) return
 
       const game = gameManager.getGame(rid)
-      if (!game || game.status !== 'playing') return
-
-      clearGameAndRobotSchedule(rid)
+      if (!game || game.status !== 'playing') {
+        socket.emit('game:error', { message: '没有进行中的比赛' })
+        return
+      }
+      if (!game.players.includes(socket.id)) {
+        socket.emit('game:error', { message: '你不是本局玩家' })
+        return
+      }
 
       logger.info(`[forfeit] ${getNickname()}`)
 
-      const otherPlayer = game.players.find((id) => id !== socket.id)
-      if (otherPlayer) {
-        io.to(otherPlayer).emit('game:forfeited', {
-          message: '对手认输了',
-        })
-      }
+      // v3.6 Phase 2 步骤 2e：统一走 cleanupGame 入口，校验参赛者后
+      // 清理对局 + 清机器人调度 + 通知所有仍在线真人参赛者（排除认输者与机器人）。
+      lifecycle.cleanupGame(rid, game.id, {
+        reason: 'forfeit',
+        notify: { event: 'game:forfeited', message: '对手认输了', excludeSocketId: socket.id },
+      })
 
       roomManager.broadcastRoomState(rid, io)
     })

@@ -337,7 +337,7 @@ describe('handler', () => {
       expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '没有进行中的比赛' })
     })
 
-    failing('等待中认输应返回没有进行中的比赛', 'LIFE-002', '当前无对局认输静默 return 不报错', () => {
+    it('等待中认输返回没有进行中的比赛且无副作用', () => {
       joinAndReset('小明')
       roomManager.getRoom.mockReturnValue(makeRoom({ pls: players(['socket-1', '小明', '爸爸']) }))
       gameManager.getGame.mockReturnValue(null)
@@ -345,6 +345,8 @@ describe('handler', () => {
       eventHandlers['game:forfeit']({ roomId: 'default' })
 
       expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '没有进行中的比赛' })
+      expect(roomManager.clearGame).not.toHaveBeenCalled()
+      expect(createRobotScheduler().clear).not.toHaveBeenCalled()
     })
 
     it('等待中重赛 -> 没有可重赛的已结束比赛', () => {
@@ -451,7 +453,7 @@ describe('handler', () => {
       expect(mockIo.emit).toHaveBeenCalledWith('game:forfeited', { message: '对手认输了' })
     })
 
-    failing('非参赛者认输应只回你不是本局玩家且原对局不变', 'LIFE-002', '当前 game:forfeit 未校验发起者，旁观者可清理他人对局', () => {
+    it('非参赛者认输只回你不是本局玩家且原对局不变', () => {
       joinAndReset('小明')
       const game = makeGame({ players: ['socket-2', 'socket-3'], status: 'playing' })
       roomManager.getRoom.mockReturnValue(
@@ -470,9 +472,13 @@ describe('handler', () => {
 
       expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '你不是本局玩家' })
       expect(roomManager.clearGame).not.toHaveBeenCalled()
+      expect(createRobotScheduler().clear).not.toHaveBeenCalled()
+      expect(mockIo.emit).not.toHaveBeenCalledWith('game:forfeited', expect.anything())
+      expect(mockIo.to).not.toHaveBeenCalledWith('socket-2')
+      expect(mockIo.to).not.toHaveBeenCalledWith('socket-3')
     })
 
-    failing('多参赛者认输应通知所有其他在线真人参赛者', 'LIFE-002', '当前只通知 game.players.find 的第一个其他玩家', () => {
+    it('多参赛者认输通知所有其他在线真人参赛者', () => {
       joinAndReset('小明')
       const game = makeGame({
         type: 'arithmetic',
@@ -494,8 +500,28 @@ describe('handler', () => {
 
       eventHandlers['game:forfeit']({ roomId: 'default' })
 
+      expect(roomManager.clearGame).toHaveBeenCalledWith('default')
+      expect(createRobotScheduler().clear).toHaveBeenCalledWith('default')
       expect(mockIo.to).toHaveBeenCalledWith('socket-2')
       expect(mockIo.to).toHaveBeenCalledWith('socket-3')
+      expect(mockIo.to).not.toHaveBeenCalledWith('socket-1')
+      expect(mockIo.to).not.toHaveBeenCalledWith(ROBOT_ID)
+      expect(mockIo.emit).toHaveBeenCalledWith('game:forfeited', { message: '对手认输了' })
+      expect(roomManager.broadcastRoomState).toHaveBeenCalledWith('default', mockIo)
+    })
+
+    it('终局认输返回没有进行中的比赛且不清对局', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']), game })
+      )
+      gameManager.getGame.mockReturnValue(game)
+
+      eventHandlers['game:forfeit']({ roomId: 'default' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '没有进行中的比赛' })
+      expect(roomManager.clearGame).not.toHaveBeenCalled()
     })
 
     it('参赛者主动离开取消对局并通知对手（RPS）', () => {
