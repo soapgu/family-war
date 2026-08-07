@@ -286,7 +286,11 @@ function registerHandlers(io) {
     // ==================== 统一挑战 ====================
 
     socket.on('game:challenge', ({ mode = 'rps', targetId, roomId } = {}) => {
-      const rid = roomId || currentRoom
+      if (roomId && roomId !== currentRoom) {
+        socket.emit('game:error', { message: '你不在这个房间中' })
+        return
+      }
+      const rid = currentRoom
       if (!rid) {
         socket.emit('game:error', { message: '请先加入房间' })
         return
@@ -295,6 +299,12 @@ function registerHandlers(io) {
       const room = roomManager.getRoom(rid)
       if (!room) {
         socket.emit('game:error', { message: '房间不存在' })
+        return
+      }
+
+      // 通用调用者成员校验（rps/quiz 分支前统一拦截）
+      if (!room.players[socket.id]) {
+        socket.emit('game:error', { message: '你不在这个房间中' })
         return
       }
 
@@ -312,10 +322,6 @@ function registerHandlers(io) {
       if (mode === 'rps') {
         const challenger = room.players[socket.id]
         const target = room.players[targetId]
-        if (!challenger) {
-          socket.emit('game:error', { message: '你不在这个房间中' })
-          return
-        }
         if (!target) {
           socket.emit('game:error', { message: '玩家不存在' })
           return
@@ -434,7 +440,11 @@ function registerHandlers(io) {
     // ==================== 认输 ====================
 
     socket.on('game:forfeit', ({ roomId } = {}) => {
-      const rid = roomId || currentRoom
+      if (roomId && roomId !== currentRoom) {
+        socket.emit('game:error', { message: '你不在这个房间中' })
+        return
+      }
+      const rid = currentRoom
       if (!rid) {
         socket.emit('game:error', { message: '请先加入房间' })
         return
