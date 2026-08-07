@@ -516,7 +516,7 @@ describe('handler', () => {
       expect(mockSocket.emit).toHaveBeenCalledWith('player:left', { socketId: 'socket-1' })
     })
 
-    failing('算术参赛者主动离开应取消整场并通知其余在线真人', 'LIFE-001', '当前 cancelGameIfActive 对 arithmetic 直接 return，不取消不通知', () => {
+    it('算术参赛者主动离开应取消整场并通知其余在线真人', () => {
       joinAndReset('小明')
       const game = makeGame({
         type: 'arithmetic',
@@ -539,10 +539,14 @@ describe('handler', () => {
       eventHandlers['room:leave']()
 
       expect(roomManager.clearGame).toHaveBeenCalledWith('default')
-      expect(mockIo.emit).toHaveBeenCalledWith('game:cancelled', expect.anything())
+      expect(createRobotScheduler().clear).toHaveBeenCalledWith('default')
+      expect(mockIo.to).toHaveBeenCalledWith('socket-2')
+      expect(mockIo.to).not.toHaveBeenCalledWith('socket-1')
+      expect(mockIo.to).not.toHaveBeenCalledWith(ROBOT_ID)
+      expect(mockIo.emit).toHaveBeenCalledWith('game:cancelled', { message: '对手离开了房间' })
     })
 
-    failing('默写参赛者主动离开应取消整场并通知其余在线真人', 'LIFE-001', '当前 cancelGameIfActive 对 spelling 直接 return，不取消不通知', () => {
+    it('默写参赛者主动离开应取消整场并通知其余在线真人', () => {
       joinAndReset('小明')
       const game = makeGame({
         type: 'spelling',
@@ -565,7 +569,43 @@ describe('handler', () => {
       eventHandlers['room:leave']()
 
       expect(roomManager.clearGame).toHaveBeenCalledWith('default')
-      expect(mockIo.emit).toHaveBeenCalledWith('game:cancelled', expect.anything())
+      expect(createRobotScheduler().clear).toHaveBeenCalledWith('default')
+      expect(mockIo.to).toHaveBeenCalledWith('socket-2')
+      expect(mockIo.to).not.toHaveBeenCalledWith('socket-1')
+      expect(mockIo.to).not.toHaveBeenCalledWith(ROBOT_ID)
+      expect(mockIo.emit).toHaveBeenCalledWith('game:cancelled', { message: '对手离开了房间' })
+    })
+
+    it('多剩余真人参赛者各收到一次取消通知（算术 3 真人）', () => {
+      joinAndReset('小明')
+      const game = makeGame({
+        type: 'arithmetic',
+        players: ['socket-1', 'socket-2', 'socket-3', ROBOT_ID],
+        status: 'playing',
+      })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(
+            ['socket-1', '小明', '爸爸'],
+            ['socket-2', '小红', '妈妈'],
+            ['socket-3', '小刚', '儿子'],
+            [ROBOT_ID, '机器人', '机器人']
+          ),
+          game,
+        })
+      )
+      gameManager.getGame.mockReturnValue(game)
+      roomManager.leaveRoom.mockReturnValue({ id: 'default', players: [{ id: 'socket-2' }, { id: 'socket-3' }] })
+
+      eventHandlers['room:leave']()
+
+      expect(roomManager.clearGame).toHaveBeenCalledWith('default')
+      expect(createRobotScheduler().clear).toHaveBeenCalledWith('default')
+      expect(mockIo.to).toHaveBeenCalledWith('socket-2')
+      expect(mockIo.to).toHaveBeenCalledWith('socket-3')
+      expect(mockIo.to).not.toHaveBeenCalledWith('socket-1')
+      expect(mockIo.to).not.toHaveBeenCalledWith(ROBOT_ID)
+      expect(mockIo.emit).toHaveBeenCalledWith('game:cancelled', { message: '对手离开了房间' })
     })
 
     it('旁观者主动离开不影响进行中对局', () => {
@@ -608,7 +648,7 @@ describe('handler', () => {
       expect(mockSocket.emit).toHaveBeenCalledWith('player:left', { socketId: 'socket-1' })
     })
 
-    failing('算术参赛者断线应取消整场并通知其余在线真人', 'LIFE-001', '当前断线对 arithmetic 不取消', () => {
+    it('算术参赛者断线应取消整场并通知其余在线真人', () => {
       joinAndReset('小明')
       const game = makeGame({ type: 'arithmetic', players: ['socket-1', 'socket-2'], status: 'playing' })
       roomManager.getRoom.mockReturnValue(
@@ -620,7 +660,10 @@ describe('handler', () => {
       eventHandlers['disconnect']()
 
       expect(roomManager.clearGame).toHaveBeenCalledWith('default')
-      expect(mockIo.emit).toHaveBeenCalledWith('game:cancelled', expect.anything())
+      expect(createRobotScheduler().clear).toHaveBeenCalledWith('default')
+      expect(mockIo.to).toHaveBeenCalledWith('socket-2')
+      expect(mockIo.to).not.toHaveBeenCalledWith('socket-1')
+      expect(mockIo.emit).toHaveBeenCalledWith('game:cancelled', { message: '对手离开了房间' })
     })
 
     it('旁观者断线不影响进行中对局', () => {

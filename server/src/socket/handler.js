@@ -461,17 +461,15 @@ function registerHandlers(io) {
       if (!game || game.status !== 'playing') return
       if (!game.players.includes(socketId)) return
 
-      if (game.type === 'arithmetic' || game.type === 'spelling') return
-
       const room = roomManager.getRoom(roomId)
+      logger.info(`[cancel] ${room?.players[socketId]?.nickname || socketId} 离开，比赛取消`)
 
-      clearGameAndRobotSchedule(roomId)
-
-      const otherPlayer = game.players.find((id) => id !== socketId)
-      if (otherPlayer) {
-        logger.info(`[cancel] ${room?.players[socketId]?.nickname || socketId} 离开，比赛取消`)
-        io.to(otherPlayer).emit('game:cancelled', { message: '对手离开了房间' })
-      }
+      // v3.6 Phase 2 步骤 2d：统一走 cleanupGame 入口，三模式参赛者离开/断线
+      // 均取消整场 + 清机器人调度 + 通知所有仍在线真人参赛者（排除离开者与机器人）。
+      lifecycle.cleanupGame(roomId, game.id, {
+        reason: 'participant_left',
+        notify: { event: 'game:cancelled', message: '对手离开了房间', excludeSocketId: socketId },
+      })
     }
   })
 }

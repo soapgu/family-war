@@ -408,7 +408,7 @@ async function run() {
 
   console.log('')
 
-  // ========== 10. 离开房间后定时器清理 ==========
+  // ========== 10. 参赛者离开取消整场 + 定时器清理（LIFE-001） ==========
 
   s1.emit('game:setMode', { mode: 'spelling', difficulty: 'easy' })
   await waitForRoomState(s1, (s) => s.gameMode === 'spelling')
@@ -419,18 +419,26 @@ async function run() {
     waitFor(s2, 'game:start'),
   ])
   assert(tss1.gameType === 'spelling', '定时器清理测试 game:start')
-
   assert(tss1.firstQuestion.questionId, '定时器已启动（robotScheduler.schedule 在 game:challenge 中已调用）')
+  const oldQuestionId = tss1.firstQuestion.questionId
 
-  // s1 离开（非最后一人）
+  // s1 参赛者中途离开 -> 应取消整场并通知 s2（LIFE-001 修复）
+  const cancelPromise = waitFor(s2, 'game:cancelled')
   s1.emit('room:leave')
-  await sleep(200)
+  const cancelMsg = await cancelPromise
+  assert(cancelMsg.message === '对手离开了房间', 's2 收到 game:cancelled（参赛者离开取消整场）')
 
-  // s2 离开（最后一人 → 房间删除 → 定时器清理）
+  // 旧对局已清 + 机器人调度已清：s2 用旧 questionId 答题应被拒，调度不再推进
+  const errPromise = waitFor(s2, 'game:error')
+  s2.emit('game:answer', { questionId: oldQuestionId, answer: 'x' })
+  const errMsg = await errPromise
+  assert(errMsg.message === '没有进行中的比赛', '旧对局已清，s2 答题被拒（机器人调度不再推进）')
+
+  // s2 离开（最后一人 -> 房间删除 -> 定时器清理）
   s2.emit('room:leave')
   await sleep(500)
 
-  // s1 重新加入 → 验证干净房间
+  // s1 重新加入 -> 验证干净房间
   s1.emit('room:join', { nickname: '小明' })
   const cleanState = await waitFor(s1, 'room:state')
   assert(cleanState.id === 'default', '重新加入默认房间')
