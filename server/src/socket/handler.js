@@ -422,15 +422,26 @@ function registerHandlers(io) {
         return
       }
 
-      const p1 = existingGame.players[0]
-      const p2 = existingGame.players[1]
+      // v3.6 Phase 2 步骤 2g：校验调用者是上一局参赛者
+      if (!existingGame.players.includes(socket.id)) {
+        socket.emit('game:error', { message: '你不是上一局玩家' })
+        return
+      }
+
+      // v3.6 Phase 2 步骤 2g：校验所有原真人参赛者仍在线
+      const humanParticipants = existingGame.players.filter((id) => id !== ROBOT_ID)
+      const allPresent = humanParticipants.every((id) => room.players[id])
+      if (!allPresent) {
+        socket.emit('game:error', { message: '原参赛者已离开，无法重赛' })
+        return
+      }
 
       lifecycle.cleanupGame(rid, existingGame.id, { reason: 'replace_by_rematch' })
-      const game = gameManager.createGame(rid, [p1, p2], 'rps')
+      const game = gameManager.createGame(rid, humanParticipants, 'rps')
 
       logger.info(`[rematch] ${getNickname()}`)
 
-      ;[p1, p2].forEach((id) => {
+      humanParticipants.forEach((id) => {
         io.to(id).emit('game:start', gameManager.buildStartPayload(rid, id))
       })
 
@@ -497,17 +508,25 @@ function registerHandlers(io) {
 
     function cancelGameIfActive(roomId, socketId) {
       const game = gameManager.getGame(roomId)
-      if (!game || game.status !== 'playing') return
+      if (!game) return
+      if (!['playing', 'match_end'].includes(game.status)) return
       if (!game.players.includes(socketId)) return
 
       const room = roomManager.getRoom(roomId)
+      const isFinal = game.status === 'match_end'
+      
       logger.info(`[cancel] ${room?.players[socketId]?.nickname || socketId} 离开，比赛取消`)
 
-      // v3.6 Phase 2 步骤 2d：统一走 cleanupGame 入口，三模式参赛者离开/断线
-      // 均取消整场 + 清机器人调度 + 通知所有仍在线真人参赛者（排除离开者与机器人）。
+      // v3.6 Phase 2 步骤 2d/2g：统一走 cleanupGame 入口
+      // - 进行中离开：发 game:cancelled 通知其他参赛者
+      // - 终局离开：不发通知（设计文档第 92 行）
       lifecycle.cleanupGame(roomId, game.id, {
         reason: 'participant_left',
-        notify: { event: 'game:cancelled', message: '对手离开了房间', excludeSocketId: socketId },
+        notify: isFinal ? null : { 
+          event: 'game:cancelled', 
+          message: '对手离开了房间', 
+          excludeSocketId: socketId 
+        },
       })
     }
   })

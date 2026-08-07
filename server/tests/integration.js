@@ -504,6 +504,111 @@ async function run() {
   s3.close()
   console.log('')
 
+  // ========== 12. 终局重赛资格校验（LIFE-FINAL + LIFE-REMATCH） ==========
+
+  // 继续当前 RPS 对局直到结束
+  s1.emit('game:move', { choice: 'rock' })
+  await waitFor(s1, 'game:waiting')
+  s2.emit('game:move', { choice: 'rock' })
+  await Promise.all([
+    waitFor(s1, 'game:roundResult'),
+    waitFor(s2, 'game:roundResult'),
+  ])
+  
+  s1.emit('game:move', { choice: 'paper' })
+  await waitFor(s1, 'game:waiting')
+  s2.emit('game:move', { choice: 'rock' })
+  await Promise.all([
+    waitFor(s1, 'game:matchResult'),
+    waitFor(s2, 'game:matchResult'),
+  ])
+  assert(true, 'RPS 对局结束进入终局')
+
+  // 测试 1：终局参赛者离开后重赛被拒绝
+  s2.emit('room:leave')
+  await waitForRoomState(s1, (s) => !s.game)  // 终局应被清理
+  assert(true, '终局参赛者离开后终局被清理')
+  
+  const rematchAfterLeavePromise = waitFor(s1, 'game:error')
+  s1.emit('game:rematch')
+  const rematchAfterLeave = await rematchAfterLeavePromise
+  assert(rematchAfterLeave.message === '没有可重赛的已结束比赛', '终局参赛者离开后重赛被拒（没有可重赛的已结束比赛）')
+
+  // 测试 2：旁观者重赛被拒绝
+  // 重新设置场景：s2 重新加入，s3 作为旁观者
+  s2.emit('room:join', { nickname: '小红' })
+  await waitForRoomState(s1, (s) => s.players.length >= 2)
+  
+  s1.emit('role:select', { role: '爸爸' })
+  await waitForRoomState(s1, (s) => s.roles['爸爸']?.nickname === '小明')
+  s2.emit('role:select', { role: '妈妈' })
+  await waitForRoomState(s2, (s) => s.roles['妈妈']?.nickname === '小红')
+  
+  s1.emit('game:setMode', { mode: 'rps' })
+  await waitForRoomState(s1, (s) => s.gameMode === 'rps')
+  const startC = waitFor(s1, 'game:start')
+  const startD = waitFor(s2, 'game:start')
+  s1.emit('game:challenge', { mode: 'rps', targetId: s2.id })
+  await Promise.all([startC, startD])
+  
+  // 第 1 轮：平局
+  s1.emit('game:move', { choice: 'rock' })
+  await waitFor(s1, 'game:waiting')
+  s2.emit('game:move', { choice: 'rock' })
+  await Promise.all([
+    waitFor(s1, 'game:roundResult'),
+    waitFor(s2, 'game:roundResult'),
+  ])
+  
+  // 第 2 轮：s1 胜
+  s1.emit('game:move', { choice: 'rock' })
+  await waitFor(s1, 'game:waiting')
+  s2.emit('game:move', { choice: 'scissors' })
+  await Promise.all([
+    waitFor(s1, 'game:roundResult'),
+    waitFor(s2, 'game:roundResult'),
+  ])
+  
+  // 第 3 轮：s1 胜，比赛结束
+  s1.emit('game:move', { choice: 'paper' })
+  await waitFor(s1, 'game:waiting')
+  s2.emit('game:move', { choice: 'rock' })
+  await Promise.all([
+    waitFor(s1, 'game:matchResult'),
+    waitFor(s2, 'game:matchResult'),
+  ])
+  assert(true, 'RPS 对局结束进入终局（旁观者测试）')
+  
+  // s3 作为旁观者加入
+  const s4 = client(url, { transports: ['websocket'] })
+  await waitFor(s4, 'connect')
+  s4.emit('room:join', { nickname: '小李' })
+  await waitForRoomState(s4, (s) => s.players.length >= 3)
+  
+  const spectatorRematchPromise = waitFor(s4, 'game:error')
+  s4.emit('game:rematch')
+  const spectatorRematch = await spectatorRematchPromise
+  assert(spectatorRematch.message === '你不是上一局玩家', '旁观者重赛被拒（你不是上一局玩家）')
+  s4.close()
+
+  // 测试 3：终局离开后旧 Socket 无重赛权限
+  // s2 离开后重新加入（新 Socket）
+  s2.emit('room:leave')
+  await waitForRoomState(s1, (s) => !s.game)
+  
+  const s5 = client(url, { transports: ['websocket'] })
+  await waitFor(s5, 'connect')
+  s5.emit('room:join', { nickname: '小红' })
+  await waitForRoomState(s5, (s) => s.players.length >= 2)
+  
+  const oldSocketRematchPromise = waitFor(s5, 'game:error')
+  s5.emit('game:rematch')
+  const oldSocketRematch = await oldSocketRematchPromise
+  assert(oldSocketRematch.message === '没有可重赛的已结束比赛', '终局离开后旧 Socket 无重赛权限（没有可重赛的已结束比赛）')
+  s5.close()
+
+  console.log('')
+
   // ========== 结果 ==========
 
   s1.close()

@@ -761,7 +761,7 @@ describe('handler', () => {
       expect(gameManager.createGame).toHaveBeenCalledWith('default', ['socket-1', 'socket-2'], 'rps')
     })
 
-    failing('终局原参赛者离开应清除旧终局且不发取消通知', 'LIFE-FINAL', '当前 cancelGameIfActive 只处理 playing，match_end 不清理终局', () => {
+    it('终局原参赛者离开应清除旧终局且不发取消通知', () => {
       joinAndReset('小明')
       const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end' })
       roomManager.getRoom.mockReturnValue(
@@ -777,7 +777,7 @@ describe('handler', () => {
       expect(mockIo.emit).not.toHaveBeenCalledWith('game:forfeited', expect.anything())
     })
 
-    failing('旁观者重赛应被拒绝且原终局不变', 'LIFE-REMATCH', '当前 game:rematch 只查 room.players 不查 game.players', () => {
+    it('旁观者重赛应被拒绝且原终局不变', () => {
       joinAndReset('小明')
       const game = makeGame({ players: ['socket-2', 'socket-3'], status: 'match_end' })
       roomManager.getRoom.mockReturnValue(
@@ -799,7 +799,7 @@ describe('handler', () => {
       expect(gameManager.createGame).not.toHaveBeenCalled()
     })
 
-    failing('原参赛者已离开时重赛应被拒绝', 'LIFE-REMATCH', '当前不校验所有原真人参赛者仍在线', () => {
+    it('原参赛者已离开时重赛应被拒绝', () => {
       joinAndReset('小明')
       const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end' })
       roomManager.getRoom.mockReturnValue(
@@ -829,6 +829,56 @@ describe('handler', () => {
         message: '没有可重赛的已结束比赛',
       })
       expect(gameManager.createGame).not.toHaveBeenCalled()
+    })
+
+    it('终局断线清理不发通知', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']), game })
+      )
+      gameManager.getGame.mockReturnValue(game)
+      roomManager.handleDisconnect.mockReturnValue({ id: 'default', players: [{ id: 'socket-2' }] })
+
+      eventHandlers['disconnect']()
+
+      expect(roomManager.clearGame).toHaveBeenCalledWith('default')
+      expect(mockIo.emit).not.toHaveBeenCalledWith('game:cancelled', expect.anything())
+      expect(mockIo.emit).not.toHaveBeenCalledWith('game:forfeited', expect.anything())
+    })
+
+    it('重赛校验机器人参赛者', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-1', 'socket-2', ROBOT_ID], status: 'match_end' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ 
+          pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈'], [ROBOT_ID, '机器人', '机器人']), 
+          game 
+        })
+      )
+      gameManager.getGame.mockReturnValue(game)
+
+      eventHandlers['game:rematch']({ roomId: 'default' })
+
+      // 应该只包含真人参赛者
+      expect(gameManager.createGame).toHaveBeenCalledWith('default', ['socket-1', 'socket-2'], 'rps')
+      expect(mockIo.to).toHaveBeenCalledWith('socket-1')
+      expect(mockIo.to).toHaveBeenCalledWith('socket-2')
+      expect(mockIo.to).not.toHaveBeenCalledWith(ROBOT_ID)
+    })
+
+    it('重赛使用旧对局阵容', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']), game })
+      )
+      gameManager.getGame.mockReturnValue(game)
+
+      eventHandlers['game:rematch']({ roomId: 'default' })
+
+      // 应该使用旧对局的参赛者列表
+      expect(gameManager.createGame).toHaveBeenCalledWith('default', ['socket-1', 'socket-2'], 'rps')
     })
   })
 
