@@ -1019,6 +1019,81 @@ describe('handler', () => {
     })
   })
 
+  // ---------------- 2i 诊断日志 ----------------
+
+  describe('2i 诊断日志 - 拒绝操作', () => {
+    it('非参赛者认输记录 reject 日志含冻结文案', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-2', 'socket-3'], status: 'playing' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈'], ['socket-3', '小刚', '儿子']), game })
+      )
+      gameManager.getGame.mockReturnValue(game)
+
+      eventHandlers['game:forfeit']({ roomId: 'default' })
+
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('[reject]'))
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('reason=你不是本局玩家'))
+    })
+
+    it('重赛过期记录 reject 日志含没有可重赛的已结束比赛', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'playing' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']), game })
+      )
+      gameManager.getGame.mockReturnValue(game)
+
+      eventHandlers['game:rematch']({ roomId: 'default' })
+
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('reason=没有可重赛的已结束比赛'))
+    })
+  })
+
+  describe('2i 诊断日志 - 答题脱敏', () => {
+    it('答题错日志不记录正确答案明文', () => {
+      joinAndReset('小明')
+      const game = makeGame({ type: 'spelling', players: ['socket-1'], status: 'playing' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-1', '小明', '爸爸']), game })
+      )
+      gameManager.getGame.mockReturnValue(game)
+      gameManager.submitInput.mockReturnValue({
+        action: 'waiting',
+        ack: { correctAnswer: 'SECRET_ANSWER_DO_NOT_LOG' },
+      })
+
+      eventHandlers['game:answer']({ questionId: 'q1', answer: 'wrong' })
+
+      // 答错时不应记录正确答案明文
+      expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('SECRET_ANSWER_DO_NOT_LOG'))
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('[answer]'))
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('result=wrong'))
+    })
+  })
+
+  describe('2i 诊断日志 - 开局', () => {
+    it('RPS 挑战成功记录 challenge 日志含 gameId 和 type', () => {
+      joinAndReset('小明')
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']),
+          roles: { 爸爸: 'socket-1', 妈妈: 'socket-2' },
+          game: null,
+          gameMode: 'rps',
+        })
+      )
+      gameManager.createGame.mockReturnValue(makeGame({ players: ['socket-1', 'socket-2'], id: 'g-test' }))
+
+      eventHandlers['game:challenge']({ mode: 'rps', targetId: 'socket-2' })
+
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining('[challenge] room=default game=g-test type=rps')
+      )
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('result=start'))
+    })
+  })
+
   // ---------------- 2f 授权收敛（design §4 通用授权顺序与文案） ----------------
 
   describe('2f 授权收敛 - 静默 return 转 game:error', () => {

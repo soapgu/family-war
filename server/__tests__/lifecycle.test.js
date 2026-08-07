@@ -8,6 +8,9 @@
  */
 const { Lifecycle } = require('../src/socket/lifecycle')
 
+jest.mock('../src/logger', () => ({ info: jest.fn() }))
+const logger = require('../src/logger')
+
 const ROBOT_ID = '__robot__'
 
 function makeGame(players, id = 'g1', status = 'playing') {
@@ -26,6 +29,7 @@ function makeRoom(game, playersObj) {
 
 /** 构造 lifecycle 与 mock 依赖；roomManager.clearGame 真正置 room.game=null 以模拟真实清理 */
 function setup(room) {
+  jest.clearAllMocks()
   const roomManager = {
     getRoom: jest.fn(() => room),
     clearGame: jest.fn(() => {
@@ -184,5 +188,45 @@ describe('lifecycle.cleanupGame - 通知对象筛选', () => {
     expect(result.notified).toEqual(['socket-2'])
     expect(emits.find((e) => e.target === 'socket-2')).toBeDefined()
     expect(emits.find((e) => e.target === 'socket-3')).toBeUndefined()
+  })
+})
+
+// ---------------- 2i 诊断日志 ----------------
+
+describe('lifecycle.cleanupGame - 诊断日志（2i）', () => {
+  it('清理成功时记录 cleaned 日志（含 roomId/gameId/type/reason）', () => {
+    const game = makeGame(['socket-1', 'socket-2'], 'g1', 'playing')
+    const { lifecycle } = setup(makeRoom(game, makePlayers('socket-1', 'socket-2')))
+
+    lifecycle.cleanupGame('default', 'g1', { reason: 'forfeit' })
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('[cleanup] room=default game=g1 type=rps op=- result=cleaned reason=forfeit')
+    )
+  })
+
+  it('gameId 不匹配时记录 stale 日志', () => {
+    const game = makeGame(['socket-1', 'socket-2'], 'g-new', 'playing')
+    const { lifecycle } = setup(makeRoom(game, makePlayers('socket-1', 'socket-2')))
+
+    lifecycle.cleanupGame('default', 'g-old')
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('[cleanup] room=default game=null type=- result=stale')
+    )
+  })
+
+  it('清理成功时 notified 数量记入日志', () => {
+    const game = makeGame(['socket-1', 'socket-2'], 'g1', 'playing')
+    const { lifecycle } = setup(makeRoom(game, makePlayers('socket-1', 'socket-2')))
+
+    lifecycle.cleanupGame('default', 'g1', {
+      reason: 'participant_left',
+      notify: { event: 'game:cancelled', message: '对手离开了房间', excludeSocketId: 'socket-1' },
+    })
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('result=cleaned reason=participant_left notified=1')
+    )
   })
 })

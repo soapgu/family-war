@@ -108,28 +108,41 @@ function registerHandlers(io) {
       return room?.players[socket.id]?.nickname || '?'
     }
 
+    /**
+     * v3.6 Phase 2 步骤 2i：统一拒绝操作日志。
+     * 对所有 game:error 记录稳定字段（事件/roomId/gameId/类型/操作者/结果/原因）。
+     */
+    function emitError(socket, message, { rid, game } = {}) {
+      const r = rid || currentRoom || '-'
+      const gameId = game?.id || '-'
+      const gameType = game?.type || '-'
+      const op = getNickname() !== '?' ? getNickname() : socket.id
+      logger.info(`[reject] room=${r} game=${gameId} type=${gameType} op=${op} result=rejected reason=${message}`)
+      socket.emit('game:error', { message })
+    }
+
     /** 统一处理玩家输入 */
     function handleGameInput(socket, input) {
       const rid = currentRoom
       if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
+        emitError(socket, '请先加入房间')
         return
       }
 
       const game = gameManager.getGame(rid)
       if (!game || game.status !== 'playing') {
-        socket.emit('game:error', { message: '没有进行中的比赛' })
+        emitError(socket, '没有进行中的比赛')
         return
       }
       if (!game.players.includes(socket.id)) {
-        socket.emit('game:error', { message: '你不是本局玩家' })
+        emitError(socket, '你不是本局玩家')
         return
       }
 
       const outcome = gameManager.submitInput(rid, socket.id, input)
 
       if (outcome.action === 'error') {
-        socket.emit('game:error', { message: outcome.message })
+        emitError(socket, outcome.message, { rid, game })
         return
       }
 
@@ -147,7 +160,8 @@ function registerHandlers(io) {
           return
         }
 
-        logger.info(`[answer] ${getNickname()} 答错 — ${outcome.ack?.correctAnswer}`)
+        // v3.6 Phase 2 步骤 2i：答题错只记题号，不记正确答案明文（脱敏规则 step.md:1500）
+        logger.info(`[answer] room=${rid} game=${game.id} type=${game.type} op=${getNickname()} result=wrong question=${input.questionId}`)
 
         if (outcome.ack) {
           socket.emit('game:answerAck', {
@@ -179,7 +193,7 @@ function registerHandlers(io) {
 
     socket.on('room:join', ({ nickname, roomId = 'default' }) => {
       if (!nickname || !nickname.trim()) {
-        socket.emit('game:error', { message: '昵称不能为空' })
+        emitError(socket, '昵称不能为空')
         return
       }
 
@@ -218,18 +232,18 @@ function registerHandlers(io) {
 
     socket.on('role:select', ({ role, roomId } = {}) => {
       if (roomId && roomId !== currentRoom) {
-        socket.emit('game:error', { message: '你不在这个房间中' })
+        emitError(socket, '你不在这个房间中')
         return
       }
       const rid = currentRoom
       if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
+        emitError(socket, '请先加入房间')
         return
       }
 
       const result = roomManager.selectRole(socket, rid, role)
       if (result.error) {
-        socket.emit('game:error', { message: result.error })
+        emitError(socket, result.error, { rid })
         return
       }
 
@@ -239,18 +253,18 @@ function registerHandlers(io) {
 
     socket.on('role:deselect', ({ roomId } = {}) => {
       if (roomId && roomId !== currentRoom) {
-        socket.emit('game:error', { message: '你不在这个房间中' })
+        emitError(socket, '你不在这个房间中')
         return
       }
       const rid = currentRoom
       if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
+        emitError(socket, '请先加入房间')
         return
       }
 
       const result = roomManager.deselectRole(socket, rid)
       if (result.error) {
-        socket.emit('game:error', { message: result.error })
+        emitError(socket, result.error, { rid })
         return
       }
 
@@ -263,19 +277,19 @@ function registerHandlers(io) {
     socket.on('game:setMode', ({ mode, difficulty } = {}) => {
       const rid = currentRoom
       if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
+        emitError(socket, '请先加入房间')
         return
       }
 
       const room = roomManager.getRoom(rid)
       if (!room || !room.players[socket.id]) {
-        socket.emit('game:error', { message: '你不在这个房间中' })
+        emitError(socket, '你不在这个房间中')
         return
       }
 
       const result = roomManager.setGameMode(rid, mode, difficulty)
       if (result.error) {
-        socket.emit('game:error', { message: result.error })
+        emitError(socket, result.error, { rid })
         return
       }
 
@@ -287,34 +301,34 @@ function registerHandlers(io) {
 
     socket.on('game:challenge', ({ mode = 'rps', targetId, roomId } = {}) => {
       if (roomId && roomId !== currentRoom) {
-        socket.emit('game:error', { message: '你不在这个房间中' })
+        emitError(socket, '你不在这个房间中')
         return
       }
       const rid = currentRoom
       if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
+        emitError(socket, '请先加入房间')
         return
       }
 
       const room = roomManager.getRoom(rid)
       if (!room) {
-        socket.emit('game:error', { message: '房间不存在' })
+        emitError(socket, '房间不存在')
         return
       }
 
       // 通用调用者成员校验（rps/quiz 分支前统一拦截）
       if (!room.players[socket.id]) {
-        socket.emit('game:error', { message: '你不在这个房间中' })
+        emitError(socket, '你不在这个房间中')
         return
       }
 
       if (mode !== room.gameMode) {
-        socket.emit('game:error', { message: '游戏模式已变更，请返回房间重试' })
+        emitError(socket, '游戏模式已变更，请返回房间重试')
         return
       }
 
       if (room.game && room.game.status === 'playing') {
-        socket.emit('game:error', { message: '当前房间已有进行中的比赛' })
+        emitError(socket, '当前房间已有进行中的比赛')
         return
       }
 
@@ -323,15 +337,15 @@ function registerHandlers(io) {
         const challenger = room.players[socket.id]
         const target = room.players[targetId]
         if (!target) {
-          socket.emit('game:error', { message: '玩家不存在' })
+          emitError(socket, '玩家不存在')
           return
         }
         if (!challenger.role || !target.role) {
-          socket.emit('game:error', { message: '双方都需选择角色后才能开始' })
+          emitError(socket, '双方都需选择角色后才能开始')
           return
         }
         if (challenger.role === target.role) {
-          socket.emit('game:error', { message: '不能挑战自己' })
+          emitError(socket, '不能挑战自己')
           return
         }
 
@@ -340,7 +354,7 @@ function registerHandlers(io) {
 
         const game = gameManager.createGame(rid, [socket.id, targetId], 'rps')
 
-        logger.info(`[challenge] ${getNickname()} → ${target.nickname}`)
+        logger.info(`[challenge] room=${rid} game=${game.id} type=rps op=${getNickname()} result=start reason=new_game`)
 
         ;[socket.id, targetId].forEach((id) => {
           io.to(id).emit('game:start', gameManager.buildStartPayload(rid, id))
@@ -349,7 +363,7 @@ function registerHandlers(io) {
         const playerIds = Object.values(room.roles).filter((id) => id !== null)
 
         if (playerIds.length < 1) {
-          socket.emit('game:error', { message: '至少需要 1 名玩家选择角色' })
+          emitError(socket, '至少需要 1 名玩家选择角色')
           return
         }
 
@@ -363,11 +377,11 @@ function registerHandlers(io) {
           firstQuestion = gameManager.createNextQuestion(rid)
         } catch (error) {
           lifecycle.cleanupGame(rid, game.id, { reason: 'first_question_failed' })
-          socket.emit('game:error', { message: error.message })
+          emitError(socket, error.message, { rid, game })
           return
         }
 
-        logger.info(`[challenge] ${mode}模式 — ${playerIds.map((id) => room.players[id]?.nickname || id).join(', ')}`)
+        logger.info(`[challenge] room=${rid} game=${game.id} type=${mode} op=${getNickname()} result=start reason=new_game`)
 
         playerIds.forEach((id) => {
           io.to(id).emit('game:start', gameManager.buildStartPayload(rid, id, firstQuestion))
@@ -393,44 +407,44 @@ function registerHandlers(io) {
 
     socket.on('game:rematch', ({ roomId } = {}) => {
       if (roomId && roomId !== currentRoom) {
-        socket.emit('game:error', { message: '你不在这个房间中' })
+        emitError(socket, '你不在这个房间中')
         return
       }
       const rid = currentRoom
       if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
+        emitError(socket, '请先加入房间')
         return
       }
 
       const room = roomManager.getRoom(rid)
       if (!room) {
-        socket.emit('game:error', { message: '房间不存在' })
+        emitError(socket, '房间不存在')
         return
       }
 
       const player = room.players[socket.id]
       if (!player) {
-        socket.emit('game:error', { message: '你不在这个房间中' })
+        emitError(socket, '你不在这个房间中')
         return
       }
 
       const existingGame = room.game
       if (!existingGame) {
-        socket.emit('game:error', { message: '没有可重赛的已结束比赛' })
+        emitError(socket, '没有可重赛的已结束比赛')
         return
       }
       if (existingGame.status !== 'match_end') {
-        socket.emit('game:error', { message: '没有可重赛的已结束比赛' })
+        emitError(socket, '没有可重赛的已结束比赛')
         return
       }
       if (existingGame.type !== 'rps') {
-        socket.emit('game:error', { message: '当前游戏不支持该重赛方式' })
+        emitError(socket, '当前游戏不支持该重赛方式')
         return
       }
 
       // v3.6 Phase 2 步骤 2g：校验调用者是上一局参赛者
       if (!existingGame.players.includes(socket.id)) {
-        socket.emit('game:error', { message: '你不是上一局玩家' })
+        emitError(socket, '你不是上一局玩家')
         return
       }
 
@@ -438,14 +452,14 @@ function registerHandlers(io) {
       const humanParticipants = existingGame.players.filter((id) => id !== ROBOT_ID)
       const allPresent = humanParticipants.every((id) => room.players[id])
       if (!allPresent) {
-        socket.emit('game:error', { message: '原参赛者已离开，无法重赛' })
+        emitError(socket, '原参赛者已离开，无法重赛')
         return
       }
 
       lifecycle.cleanupGame(rid, existingGame.id, { reason: 'replace_by_rematch' })
       const game = gameManager.createGame(rid, humanParticipants, 'rps')
 
-      logger.info(`[rematch] ${getNickname()}`)
+      logger.info(`[rematch] room=${rid} game=${game.id} type=rps op=${getNickname()} result=start reason=replace_by_rematch`)
 
       humanParticipants.forEach((id) => {
         io.to(id).emit('game:start', gameManager.buildStartPayload(rid, id))
@@ -458,26 +472,26 @@ function registerHandlers(io) {
 
     socket.on('game:forfeit', ({ roomId } = {}) => {
       if (roomId && roomId !== currentRoom) {
-        socket.emit('game:error', { message: '你不在这个房间中' })
+        emitError(socket, '你不在这个房间中')
         return
       }
       const rid = currentRoom
       if (!rid) {
-        socket.emit('game:error', { message: '请先加入房间' })
+        emitError(socket, '请先加入房间')
         return
       }
 
       const game = gameManager.getGame(rid)
       if (!game || game.status !== 'playing') {
-        socket.emit('game:error', { message: '没有进行中的比赛' })
+        emitError(socket, '没有进行中的比赛')
         return
       }
       if (!game.players.includes(socket.id)) {
-        socket.emit('game:error', { message: '你不是本局玩家' })
+        emitError(socket, '你不是本局玩家')
         return
       }
 
-      logger.info(`[forfeit] ${getNickname()}`)
+      logger.info(`[forfeit] room=${rid} game=${game.id} type=${game.type} op=${getNickname()} result=forfeited reason=forfeit`)
 
       // v3.6 Phase 2 步骤 2e：统一走 cleanupGame 入口，校验参赛者后
       // 清理对局 + 清机器人调度 + 通知所有仍在线真人参赛者（排除认输者与机器人）。
@@ -521,7 +535,7 @@ function registerHandlers(io) {
       const room = roomManager.getRoom(roomId)
       const isFinal = game.status === 'match_end'
       
-      logger.info(`[cancel] ${room?.players[socketId]?.nickname || socketId} 离开，比赛取消`)
+      logger.info(`[cancel] room=${roomId} game=${game.id} type=${game.type} op=${room?.players[socketId]?.nickname || socketId} result=cancelled reason=participant_left`)
 
       // v3.6 Phase 2 步骤 2d/2g：统一走 cleanupGame 入口
       // - 进行中离开：发 game:cancelled 通知其他参赛者

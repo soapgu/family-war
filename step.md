@@ -1511,7 +1511,7 @@ E2E 断言层级还必须遵守以下禁止项：
 | 2f | 收敛所有游戏事件权限：挑战要求合法房间成员及合法目标，出拳/答题要求当前对局参与者，认输要求进行中对局参与者，重赛要求上一局参与者；非法调用统一只返回 `game:error`，GameMode 仍保留输入层的最终防守 | `server/src/socket/handler.js`, `server/__tests__/handler.test.js`, 各 GameMode 现有测试 | ✅ |
 | 2g | 治理终局与重赛：终局对局的原参赛者主动离开或断线时清除旧对局和调度但不发送进行中取消通知；重赛发起者必须属于上一局，且所有原真人参赛者仍在线并属于当前房间，禁止使用过期 Socket 创建新局 | `server/src/socket/handler.js`, `server/__tests__/handler.test.js`, `server/tests/integration.js`, RPS 重赛 E2E | ✅ |
 | 2h | 补齐幂等和竞态基线：覆盖重复认输、重复离开、离开后输入、过期题目、快速重复操作和旧清理与新开局交错；验证无重复通知、重复计分、重复结算、错误清除新局或机器人定时器残留 | Handler/GameMode/robotScheduler 单测, `server/tests/integration.js` | ✅ |
-| 2i | 增加生命周期诊断日志：对开局、拒绝操作、对局取消、终局清理和重赛记录稳定字段，包括事件、`roomId`、游戏类型、操作者、结果和原因；记录脱敏规则并为关键日志补单测 | `server/src/socket/handler.js` 或生命周期辅助模块, `server/__tests__/handler.test.js` | ⬜ |
+| 2i | 增加生命周期诊断日志：对开局、拒绝操作、对局取消、终局清理和重赛记录稳定字段，包括事件、`roomId`、游戏类型、操作者、结果和原因；记录脱敏规则并为关键日志补单测 | `server/src/socket/handler.js` 或生命周期辅助模块, `server/__tests__/handler.test.js` | ✅ |
 | 2j | 回归并关闭问题：LIFE-001 移除 `test.fail()` 并改为浏览器 `@stable`；LIFE-002 迁入 `server/tests/integration.js` 作为真实 Socket.IO 权限回归，删除原 Playwright 问题 spec；RPS 断线重连继续保留 `@lifecycle-issue`；更新问题清单、测试矩阵和 Phase 2 报告 | `client/tests/e2e/lifecycle/`, `server/tests/integration.js`, `docs/acceptance/v3.6/test-matrix.md`, `lifecycle-issues.md`, `phase-2-report.md` | ⬜ |
 
 ## Phase 2 状态与权限矩阵

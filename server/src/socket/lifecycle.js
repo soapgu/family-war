@@ -1,3 +1,5 @@
+const logger = require('../logger')
+
 /**
  * v3.6 Phase 2 步骤 2c - 统一对局清理入口（带 gameId 防护）。
  *
@@ -55,6 +57,7 @@ class Lifecycle {
 
     // §6 步骤2：gameId 校验。room.game 已清/null 或 id 不符均视为旧清理请求。
     if (!game || game.id !== expectedGameId) {
+      logger.info(`[cleanup] room=${roomId} game=null type=- result=stale reason=${expectedGameId}≠${game ? game.id : 'null'}`)
       return { cleaned: false, stale: true, notified: [] }
     }
 
@@ -79,6 +82,7 @@ class Lifecycle {
       })
     }
 
+    logger.info(`[cleanup] room=${roomId} game=${game.id} type=${game.type} op=- result=cleaned reason=${reason || '-'} notified=${notified.length}`)
     return { cleaned: true, stale: false, notified }
   }
 }
