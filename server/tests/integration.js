@@ -603,9 +603,74 @@ async function run() {
   
   const oldSocketRematchPromise = waitFor(s5, 'game:error')
   s5.emit('game:rematch')
-  const oldSocketRematch = await oldSocketRematchPromise
+  const oldSocketRematch = await waitFor(s5, 'game:error')
   assert(oldSocketRematch.message === '没有可重赛的已结束比赛', '终局离开后旧 Socket 无重赛权限（没有可重赛的已结束比赛）')
   s5.close()
+
+  console.log('')
+
+  // ========== 13. 幂等与竞态验证（design §7） ==========
+
+  // 重新设置场景：s1 和 s2 加入房间，开始 RPS 对局
+  s1.emit('room:join', { nickname: '小明' })
+  s2.emit('room:join', { nickname: '小红' })
+  await waitForRoomState(s1, (s) => s.players.length >= 2)
+  
+  s1.emit('role:select', { role: '爸爸' })
+  await waitForRoomState(s1, (s) => s.roles['爸爸']?.nickname === '小明')
+  s2.emit('role:select', { role: '妈妈' })
+  await waitForRoomState(s2, (s) => s.roles['妈妈']?.nickname === '小红')
+  
+  s1.emit('game:setMode', { mode: 'rps' })
+  await waitForRoomState(s1, (s) => s.gameMode === 'rps')
+  const startE = waitFor(s1, 'game:start')
+  const startF = waitFor(s2, 'game:start')
+  s1.emit('game:challenge', { mode: 'rps', targetId: s2.id })
+  await Promise.all([startE, startF])
+
+  // R1 - 重复认输：s1 快速发送两次 game:forfeit
+  const forfeited1 = waitFor(s2, 'game:forfeited')
+  s1.emit('game:forfeit')
+  await forfeited1
+  
+  // 第二次认输应该被拒绝（没有进行中的比赛）
+  const forfeitError = waitFor(s1, 'game:error')
+  s1.emit('game:forfeit')
+  const error = await forfeitError
+  assert(error.message === '没有进行中的比赛', '重复认输被拒（没有进行中的比赛）')
+
+  // R2 - 重复离开：s1 重新加入后快速发送两次 room:leave
+  s1.emit('room:join', { nickname: '小明' })
+  await waitForRoomState(s1, (s) => s.players.length >= 2)
+  
+  const left1 = waitFor(s2, 'player:left')
+  s1.emit('room:leave')
+  await left1
+  
+  // 第二次离开应该无效果（currentRoom 已为 null）
+  let unexpectedLeft = false
+  const onUnexpectedLeft = () => { unexpectedLeft = true }
+  s2.once('player:left', onUnexpectedLeft)
+  s1.emit('room:leave')
+  await sleep(300)
+  assert(!unexpectedLeft, '重复离开不重复广播 player:left')
+  s2.off('player:left', onUnexpectedLeft)
+
+  // R3 - 离开后输入：s1 离开后继续发送 game:move
+  s1.emit('room:join', { nickname: '小明' })
+  await waitForRoomState(s1, (s) => s.players.length >= 2)
+  
+  s1.emit('role:select', { role: '爸爸' })
+  await waitForRoomState(s1, (s) => s.roles['爸爸']?.nickname === '小明')
+  
+  s1.emit('room:leave')
+  await waitForRoomState(s2, (s) => s.players.length === 2)
+  
+  // 旧 Socket 继续发送输入
+  const moveError = waitFor(s1, 'game:error')
+  s1.emit('game:move', { choice: 'rock' })
+  const moveErr = await moveError
+  assert(moveErr.message === '请先加入房间', '离开后输入被拒（请先加入房间）')
 
   console.log('')
 

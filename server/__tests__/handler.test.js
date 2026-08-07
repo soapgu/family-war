@@ -917,6 +917,106 @@ describe('handler', () => {
 
       expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '请先加入房间' })
     })
+
+    it('重复断线不重复广播 player:left 和取消通知', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'playing' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']), game })
+      )
+      gameManager.getGame.mockReturnValue(game)
+      roomManager.handleDisconnect.mockReturnValue({ id: 'default', players: [{ id: 'socket-2' }] })
+
+      // 第一次断线
+      eventHandlers['disconnect']()
+      // 模拟断线后 currentRoom=null，再次触发断线事件
+      jest.clearAllMocks()
+      eventHandlers['disconnect']()
+
+      // 第二次断线不应重复广播
+      expect(mockSocket.emit).not.toHaveBeenCalledWith('player:left', expect.anything())
+      expect(mockIo.emit).not.toHaveBeenCalledWith('game:cancelled', expect.anything())
+    })
+
+    it('终局挑战授权失败保留旧终局', () => {
+      joinAndReset('小明')
+      const oldGame = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end', id: 'g-old' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-1', '小明', '爸爸']),  // socket-2 不在房间
+          roles: { 爸爸: 'socket-1' },
+          game: oldGame,
+          gameMode: 'rps',
+        })
+      )
+
+      // 挑战不存在的目标
+      eventHandlers['game:challenge']({ mode: 'rps', targetId: 'socket-999' })
+
+      // 旧终局应保留
+      expect(roomManager.clearGame).not.toHaveBeenCalled()
+      expect(gameManager.createGame).not.toHaveBeenCalled()
+    })
+
+    it('quiz 终局挑战授权失败保留旧终局', () => {
+      joinAndReset('小明')
+      const oldGame = makeGame({ players: ['socket-1', ROBOT_ID], status: 'match_end', id: 'g-old' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-1', '小明', '爸爸'], [ROBOT_ID, '机器人', '机器人']),
+          roles: {},  // 无已选角色 -> quiz 分支 playerIds 为空 -> 授权失败
+          game: oldGame,
+          gameMode: 'arithmetic',
+        })
+      )
+
+      // 算术挑战但无人选角色
+      eventHandlers['game:challenge']({ mode: 'arithmetic' })
+
+      // 旧终局应保留
+      expect(roomManager.clearGame).not.toHaveBeenCalled()
+      expect(gameManager.createGame).not.toHaveBeenCalled()
+    })
+
+    it('quiz 终局挑战成功清理旧终局', () => {
+      joinAndReset('小明')
+      const oldGame = makeGame({ players: ['socket-1', ROBOT_ID], status: 'match_end', id: 'g-old' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-1', '小明', '爸爸'], [ROBOT_ID, '机器人', '机器人']),
+          roles: { 爸爸: 'socket-1' },
+          game: oldGame,
+          gameMode: 'arithmetic',
+        })
+      )
+      gameManager.createGame.mockReturnValue(makeGame({ type: 'arithmetic', players: ['socket-1', ROBOT_ID], id: 'g-new' }))
+      gameManager.createNextQuestion.mockReturnValue({ questionId: 'q1' })
+
+      eventHandlers['game:challenge']({ mode: 'arithmetic' })
+
+      // 旧终局应被统一入口清理
+      expect(roomManager.clearGame).toHaveBeenCalledWith('default')
+      expect(gameManager.createGame).toHaveBeenCalled()
+    })
+
+    it('终局重赛授权失败保留旧终局', () => {
+      joinAndReset('小明')
+      const oldGame = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end', id: 'g-old' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-1', '小明', '爸爸']),  // socket-2 已离开
+          game: oldGame,
+        })
+      )
+      gameManager.getGame.mockReturnValue(oldGame)
+
+      // 发起重赛，但 socket-2 已不在房间
+      eventHandlers['game:rematch']({ roomId: 'default' })
+
+      // 旧终局应保留
+      expect(roomManager.clearGame).not.toHaveBeenCalled()
+      expect(gameManager.createGame).not.toHaveBeenCalled()
+    })
   })
 
   // ---------------- 2f 授权收敛（design §4 通用授权顺序与文案） ----------------

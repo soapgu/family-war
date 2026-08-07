@@ -317,8 +317,8 @@ function registerHandlers(io) {
         socket.emit('game:error', { message: '当前房间已有进行中的比赛' })
         return
       }
-      if (room.game) lifecycle.cleanupGame(rid, room.game.id, { reason: 'replace_by_challenge' })
 
+      // v3.6 Phase 2 步骤 2h：先完成全部授权校验，再清理旧终局
       if (mode === 'rps') {
         const challenger = room.players[socket.id]
         const target = room.players[targetId]
@@ -335,6 +335,9 @@ function registerHandlers(io) {
           return
         }
 
+        // 授权通过后清理旧终局
+        if (room.game) lifecycle.cleanupGame(rid, room.game.id, { reason: 'replace_by_challenge' })
+
         const game = gameManager.createGame(rid, [socket.id, targetId], 'rps')
 
         logger.info(`[challenge] ${getNickname()} → ${target.nickname}`)
@@ -349,6 +352,9 @@ function registerHandlers(io) {
           socket.emit('game:error', { message: '至少需要 1 名玩家选择角色' })
           return
         }
+
+        // 授权通过后清理旧终局
+        if (room.game) lifecycle.cleanupGame(rid, room.game.id, { reason: 'replace_by_challenge' })
 
         const game = gameManager.createGame(rid, playerIds, mode, room.spellingDifficulty || 'easy')
 
