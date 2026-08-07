@@ -121,6 +121,7 @@ describe('handler', () => {
 
   describe('game:rematch — 非 RPS 模式拒绝', () => {
     it('算术 match_end 后 rematch 被拒绝', () => {
+      eventHandlers['room:join']({ nickname: '小明' })
       roomManager.getRoom.mockReturnValue({
         id: 'default',
         players: { 'socket-1': { nickname: '小明' } },
@@ -134,6 +135,7 @@ describe('handler', () => {
     })
 
     it('RPS match_end 允许 rematch', () => {
+      eventHandlers['room:join']({ nickname: '小明' })
       roomManager.getRoom.mockReturnValue({
         id: 'default',
         players: {
@@ -154,6 +156,7 @@ describe('handler', () => {
     })
 
     it('game 不存在时 rematch 返回 error', () => {
+      eventHandlers['room:join']({ nickname: '小明' })
       roomManager.getRoom.mockReturnValue({
         id: 'default',
         players: { 'socket-1': { nickname: '小明' } },
@@ -172,7 +175,7 @@ describe('handler', () => {
   describe('game:answer — 非字符串默写答案被拒绝', () => {
     beforeEach(() => {
       eventHandlers['room:join']({ nickname: '小明' })
-      gameManager.getGame.mockReturnValue({ type: 'spelling', status: 'playing' })
+      gameManager.getGame.mockReturnValue({ type: 'spelling', players: ['socket-1'], status: 'playing' })
     })
 
     it('数字答案 123 → game:error', () => {
@@ -812,7 +815,7 @@ describe('handler', () => {
       expect(gameManager.createGame).not.toHaveBeenCalled()
     })
 
-    failing('非终局状态重赛应返回状态错误', 'LIFE-REMATCH', '当前 status!==match_end 静默 return 不报错', () => {
+    it('非终局状态重赛返回状态错误且不创建新局', () => {
       joinAndReset('小明')
       const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'playing' })
       roomManager.getRoom.mockReturnValue(
@@ -863,6 +866,145 @@ describe('handler', () => {
       eventHandlers['game:move']({ choice: 'rock' })
 
       expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '请先加入房间' })
+    })
+  })
+
+  // ---------------- 2f 授权收敛（design §4 通用授权顺序与文案） ----------------
+
+  describe('2f 授权收敛 - 静默 return 转 game:error', () => {
+    it('game:forfeit 未加入房间返回请先加入房间', () => {
+      // 不调 room:join，currentRoom=null
+      eventHandlers['game:forfeit']()
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '请先加入房间' })
+      expect(roomManager.clearGame).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('2f 授权收敛 - handleGameInput 显式授权', () => {
+    it('旁观者出拳在 handler 层即被拒（先于 GameMode）', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-2', 'socket-3'], status: 'playing' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(
+            ['socket-1', '小明', '爸爸'],
+            ['socket-2', '小红', '妈妈'],
+            ['socket-3', '小刚', '儿子']
+          ),
+          game,
+        })
+      )
+      gameManager.getGame.mockReturnValue(game)
+
+      eventHandlers['game:move']({ choice: 'rock' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '你不是本局玩家' })
+      expect(gameManager.submitInput).not.toHaveBeenCalled()
+    })
+
+    it('终局状态出拳返回没有进行中的比赛', () => {
+      joinAndReset('小明')
+      const game = makeGame({ players: ['socket-1', 'socket-2'], status: 'match_end' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']), game })
+      )
+      gameManager.getGame.mockReturnValue(game)
+
+      eventHandlers['game:move']({ choice: 'rock' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '没有进行中的比赛' })
+      expect(gameManager.submitInput).not.toHaveBeenCalled()
+    })
+
+    it('旁观者答题在 handler 层即被拒', () => {
+      joinAndReset('小明')
+      const game = makeGame({ type: 'arithmetic', players: ['socket-2'], status: 'playing' })
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-1', '小明', '爸爸'], ['socket-2', '小红', '妈妈']),
+          game,
+        })
+      )
+      gameManager.getGame.mockReturnValue(game)
+
+      eventHandlers['game:answer']({ questionId: 'q1', answer: '0' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '你不是本局玩家' })
+      expect(gameManager.submitInput).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('2f 授权收敛 - challenge 调用者/目标文案拆分', () => {
+    it('调用者不是房间成员返回你不在这个房间中', () => {
+      joinAndReset('小明')
+      // socket-1 不在 room.players（模拟非成员）
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-2', '小红', '妈妈'], ['socket-3', '小刚', '儿子']),
+          roles: { 妈妈: 'socket-2', 儿子: 'socket-3' },
+          game: null,
+          gameMode: 'rps',
+        })
+      )
+      gameManager.createGame.mockReturnValue(makeGame({ players: ['socket-1', 'socket-2'] }))
+
+      eventHandlers['game:challenge']({ mode: 'rps', targetId: 'socket-2' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '你不在这个房间中' })
+      expect(gameManager.createGame).not.toHaveBeenCalled()
+    })
+
+    it('目标不存在返回玩家不存在', () => {
+      joinAndReset('小明')
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({
+          pls: players(['socket-1', '小明', '爸爸']),
+          roles: { 爸爸: 'socket-1' },
+          game: null,
+          gameMode: 'rps',
+        })
+      )
+
+      eventHandlers['game:challenge']({ mode: 'rps', targetId: 'socket-999' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '玩家不存在' })
+      expect(gameManager.createGame).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('2f 授权收敛 - setMode 成员校验', () => {
+    it('非房间成员切换模式返回你不在这个房间中', () => {
+      joinAndReset('小明')
+      // socket-1 不在 room.players
+      roomManager.getRoom.mockReturnValue(
+        makeRoom({ pls: players(['socket-2', '小红', '妈妈']) })
+      )
+
+      eventHandlers['game:setMode']({ mode: 'arithmetic' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '你不在这个房间中' })
+      expect(roomManager.setGameMode).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('2f 授权收敛 - rid 一致性', () => {
+    it('role:select 请求非当前房间返回你不在这个房间中', () => {
+      joinAndReset('小明')
+
+      eventHandlers['role:select']({ role: '爸爸', roomId: 'other-room' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '你不在这个房间中' })
+      expect(roomManager.selectRole).not.toHaveBeenCalled()
+    })
+
+    it('game:rematch 请求非当前房间返回你不在这个房间中', () => {
+      joinAndReset('小明')
+
+      eventHandlers['game:rematch']({ roomId: 'other-room' })
+
+      expect(mockSocket.emit).toHaveBeenCalledWith('game:error', { message: '你不在这个房间中' })
+      expect(roomManager.clearGame).not.toHaveBeenCalled()
     })
   })
 

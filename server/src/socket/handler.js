@@ -117,8 +117,12 @@ function registerHandlers(io) {
       }
 
       const game = gameManager.getGame(rid)
-      if (!game) {
+      if (!game || game.status !== 'playing') {
         socket.emit('game:error', { message: '没有进行中的比赛' })
+        return
+      }
+      if (!game.players.includes(socket.id)) {
+        socket.emit('game:error', { message: '你不是本局玩家' })
         return
       }
 
@@ -213,7 +217,11 @@ function registerHandlers(io) {
     // ==================== 角色 ====================
 
     socket.on('role:select', ({ role, roomId } = {}) => {
-      const rid = roomId || currentRoom
+      if (roomId && roomId !== currentRoom) {
+        socket.emit('game:error', { message: '你不在这个房间中' })
+        return
+      }
+      const rid = currentRoom
       if (!rid) {
         socket.emit('game:error', { message: '请先加入房间' })
         return
@@ -230,7 +238,11 @@ function registerHandlers(io) {
     })
 
     socket.on('role:deselect', ({ roomId } = {}) => {
-      const rid = roomId || currentRoom
+      if (roomId && roomId !== currentRoom) {
+        socket.emit('game:error', { message: '你不在这个房间中' })
+        return
+      }
+      const rid = currentRoom
       if (!rid) {
         socket.emit('game:error', { message: '请先加入房间' })
         return
@@ -252,6 +264,12 @@ function registerHandlers(io) {
       const rid = currentRoom
       if (!rid) {
         socket.emit('game:error', { message: '请先加入房间' })
+        return
+      }
+
+      const room = roomManager.getRoom(rid)
+      if (!room || !room.players[socket.id]) {
+        socket.emit('game:error', { message: '你不在这个房间中' })
         return
       }
 
@@ -294,7 +312,11 @@ function registerHandlers(io) {
       if (mode === 'rps') {
         const challenger = room.players[socket.id]
         const target = room.players[targetId]
-        if (!challenger || !target) {
+        if (!challenger) {
+          socket.emit('game:error', { message: '你不在这个房间中' })
+          return
+        }
+        if (!target) {
           socket.emit('game:error', { message: '玩家不存在' })
           return
         }
@@ -358,7 +380,11 @@ function registerHandlers(io) {
     // ==================== 重赛 ====================
 
     socket.on('game:rematch', ({ roomId } = {}) => {
-      const rid = roomId || currentRoom
+      if (roomId && roomId !== currentRoom) {
+        socket.emit('game:error', { message: '你不在这个房间中' })
+        return
+      }
+      const rid = currentRoom
       if (!rid) {
         socket.emit('game:error', { message: '请先加入房间' })
         return
@@ -382,6 +408,7 @@ function registerHandlers(io) {
         return
       }
       if (existingGame.status !== 'match_end') {
+        socket.emit('game:error', { message: '没有可重赛的已结束比赛' })
         return
       }
       if (existingGame.type !== 'rps') {
@@ -408,7 +435,10 @@ function registerHandlers(io) {
 
     socket.on('game:forfeit', ({ roomId } = {}) => {
       const rid = roomId || currentRoom
-      if (!rid) return
+      if (!rid) {
+        socket.emit('game:error', { message: '请先加入房间' })
+        return
+      }
 
       const game = gameManager.getGame(rid)
       if (!game || game.status !== 'playing') {
