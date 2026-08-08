@@ -1,6 +1,6 @@
 {
   "name": "family-war",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "private": true,
   "scripts": {
     "dev": "concurrently -n server,client,admin -c blue,green,magenta \"npm run dev --prefix server\" \"npm run start --prefix client\" \"npm run start --prefix admin-client\"",
