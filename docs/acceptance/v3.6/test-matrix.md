@@ -153,11 +153,11 @@
 | **生命周期 · 客户端断线重连（已进/未进/已退）** | `client/src/__tests__/App.test.jsx:113-160` | 已覆盖（单测）| E2E 待补 | 真实 socket 重连 + 房间自动重入/不重入行为 |
 | **生命周期 · 比赛中主动认输** | `server/tests/integration.js:231` (`game:forfeit`) | 部分覆盖 | E2E 待补 | 1o：认输后对手收到明确提示 + 双方退出游戏面板 + 房间可再次发起比赛 |
 | **生命周期 · 主动退出房间（无进行中比赛）** | `client/src/__tests__/Room.test.jsx:124, 132` | 已覆盖（单测）| E2E 待补 | 1p：另一浏览器看到在线人数/玩家/角色释放 + 退出者返回首页 |
-| **生命周期 · 比赛中退出房间** | （无） | 未覆盖 | Phase 2 生命周期治理输入 | 1q 问题基线；当前行为不冻结；最小复现归入 `client/tests/e2e/lifecycle/` 带 `@lifecycle-issue` Tag |
+| **生命周期 · 比赛中退出房间** | `server/__tests__/handler.test.js`、`server/tests/integration.js:411-445` | 已覆盖 | ✅ 已关闭（2d） | LIFE-001 已修复；`quiz-player-leave.spec.js` 转 `@stable`；参赛者离开取消整场+通知剩余真人 |
 | **生命周期 · 重复提交答案** | `server/__tests__/rpsGameMode.test.js:115`、`server/__tests__/arithmeticGameMode.test.js:225` | 已覆盖 | E2E 不重复 | 服务端去重（已单元验证）|
 | **生命周期 · 过期题目提交** | `server/__tests__/arithmeticGameMode.test.js:234` | 已覆盖 | E2E 不重复 | 服务端拦截（已单元验证）|
-| **权限 · 非参赛者操作当前对局** | （无） | 未覆盖 | Phase 2 生命周期治理输入 | 1q 问题基线；3 浏览器场景（两人对局 + 第三人旁观）|
-| **幂等 · 快速重复操作** | （无） | 未覆盖 | Phase 2 生命周期治理输入 | 1q 问题基线；是否重复计分或造成状态卡死 |
+| **权限 · 非参赛者操作当前对局** | `server/__tests__/handler.test.js`、`server/tests/integration.js:449-504` | 已覆盖 | ✅ 已关闭（2e） | LIFE-002 已修复；`non-participant-forfeit.spec.js` 已删除；回归迁入 `integration.js` section 11 |
+| **幂等 · 快速重复操作** | `server/__tests__/handler.test.js`（幂等与竞态块）、`server/tests/integration.js:612-673` | 已覆盖 | ✅ 已覆盖（2h） | 重复认输/重复离开/离开后输入均有单元+集成回归 |
 
 ### 2.2 已有覆盖 · E2E 不重复（汇总）
 
@@ -203,9 +203,9 @@
 | 等待条件以可观察的页面状态或事件结果为准；不使用固定时长 `waitForTimeout` 推测业务完成 | 猜拳·人机完整比赛（1i）、算术·完整比赛（1k）、默写·完整比赛（1m）| 矩阵"细化要点"明确"去除盲点循环"；如实施发现确实需要等待，应改用 `expect(...).toBeVisible()` / `waitForEvent` |
 | 如完整比赛耗时过长，可增加仅由测试启动命令启用的游戏配置覆盖；必须复用正式业务逻辑；不得增加测试专用业务分支或跳关接口；测试进程退出后自动失效；对 `npm run dev` 和生产构建无影响 | 默写·完整比赛（1m）| 矩阵"细化要点"明确 `E2E_FAST=1` 隔离要求；其他缺口不引入配置覆盖 |
 | 选择器优先使用角色、标签和稳定的 `data-testid`；避免依赖 Antd 内部 class、DOM 层级、动画样式或纯序号 | 全部 22 行（贯通）| 由 1g 补 `data-testid` 承接；如实施中发现某控件无法用 `data-testid` 稳定定位 → 1g 需补而非测试改用易碎选择器 |
-| 当前服务端缺陷应记录为带预期行为的待修复场景；不降低断言、吞掉异常或接受两种互相矛盾的结果 | 生命周期·比赛中退出房间、权限·非参赛者操作、幂等·快速重复操作（1q 三行）| 矩阵明确标 "Phase 2 生命周期治理输入"；后续归入 `client/tests/e2e/lifecycle/` 带 `@lifecycle-issue` Tag |
+| 当前服务端缺陷应记录为带预期行为的待修复场景；不降低断言、吞掉异常或接受两种互相矛盾的结果 | 生命周期·比赛中退出房间（已关闭 2d）、权限·非参赛者操作（已关闭 2e）、幂等·快速重复操作（已覆盖 2h）| LIFE-001 转 `@stable`；LIFE-002 删 spec 迁 `integration.js`；幂等归 `handler.test.js` + `integration.js` section 13 |
 | 断线、退出、认输、重赛、重复提交、过期题目等生命周期行为必须分别单列 | 生命周期 7 行：玩家断线、断线重连（已进/未进/已退）、比赛中认输、主动退出（无比赛）、比赛中退出、重复提交、过期题目 | 矩阵按用户要求分别单列，不合并 |
 | 主动退出与比赛中退出边界：1p 只覆盖无进行中比赛；比赛中退出明确归 1q 生命周期问题基线 | 生命周期·主动退出房间（1p）vs 生命周期·比赛中退出房间（1q）| 矩阵两行分别标 "E2E 待补" 与 "Phase 2 治理输入"；语义边界在 step.md 1p/1q 已冻结 |
-| `@stable` 与 `@lifecycle-issue` Tag 规范 | 22 行中 @stable 应覆盖：1h/1i/1n/1o/1p/1j/1k/1l/1m + 首页 2 行 + 房间加入 1 行；@lifecycle-issue 应覆盖：1q 三行 | Tag 实施见 1r；本表为 Tag 分配的依据 |
+| `@stable` 与 `@lifecycle-issue` Tag 规范 | @stable 覆盖：1h/1i/1n/1o/1p/1j/1k/1l/1m + 首页 2 行 + 房间加入 1 行 + `quiz-player-leave`（2d 转 stable）；@lifecycle-issue 覆盖：仅 `rps-disconnect-reconnect`（冻结行为） | Tag 实施见 1r；Phase 2 后 LIFE-001 毕业 `@stable`，LIFE-002 spec 删除迁集成，仅 RPS 断线重连保留 `@lifecycle-issue` |
 | 1s 三次连续执行仅针对 `@stable` 基线 | @lifecycle-issue 三行不进入 1s 连续执行 | 矩阵"处置结论"列已显式区分两种 Tag 的归属范围 |
 

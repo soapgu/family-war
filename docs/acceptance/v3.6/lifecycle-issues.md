@@ -1,49 +1,48 @@
-# v3.6 Phase 1 生命周期问题基线
+# v3.6 Phase 2 生命周期问题关闭记录
 
 ## 结论
 
-1q 建立两个待 Phase 2 修复的问题和一条已冻结的断线重连行为。问题用例断言目标行为，并以 Playwright `test.fail()` 标记当前预期失败；它们不属于 `@stable`，不纳入 1s 连续执行。Phase 2 的目标规则已在 `lifecycle-design.md` 冻结，本文件继续记录问题现象、复现与关闭条件。
+Phase 2 已关闭 LIFE-001、LIFE-002 两个 P1 问题。LIFE-001 的浏览器最小复现已移除 `test.fail()` 并转为 `@stable`；LIFE-002 的协议级 Playwright spec 已删除，回归迁入 `server/tests/integration.js`。RPS 断线重连行为继续作为 `@lifecycle-issue` 专项场景保留。
 
 ## 问题清单
 
-| 编号 | 场景 | 当前结果 | Phase 2 目标规则 | 严重级别 | 自动化复现 | 关闭阶段 |
-|------|------|----------|------------------|----------|------------|----------|
-| LIFE-001 | 算术或默写参赛者在比赛中主动退出 | 退出者离房，但答题类游戏未取消，其他参赛者仍停留在引用旧阵容的游戏面板 | 进行中参赛者离开与统一清理契约：清理旧游戏和机器人定时器，向其他在线真人参赛者各发送一次 `game:cancelled`，再收敛成员、角色和房间状态 | P1 | `lifecycle/quiz-player-leave.spec.js` | 2d、2j |
-| LIFE-002 | RPS 非参赛者发送认输 | 服务端未校验发起者，旁观者可清理 A/B 的对局 | 通用授权与进行中认输规则：只向旁观者返回“你不是本局玩家”，A/B 对局、比分、轮次和当前交互保持不变 | P1 | `lifecycle/non-participant-forfeit.spec.js` | 2e、2j |
+| 编号 | 场景 | 原现象 | 关闭阶段 | 状态 |
+|------|------|--------|----------|------|
+| LIFE-001 | 算术或默写参赛者在比赛中主动退出 | 退出者离房，但答题类游戏未取消，其他参赛者仍停留在引用旧阵容的游戏面板 | 2d、2j | ✅ 已关闭 |
+| LIFE-002 | RPS 非参赛者发送认输 | 服务端未校验发起者，旁观者可清理 A/B 的对局 | 2e、2j | ✅ 已关闭 |
 
-### LIFE-001 最小复现
+## LIFE-001 关闭记录
 
-1. A/B 进入默认房间，选择爸爸和妈妈。
-2. 切换算术模式并开始比赛。
-3. A 在首题期间点击“退出房间”。
-4. B 仍看到算术题目，无法回到房间重新开始比赛。
+### 原现象
+算术或默写参赛者在比赛中主动退出后，旧对局未取消、机器人定时器未清理，剩余玩家仍停留在引用旧阵容的游戏面板无法回到房间。
 
-默写模式经过 `cancelGameIfActive()` 的同一分支，具有相同风险；本阶段以算术作为最小浏览器复现，修复时必须同时回归算术和默写。
+### 修复方式（提交 `3bdb1f2`）
+- `cancelGameIfActive` 删除 `arithmetic`/`spelling` 类型拦截，统一走 `lifecycle.cleanupGame` 入口
+- 三模式参赛者离开/断线均取消整场 + 清机器人调度 + 通知所有仍在线真人参赛者
 
-关闭条件：
+### 关闭条件达成
+1. ✅ Handler 单测覆盖算术、默写的主动离开和断线，以及旁观者离开不取消对局（`handler.test.js`）
+2. ✅ 真实 Socket.IO 集成测试验证旧对局和机器人调度不再推进，剩余参赛者只收到一次取消（`integration.js` section 10）
+3. ✅ 浏览器最小复现移除 `test.fail()` 并转为 `@stable`（`quiz-player-leave.spec.js`），用户可返回房间再次开始比赛
 
-- Handler 单测覆盖算术、默写的主动离开和断线，以及旁观者离开不取消对局；
-- 真实 Socket.IO 集成测试验证旧对局和机器人调度不再推进，剩余参赛者只收到一次取消；
-- 浏览器最小复现移除 `test.fail()` 并转为 `@stable`，用户可返回房间再次开始比赛。
+## LIFE-002 关闭记录
 
-### LIFE-002 最小复现
+### 原现象
+RPS 非参赛者（旁观者）发送 `game:forfeit` 可清除 A/B 的对局，服务端未校验发起者。
 
-1. A/B/C 通过真实 Socket.IO 加入默认房间并分别选择爸爸、妈妈、儿子。
-2. A 挑战 B，双方进入 RPS。
-3. 非参赛者 C 发送 `game:forfeit`。
-4. 服务端清除 A/B 的当前游戏，且没有向 C 返回权限错误。
+### 修复方式（提交 `bdc3f27`）
+- `game:forfeit` 新增 `game.players.includes(socket.id)` 参赛者校验
+- 非参赛者收到 `你不是本局玩家`，原对局不变
+- 合法认输迁移到 `lifecycle.cleanupGame` 入口
 
-该问题没有可用的旁观者 UI 入口，因此使用 Node 侧 `socket.io-client` 做真实服务集成复现，不向浏览器暴露测试专用 Socket 接口。这是仅限 `@lifecycle-issue` 且无 UI 入口的权限缺陷例外，不得替代浏览器主链路；Phase 2 修复后将该回归迁入 `server/tests/integration.js`，不转为 Playwright `@stable`。
-
-关闭条件：
-
-- Handler 单测覆盖非参赛者、参赛者、无对局和终局四种认输权限；
-- 真实 Socket.IO 集成测试验证旁观者只收到一次权限错误，A/B 可以继续当前轮并正常完成对局；
-- 删除 Playwright 协议级问题 spec，由服务端集成测试长期回归。
+### 关闭条件达成
+1. ✅ Handler 单测覆盖非参赛者、参赛者、无对局和终局四种认输权限（`handler.test.js`）
+2. ✅ 真实 Socket.IO 集成测试验证旁观者只收到一次权限错误，A/B 可以继续当前轮并正常完成对局（`integration.js` section 11）
+3. ✅ 删除 Playwright 协议级问题 spec（`non-participant-forfeit.spec.js` + `socketClient.js`），由服务端集成测试长期回归
 
 ## 已冻结行为
 
-`lifecycle/rps-disconnect-reconnect.spec.js` 冻结以下当前正确行为：
+`lifecycle/rps-disconnect-reconnect.spec.js` 冻结以下当前正确行为，继续保留 `@lifecycle-issue` Tag：
 
 - RPS 参赛者断线后比赛取消，另一方退出游戏面板；
 - 断线者从在线玩家列表移除并释放角色，在线玩家原角色保留；
@@ -53,4 +52,4 @@
 
 - 重复答案：RPS、算术已有服务端单测，客户端提交态会禁用操作控件。
 - 过期题目：算术和默写 GameMode 已有 `questionId` 拒绝单测。
-- 快速重复操作：当前稳定 UI 没有可靠复现入口；若 Phase 2 发现独立竞态，再为每个问题新增单独的 `@lifecycle-issue` spec。
+- 快速重复操作：Phase 2 已由 `handler.test.js` 幂等与竞态基线 + `integration.js` section 13 覆盖。
