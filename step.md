@@ -1697,13 +1697,24 @@ antd 6 升级验证完成，无功能回归、无控制台错误、CSS 无破坏
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 4a | 安装 Jest 30 最新稳定补丁版并对齐 `@types/jest`，更新服务端锁文件 | `server/package.json`, `server/package-lock.json` | ⬜ |
-| 4b | 检查 Jest 30 配置、CLI 和默认行为变化，保持 `testPathIgnorePatterns`、watch 与现有脚本语义有效 | `server/package.json`、必要的 Jest 配置 | ⬜ |
-| 4c | 验证普通 Mock 与自动 Mock：`jest.fn`、`jest.mock`、`jest.spyOn`、清理行为和调用断言 | `handler`, `gameManager`, `lifecycle` 等测试 | ⬜ |
-| 4d | 验证动态 CommonJS Mock：`jest.doMock`、`jest.resetModules`、`require` 缓存隔离和配置切换 | `unsplashClient.test.js`, `wordBank.test.js` | ⬜ |
-| 4e | 验证假定时器的调度、推进、清理和测试退出行为 | `robotScheduler.test.js` | ⬜ |
-| 4f | 按“实施环境说明”在允许本地监听的环境验证 Supertest/Koa、JWT、Cookie 和 `NODE_ENV` 切换，确保接口测试无 open handle、worker 或端口残留 | `adminAuth.test.js` 等 | ⬜ |
-| 4g | 只修复 Jest 30 必需的兼容变化；保持服务端 CommonJS，不迁移 Vitest 或 ESM | `server/__tests__/`, 必要测试配置 | ⬜ |
+| 4a | 安装 Jest 30 最新稳定补丁版并对齐 `@types/jest`，更新服务端锁文件 | `server/package.json`, `server/package-lock.json` | ✅ |
+| 4b | 检查 Jest 30 配置、CLI 和默认行为变化，保持 `testPathIgnorePatterns`、watch 与现有脚本语义有效 | `server/package.json`、必要的 Jest 配置 | ✅ |
+| 4c | 验证普通 Mock 与自动 Mock：`jest.fn`、`jest.mock`、`jest.spyOn`、清理行为和调用断言 | `handler`, `gameManager`, `lifecycle` 等测试 | ✅ |
+| 4d | 验证动态 CommonJS Mock：`jest.doMock`、`jest.resetModules`、`require` 缓存隔离和配置切换 | `unsplashClient.test.js`, `wordBank.test.js` | ✅ |
+| 4e | 验证假定时器的调度、推进、清理和测试退出行为 | `robotScheduler.test.js` | ✅ |
+| 4f | 按“实施环境说明”在允许本地监听的环境验证 Supertest/Koa、JWT、Cookie 和 `NODE_ENV` 切换，确保接口测试无 open handle、worker 或端口残留 | `adminAuth.test.js` 等 | ✅ |
+| 4g | 只修复 Jest 30 必需的兼容变化；保持服务端 CommonJS，不迁移 Vitest 或 ESM | `server/__tests__/`, 必要测试配置 | ✅ |
+
+### Phase 4 结果（2026-08-11）
+
+完整记录见 [`docs/acceptance/v3.7/verification.md`](docs/acceptance/v3.7/verification.md) Phase 4 章节。
+
+- **4a**：jest 29.7.0 -> 30.4.2（`--save-exact`）；@types/jest 30.0.0 保持（主版本已对齐）。
+- **4b**：`testPathIgnorePatterns` 配置有效，12 suites 正确收集，helpers 被忽略；`--verbose --no-cache` 与 watch 脚本语义不变；无需修改配置。
+- **4c-4f**：一次全量运行 342 项全过（1.371s），覆盖普通 Mock、动态 CommonJS Mock（doMock/resetModules）、假定时器、Supertest/Koa/JWT/Cookie/NODE_ENV；Supertest 无 open handle/端口残留。
+- **4g**：零兼容修复--Jest 30 升级无需修改任何生产或测试代码；保持 CommonJS。
+
+Jest 29 -> 30 升级零回归。可进入 Phase 5（全量回归与发布准备）。
 
 ## Phase 5：全量回归与发布准备
 

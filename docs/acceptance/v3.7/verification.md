@@ -394,3 +394,46 @@ browser-use 驱动 IAB 验证（dev 环境 server:4000 + admin:3001）：
 - 稳定 E2E 12 + 生命周期专项 1 与 Phase 0 基线一致。
 - 管理端关键功能正常。
 - 可进入 Phase 4（升级 Jest 30）。
+
+## Phase 4：升级 Jest 30
+
+运行时间：2026-08-11
+
+### 4a 安装 Jest 30 + 对齐 @types/jest
+
+实施时 npm `latest` 确认：jest 30.4.2（与计划基线一致）。
+
+| 包 | 变更 |
+|---|---|
+| jest | 29.7.0 -> **30.4.2**（`--save-exact`，devDependencies） |
+| @types/jest | 30.0.0（保持，主版本已与 jest 30 对齐） |
+
+安装引入 45 个新包、移除 32 个旧包（jest 30 内部依赖更新）。有 glob 旧版本废弃警告（jest 内部依赖，不影响测试）。
+
+### 4b 配置与 CLI 检查
+
+- `server/package.json` 的 `jest.testPathIgnorePatterns: ["/node_modules/", "/__tests__/helpers/"]` 在 Jest 30 下仍有效：12 个测试套件正确收集，helpers 目录被忽略。
+- `test` 脚本 `jest --verbose --no-cache` 与 `test:watch` 语义不变。
+- 无需修改任何 Jest 配置。
+
+### 4c-4f 服务端全量测试验证
+
+一次运行 `npm test --prefix server` 覆盖全部验证维度：
+
+| 验证维度 | 涉及测试 | Jest 30 结果 |
+|---|---|---|
+| 4c 普通 Mock/自动 Mock（jest.fn/jest.mock/jest.spyOn） | handler/gameManager/lifecycle 等 | ✅ 全过 |
+| 4d 动态 CommonJS Mock（jest.doMock/jest.resetModules/require 缓存） | unsplashClient.test.js、wordBank.test.js | ✅ 全过 |
+| 4e 假定时器（调度/推进/清理/退出） | robotScheduler.test.js | ✅ 全过 |
+| 4f Supertest/Koa/JWT/Cookie/NODE_ENV（含本地端口监听） | adminAuth.test.js 等 | ✅ 全过，无 open handle/worker/端口残留 |
+
+**总结果**：Test Suites: 12 passed / Tests: 342 passed / Time: 1.371s（jest 29 时 1.556s，略快）。
+
+### 4g 兼容修复
+
+- 无需修复：Jest 30 升级零兼容问题，342 项测试全部通过，生产服务端代码与测试代码均未修改。
+- 保持服务端 CommonJS，未迁移 Vitest 或 ESM。
+
+### Phase 4 结论
+
+Jest 29 -> 30 升级零回归，所有 Mock 行为、假定时器、Supertest 接口测试在 Jest 30 下表现一致。可进入 Phase 5（全量回归与发布准备）。
