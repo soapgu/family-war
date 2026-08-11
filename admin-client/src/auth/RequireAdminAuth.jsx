@@ -72,7 +72,7 @@ export default function RequireAdminAuth({ children }) {
         open={showLogin}
         title="管理员登录"
         closable={false}
-        maskClosable={false}
+        mask={{ closable: false }}
         destroyOnHidden
         footer={(
           <Button

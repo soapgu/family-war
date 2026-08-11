@@ -249,3 +249,74 @@
 7. **icons 同步升级**：antd 与 icons 必须同时升到 6.x，禁止 antd 5/icons 6 或 antd 6/icons 5 混搭；client 补齐 icons 直接依赖声明。
 
 升级工作量预估：2 处 Collapse `bordered` + 3 处 Space `size="middle"` + 3 处脆弱 CSS 选择器（按需）+ Tag 视觉对照，均为局部点改，无大范围重构。
+
+## Phase 2：升级 Ant Design 6
+
+运行时间：2026-08-11
+
+### 2a 安装 antd 6 + icons 6
+
+实施时 npm `latest` 确认：antd 6.6.0、@ant-design/icons 6.3.2（高于计划基线 6.5.2）。
+
+| 包 | client | admin-client |
+|---|---|---|
+| antd | 5.29.3 -> **6.6.0** | 5.29.3 -> **6.6.0** |
+| @ant-design/icons | （未声明）-> **6.3.2**（直接依赖） | 5.6.1 -> **6.3.2** |
+
+依赖树验证：两端均单份 antd、单份 icons、单份 react/react-dom，无重复、无 peer 冲突、无 invalid。
+
+### 2b 统一 react / react-dom 精确版本
+
+两端 `react` / `react-dom` 固定为 `19.2.8`（`--save-exact`，移除 `^`），lockfile 同步。两端解析版本现完全一致。
+
+### 2c 入口检查
+
+- 两端 `src/` 与 `package.json` 均不含 `@ant-design/v5-patch-for-react-19` 或 `unstableSetRender`。✅
+
+### 2d v6 兼容修复
+
+**Phase 1 冻结的命中点（5 处）**：
+
+| 文件 | 修改 |
+|---|---|
+| ArithmeticMatchResult.jsx:111 | Collapse `bordered={false}` -> `variant="borderless"` |
+| SpellingMatchResult.jsx:108 | Collapse `bordered={false}` -> `variant="borderless"` |
+| ArithmeticMatchResult.jsx:115 | Space `size="middle"` -> `size="medium"` |
+| SpellingMatchResult.jsx:112 | Space `size="middle"` -> `size="medium"` |
+| RpsMatchResult.jsx:74 | Space `size="middle"` -> `size="medium"` |
+
+**升级后 antd 6 新暴露的废弃 API（5 处）**：测试全过但控制台出现废弃警告，为满足 Phase 3d"无废弃 API 警告"验收，一并修复：
+
+| 文件 | 修改 | v6 替代 |
+|---|---|---|
+| Home.jsx:103 | Space `direction="vertical"` -> `orientation="vertical"` | orientation |
+| AppEntryCard.jsx:6 | Space `direction="vertical"` -> `orientation="vertical"` | orientation |
+| WordConfigPage.jsx:344 | Progress `trailColor` -> `railColor` | railColor |
+| RequireAdminAuth.jsx:75 | Modal `maskClosable={false}` -> `mask={{ closable: false }}` | mask.closable |
+| WordConfigPage.jsx:394 | Alert `message=` -> `title=` | title |
+
+### 2e CSS 选择器
+
+3 处脆弱内部选择器（`.ant-image-img`、`.ant-empty-description` ×2）暂未修改：jsdom 单测不覆盖样式渲染，需在 Phase 3 视觉对照后按需修复。Phase 1 规则约束：仅在 v6 实际破坏时修复，优先用组件公开 API。
+
+### 2f 前端单测与构建验证
+
+**单测**（废弃警告全部消失）：
+
+| 子包 | 结果 | 废弃警告 |
+|---|---|---|
+| client | 10 files / 87 passed | 无（v5 时 jsdom getComputedStyle 既有警告仍存在，非 antd 废弃） |
+| admin-client | 14 files / 59 passed | 无 |
+
+**生产构建**：
+
+| 端 | 模块数 | index.js | gzip | 耗时 |
+|---|---|---|---|---|
+| client | 4845 | 799.62 kB | 257.41 kB | 4.54s |
+| admin-client | 4825 | 866.93 kB | 279.66 kB | 4.60s |
+
+- 产物较 v5 略小（client 817->800 kB、admin 884->867 kB）。
+- 仅有 chunk >500KB 既有警告。
+- 构建隔离检查通过。
+
+Phase 2 完成，可进入 Phase 3（Ant Design 6 验证：E2E、视觉对照、控制台检查）。

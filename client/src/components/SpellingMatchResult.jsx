@@ -105,11 +105,11 @@ function SpellingMatchResult({ matchWinner, ranking, history, myId, onBack, onRe
           <Typography.Text strong style={{ fontSize: 15, display: 'block', marginBottom: 12, textAlign: 'center' }}>
             🔤 单词回顾
           </Typography.Text>
-          <Collapse items={collapseItems} size="small" bordered={false} style={{ background: 'transparent' }} />
+          <Collapse items={collapseItems} size="small" variant="borderless" style={{ background: 'transparent' }} />
         </div>
       )}
 
-      <Space size="middle" style={{ marginTop: 8 }}>
+      <Space size="medium" style={{ marginTop: 8 }}>
         <Button data-testid="spelling-return-room-btn" onClick={onBack} size="large">返回房间</Button>
         <Button data-testid="spelling-rematch-btn" type="primary" size="large" onClick={onRematch}>再来一局</Button>
       </Space>

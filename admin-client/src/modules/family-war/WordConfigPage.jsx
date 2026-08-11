@@ -341,7 +341,7 @@ function WordConfigPage() {
                   showInfo={false}
                   size="small"
                   strokeColor={allWordsSynced ? '#52c41a' : '#faad14'}
-                  trailColor={allWordsSynced ? '#d9f7be' : '#fff1b8'}
+                  railColor={allWordsSynced ? '#d9f7be' : '#fff1b8'}
                 />
                 <Typography.Text style={{ fontSize: 12, color: allWordsSynced ? '#52c41a' : '#d48806' }}>
                   {totalWordCount === 0
@@ -391,7 +391,7 @@ function WordConfigPage() {
         <Alert
           type="warning"
           showIcon
-          message={EMPTY_WORD_BANK_MESSAGE}
+          title={EMPTY_WORD_BANK_MESSAGE}
           description="请先启用至少一个章节和单词，再保存配置。"
           style={{ marginBottom: 20 }}
         />

@@ -100,7 +100,7 @@ function Home({ onEnter }) {
           ))}
         </div>
 
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <Input
             data-testid="home-nickname-input"
             placeholder="输入昵称"

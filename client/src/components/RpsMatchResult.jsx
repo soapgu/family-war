@@ -71,7 +71,7 @@ function RpsMatchResult({ matchWinner, scores, history, myId, onBack, onRematch 
 
       <RoundHistory history={history} myId={myId} />
 
-      <Space size="middle">
+      <Space size="medium">
         <Button data-testid="rps-return-room-btn" onClick={onBack} size="large">
           返回房间
         </Button>

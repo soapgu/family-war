@@ -1649,12 +1649,25 @@ git diff --check
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 2a | 两个前端同步安装 antd 6 最新稳定版，并显式安装与其兼容的 icons 6；禁止依赖传递安装的 icons，禁止形成 antd 5/icons 6 或 antd 6/icons 5 混搭 | 前端 `package.json`、`package-lock.json` | ⬜ |
-| 2b | 将两个前端 `package.json` 中的 `react`、`react-dom` 固定到相同精确版本（目标为 19.2.8，或实施时最新 19.2.x），移除 `^` 范围并同步锁文件；确认依赖树只有一份 React 且无 peer 冲突 | 前端依赖与锁文件 | ⬜ |
-| 2c | 确认入口不包含 `@ant-design/v5-patch-for-react-19` 或 `unstableSetRender`；继续使用 antd 6 原生 React 19 支持 | 两个前端入口 | ⬜ |
-| 2d | 按官方迁移清单修复已使用组件的 API、属性、样式和 DOM 兼容问题，保持用户可观察行为不变 | `client/src/`, `admin-client/src/` | ⬜ |
-| 2e | 修复脆弱的 antd 内部选择器；优先使用组件公开属性、语义 `classNames`/`styles` 或稳定的项目自有容器 | 两个前端 CSS/组件 | ⬜ |
-| 2f | 更新受版本变化影响的测试，但不得通过删除断言、放宽业务结果或接受多种矛盾结果掩盖回归 | 两个前端测试 | ⬜ |
+| 2a | 两个前端同步安装 antd 6 最新稳定版，并显式安装与其兼容的 icons 6；禁止依赖传递安装的 icons，禁止形成 antd 5/icons 6 或 antd 6/icons 5 混搭 | 前端 `package.json`、`package-lock.json` | ✅ |
+| 2b | 将两个前端 `package.json` 中的 `react`、`react-dom` 固定到相同精确版本（目标为 19.2.8，或实施时最新 19.2.x），移除 `^` 范围并同步锁文件；确认依赖树只有一份 React 且无 peer 冲突 | 前端依赖与锁文件 | ✅ |
+| 2c | 确认入口不包含 `@ant-design/v5-patch-for-react-19` 或 `unstableSetRender`；继续使用 antd 6 原生 React 19 支持 | 两个前端入口 | ✅ |
+| 2d | 按官方迁移清单修复已使用组件的 API、属性、样式和 DOM 兼容问题，保持用户可观察行为不变 | `client/src/`, `admin-client/src/` | ✅ |
+| 2e | 修复脆弱的 antd 内部选择器；优先使用组件公开属性、语义 `classNames`/`styles` 或稳定的项目自有容器 | 两个前端 CSS/组件 | ✅ |
+| 2f | 更新受版本变化影响的测试，但不得通过删除断言、放宽业务结果或接受多种矛盾结果掩盖回归 | 两个前端测试 | ✅ |
+
+### Phase 2 结果（2026-08-11）
+
+完整记录见 [`docs/acceptance/v3.7/verification.md`](docs/acceptance/v3.7/verification.md) Phase 2 章节。
+
+- **2a**：安装 antd 6.6.0 + @ant-design/icons 6.3.2（高于计划基线 6.5.2）；client 补齐 icons 直接依赖声明；依赖树无重复、无 peer 冲突。
+- **2b**：两端 react/react-dom 固定 19.2.8（`--save-exact`，移除 `^`），解析版本完全一致。
+- **2c**：两端入口与 package.json 均无 v5-patch / unstableSetRender。
+- **2d**：修复 10 处--Phase 1 冻结 5 处（2 Collapse `bordered`->`variant`、3 Space `size="middle"`->`size="medium"`）+ 升级后 v6 新暴露废弃 API 5 处（2 Space `direction`->`orientation`、Progress `trailColor`->`railColor`、Modal `maskClosable`->`mask.closable`、Alert `message`->`title`）。
+- **2e**：3 处脆弱 CSS 选择器暂未修改，jsdom 单测不覆盖样式渲染，推迟到 Phase 3 视觉对照后按需修复（Phase 1 规则：仅在 v6 实际破坏时修复）。
+- **2f**：前端单测全过（client 87 / admin 59），废弃警告全部消失；生产构建成功（产物较 v5 略小），构建隔离检查通过；未放宽任何断言。
+
+可进入 Phase 3（Ant Design 6 验证：E2E、控制台检查、视觉对照）。
 
 ## Phase 3：Ant Design 6 验证
 
