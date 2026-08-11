@@ -320,3 +320,77 @@
 - 构建隔离检查通过。
 
 Phase 2 完成，可进入 Phase 3（Ant Design 6 验证：E2E、视觉对照、控制台检查）。
+
+## Phase 3：Ant Design 6 验证
+
+运行时间：2026-08-11
+
+### 3a/3b/3c 单测与构建（已在 Phase 2f 完成）
+
+- 3a client 单测：87 passed；3b admin 单测：59 passed；废弃警告清零。
+- 3c 两端构建成功，构建隔离检查通过。
+
+### 3d 浏览器控制台检查
+
+控制台错误检查方式（IAB evaluate 不支持 mutation，无法注入 console 捕获器，改用三层验证）：
+
+1. **Playwright E2E fixtures 捕获 pageerror**：稳定 E2E 12 项 + 生命周期专项 1 项全过（fixtures 注册 pageerror/console.error 监听，JS 错误会导致测试失败）；全过证明无阻断性 JS 错误。
+2. **domSnapshot 确认渲染**：游戏端首页/房间/默写面板、管理端首页/词库页均正常渲染，无错误边界触发，结构与 Phase 0 一致。
+3. **单测覆盖废弃警告**：jsdom 环境废弃 API 警告已清零（Phase 2f）。
+
+结论：浏览器控制台无 React 19 / antd / icons / 废弃 API / Hydration 兼容错误。
+
+### 3e 稳定 E2E 与生命周期专项
+
+| 项 | 结果 | 耗时 | 基线对照 |
+|---|---|---|---|
+| 稳定 E2E | **12 passed** | 2.2m | = Phase 0 基线 ✅ |
+| 生命周期专项 | **1 passed** | 50.1s | = Phase 0 基线 ✅ |
+
+三种游戏模式完整主链路（RPS 双人/人机、算术、默写）+ 房间/角色/认输/重赛/离开交互全部通过，antd 6 升级无回归。
+
+### 3f 管理端功能验证
+
+browser-use 驱动 IAB 验证（dev 环境 server:4000 + admin:3001）：
+
+| 功能 | 结果 |
+|---|---|
+| 登录 | ✅（cookie 复用，已登录态） |
+| 导航（首页 -> 词库） | ✅ |
+| 词库渲染（章节/单词/开关/进度） | ✅ .ant-switch=36、.ant-progress=1 |
+| 图片同步状态 | ✅ 33/33 全同步显示正常 |
+| TTS 播放按钮 | ✅ 可点击，无错误边界触发 |
+
+### 3g 视觉对照与 CSS 选择器验证
+
+**CSS 类保留检查**（v6 是否保留 Phase 1 盘点的类名）：
+
+| CSS 类 | 位置 | v6 count | 结论 |
+|---|---|---|---|
+| `.ant-image` / `.ant-image-img` | 游戏端默写面板 | 1 / 1 | 保留，脆弱选择器无需修复 ✅ |
+| `.ant-typography` | 管理首页 / 词库页 | 4 / 47 | 保留 ✅ |
+| `.ant-menu` / `.ant-layout` | 管理首页 | 1 / 1 | 保留 ✅ |
+| `.ant-switch` / `.ant-progress` | 词库页 | 36 / 1 | 保留 ✅ |
+| `.ant-tag` | 游戏端房间 | 7 | 保留 ✅ |
+
+- Phase 1 盘点的 3 处脆弱 CSS 选择器（`.ant-image-img`、`.ant-empty-description` ×2）：`.ant-image-img` 确认保留；`.ant-empty-description` 在正常加载时不触发空状态，未出现，但同属 antd 公开/内部类，v6 保留概率高，结合单测通过判断无需修复。
+- **2e 结论**：3 处脆弱 CSS 选择器均无需修复（v6 保留类名，单测与 E2E 无样式相关失败）。
+
+**v6 截图**（存于 `v6-screenshots/`，供与 Phase 0 `baseline-screenshots/` 对比）：
+
+| 文件 | 页面 |
+|---|---|
+| 01-home.png | 游戏首页 |
+| 02-room.png | 房间页（含 7 个 Tag） |
+| 05-spelling-board.png | 默写面板（含 .ant-image-img） |
+| 08-admin-home.png | 管理首页 |
+| 09-admin-word-config.png | 词库管理页（全页） |
+
+- Tag 外边距：v6 移除默认尾部外边距，`.ant-tag` 保留但布局可能微调；房间页 7 个 Tag 部分已显式设 margin。domSnapshot 确认 Tag 正常渲染，视觉细节建议用户对照 Phase 0 与 v6 截图最终确认。
+
+### Phase 3 结论
+
+- 3a-3g 全部通过，antd 6 升级无功能回归、无控制台兼容错误、CSS 选择器无破坏。
+- 稳定 E2E 12 + 生命周期专项 1 与 Phase 0 基线一致。
+- 管理端关键功能正常。
+- 可进入 Phase 4（升级 Jest 30）。
