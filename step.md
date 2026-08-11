@@ -1629,10 +1629,21 @@ git diff --check
 
 | 步骤 | 内容 | 涉及文件 | 状态 |
 |------|------|----------|------|
-| 1a | 使用 Ant Design 官方检查工具扫描两个前端的废弃 API、React 兼容、重复 antd、重复 React、peer dependency 和 CSS-in-JS 配置 | `client/`, `admin-client/`、验证记录 | ⬜ |
-| 1b | 盘点全部 antd 与 icons 导入，记录组件、静态 API、`App.useApp()`、Modal 和潜在 v6 变化点 | `client/src/`, `admin-client/src/` | ⬜ |
-| 1c | 扫描自定义样式中的 `.ant-*` 选择器及依赖内部 DOM 层级的规则，区分公开语义样式与脆弱内部选择器 | 两个前端 CSS | ⬜ |
-| 1d | 冻结升级规则：只做 v6 兼容调整，不借机更换主题、重排页面或改写业务交互 | `step.md`、验证记录 | ⬜ |
+| 1a | 使用 Ant Design 官方检查工具扫描两个前端的废弃 API、React 兼容、重复 antd、重复 React、peer dependency 和 CSS-in-JS 配置 | `client/`, `admin-client/`、验证记录 | ✅ |
+| 1b | 盘点全部 antd 与 icons 导入，记录组件、静态 API、`App.useApp()`、Modal 和潜在 v6 变化点 | `client/src/`, `admin-client/src/` | ✅ |
+| 1c | 扫描自定义样式中的 `.ant-*` 选择器及依赖内部 DOM 层级的规则，区分公开语义样式与脆弱内部选择器 | 两个前端 CSS | ✅ |
+| 1d | 冻结升级规则：只做 v6 兼容调整，不借机更换主题、重排页面或改写业务交互 | `step.md`、验证记录 | ✅ |
+
+### Phase 1 结果（2026-08-11）
+
+完整记录见 [`docs/acceptance/v3.7/verification.md`](docs/acceptance/v3.7/verification.md) Phase 1 章节。
+
+- **1a**：依赖树无重复 React/antd、无 peer 冲突、无 v5-patch-for-react-19；两端 react 不一致（19.2.7/19.2.8）待 Phase 2 统一；client icons 未在 package.json 声明待补。
+- **1b**：盘点 antd 组件（client 11 种 / admin 18 种）、icons（client 1 个 / admin 7 个）、`App.useApp()` message（3 文件）；v6 breaking change 命中：Collapse `bordered={false}` ×2、Space `size="middle"` ×3；`bodyStyle`/Form 未使用无命中；Button `variant="outlined"` 已是 v6 风格。
+- **1c**：8 处 `.ant-*` 选择器，4 处公开语义（低风险）、3 处脆弱内部（`.ant-image-img`、`.ant-empty-description`，中风险）。
+- **1d**：冻结 7 条升级规则：仅改 2 处 bordered + 3 处 size="middle"、CSS 选择器最小修复、Tag 视觉对照、不换主题不重设计、不引入 v5 补丁、测试不得放宽、icons 同步升级。
+
+升级工作量预估为局部点改，无大范围重构。可进入 Phase 2（升级 Ant Design 6）。
 
 ## Phase 2：升级 Ant Design 6
 

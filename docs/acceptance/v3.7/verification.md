@@ -161,3 +161,91 @@
 - 共 9 张，覆盖游戏端首页/房间/三种游戏面板/赛果与管理端登录/首页/词库管理。
 - 管理端登录使用 `server/config.local.js` 中配置的 adminPassword。
 - 视觉基线仅桌面 1440×900 宽度，不含手机/平板/窄屏（与 v3.7 非目标一致）。
+
+## Phase 1：Ant Design 6 升级前检查
+
+运行时间：2026-08-11
+
+### 1a 依赖树与兼容性扫描
+
+**官方工具**：Ant Design v6 迁移指南推荐使用 Ant Design CLI 检查废弃 API。本次先以 `npm ls` 依赖树分析与源码盘点建立基线，Phase 2 安装 v6 时再跑官方 CLI 复核。
+
+**依赖树结论**（`npm ls antd @ant-design/icons react react-dom`）：
+
+| 项 | client | admin-client | 风险 |
+|---|---|---|---|
+| antd | 5.29.3（单份） | 5.29.3（单份） | 无重复 |
+| @ant-design/icons | 5.6.1（antd 传递） | 5.6.1（直接声明+antd 传递） | client package.json 未声明，Phase 2 补 |
+| react / react-dom | 19.2.7（单份，全树 deduped） | 19.2.8（单份，全树 deduped） | 两端不一致，Phase 2 统一 |
+| 重复 React/antd | 无 | 无 | ✅ |
+| peer dep 冲突 | 无（npm ls 无 ERR!） | 无 | ✅ |
+| @ant-design/v5-patch-for-react-19 | 未安装 | 未安装 | ✅ v6 原生支持 React 19 |
+| CSS-in-JS | @ant-design/cssinjs@1.24.0 | @ant-design/cssinjs@1.24.0 | v6 可能调整，App 容器封装应兼容 |
+
+- icons 6 与 antd 5 不兼容，必须同步升级（Phase 2 已约束）。
+
+### 1b antd / icons 导入盘点与 v6 变化点
+
+**client 使用的 antd 组件**（去重）：App, Card, Tag, Typography, Button, Space, Collapse, Image, Input, Modal, Segmented
+
+**admin-client 使用的 antd 组件**（去重）：App, Button, Input, Modal, Typography, Card, Space, Result, Layout, Menu, Empty, Spin, Tag, Switch, Image, Alert, Progress, Breadcrumb
+
+**icons 使用**：
+- client：`SoundOutlined`（SpellingBoard.jsx）
+- admin-client：`ReloadOutlined`, `SyncOutlined`, `SoundOutlined`, `AppstoreOutlined`, `ControlOutlined`, `LockOutlined`, `LogoutOutlined`（5 个文件）
+
+**静态 API 与 Hook**：
+- `App.useApp()` 获取 `message`：client（Room.jsx, Home.jsx）、admin（WordConfigPage.jsx）-- 符合 v6 推荐，无 Modal.xxx/notification 静态方法调用 ✅
+- `theme` / ConfigProvider：未使用
+- `variant="outlined"`：Home.jsx:112（Button）-- 已是 v6 风格，正向兼容
+
+**v6 breaking change 命中点**：
+
+| 变化点 | v6 行为 | 命中位置 | 处置 |
+|---|---|---|---|
+| `bordered` 属性废弃 | 改 `variant` | Collapse `bordered={false}`：ArithmeticMatchResult.jsx:111、SpellingMatchResult.jsx:108 | Phase 2 改 `variant="borderless"` |
+| `size="middle"` 废弃 | 统一为 `medium` | Space `size="middle"`：ArithmeticMatchResult.jsx:115、SpellingMatchResult.jsx:112、RpsMatchResult.jsx:74 | Phase 2 改 `size="medium"` |
+| Tag 默认尾部外边距移除 | 默认无 margin | 多处 Tag 未显式设 margin（RoleCard、Room、AdminPage 等）；部分已显式 `style={{ margin: 0 }}` | Phase 3 视觉对照，必要时补 margin |
+| `bodyStyle`/`headerStyle` 废弃 | 改 `styles.xxx` | 未使用 | ✅ 无命中 |
+| Form `onFinish` 行为变更 | 不含未注册子项 | 未使用 Form | ✅ 无命中 |
+| DOM 结构变化 | 内部 DOM 调整 | 见 1c CSS 选择器风险 | Phase 2/3 验证 |
+
+- `size="small"` / `size="large"` 为 v6 保留值，无需改动。
+- Button `variant="outlined"` 已是 v6 用法，无需改动。
+
+### 1c 自定义 CSS `.ant-*` 选择器分析
+
+**client/src/index.css**：
+
+| 选择器 | 依赖层级 | 分类 | v6 风险 |
+|---|---|---|---|
+| `.spelling-clue .ant-image` | 组件根类名 | 公开语义 | 低 |
+| `.spelling-clue .ant-image-img` | 组件内部 img | 脆弱内部 | **中**（v6 DOM 变化可能影响） |
+
+**admin-client/src/index.css**：
+
+| 选择器 | 依赖层级 | 分类 | v6 风险 |
+|---|---|---|---|
+| `.admin-brand.ant-typography` | 组件根类名 | 公开语义 | 低 |
+| `.page-title.ant-typography` | 组件根类名 | 公开语义 | 低 |
+| `.page-description.ant-typography` | 组件根类名 | 公开语义 | 低 |
+| `.request-state .ant-empty-description strong` | 组件内部结构 | 脆弱内部 | **中** |
+| `.request-state .ant-empty-description small` | 组件内部结构 | 脆弱内部 | **中** |
+| `.admin-brand.ant-typography`（媒体查询内） | 组件根类名 | 公开语义 | 低 |
+
+- 共 8 处 `.ant-*` 选择器：4 处公开语义（低风险）、3 处脆弱内部（中风险，含 Empty 内部 description 和 Image 内部 img）。
+- Phase 2 升级后若 DOM 变化导致样式失效，优先改用组件公开 `classNames`/`styles` API 或稳定容器类名，不加深对内部 DOM 的依赖。
+
+### 1d 冻结升级规则
+
+本次升级严格遵守"只做 v6 兼容调整"，以下规则在 Phase 2/3 不得越界：
+
+1. **仅处理 v6 必需兼容**：`bordered={false}` → `variant="borderless"`（2 处 Collapse）、`size="middle"` → `size="medium"`（3 处 Space）。不得借机重命名其他 props 或重构组件结构。
+2. **CSS 选择器最小修复**：3 处脆弱内部选择器（`.ant-image-img`、`.ant-empty-description`）仅在 v6 实际破坏时修复，优先用组件公开 API 替代，不新增对内部 DOM 的依赖。
+3. **Tag 外边距**：升级后以 Phase 0 截图视觉对照，仅在出现阻断性布局错位时补 margin；不统一重写 Tag 样式。
+4. **不换主题、不重设计**：不修改 ConfigProvider token、不调整配色、不重排页面布局、不改写业务交互。
+5. **不引入 v5 补丁**：继续不安装 `@ant-design/v5-patch-for-react-19`，由 antd 6 原生适配 React 19。
+6. **测试不得放宽**：更新受版本影响的测试断言时，不得删除业务结果断言或接受矛盾结果掩盖回归。
+7. **icons 同步升级**：antd 与 icons 必须同时升到 6.x，禁止 antd 5/icons 6 或 antd 6/icons 5 混搭；client 补齐 icons 直接依赖声明。
+
+升级工作量预估：2 处 Collapse `bordered` + 3 处 Space `size="middle"` + 3 处脆弱 CSS 选择器（按需）+ Tag 视觉对照，均为局部点改，无大范围重构。
