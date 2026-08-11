@@ -1607,11 +1607,23 @@ git diff --check
 
 | 步骤 | 内容 | 涉及文件/产物 | 状态 |
 |------|------|---------------|------|
-| 0a | 记录 Node、npm、React、antd、icons、Jest 及关键传递依赖的实际解析版本，确认三个子包锁文件与工作区状态 | 三个 `package.json`、三个 `package-lock.json`、验证记录 | ⬜ |
-| 0b | 运行游戏端、管理端、服务端单元测试，记录测试文件数、用例数、耗时、既有警告和受限环境问题 | 测试日志、v3.7 验证记录 | ⬜ |
-| 0c | 运行两个前端生产构建及构建隔离检查，记录产物大小和既有 chunk 警告 | `client/build/`, `admin-client/build/`、验证记录 | ⬜ |
-| 0d | 运行 Socket.IO 集成、E2E 清单、稳定 E2E、生命周期专项和管理端验收离线检查，记录各层实际收集/通过数量；稳定 E2E 以 v3.6 的 12 项、生命周期专项以 1 项为最低对照锚点 | 集成/E2E/验收报告 | ⬜ |
-| 0e | 保存游戏首页、房间、三种游戏界面、赛果 Modal、管理首页、登录和词库管理关键截图，作为 antd 6 视觉对照 | `docs/acceptance/v3.7/` 或等价验证目录 | ⬜ |
+| 0a | 记录 Node、npm、React、antd、icons、Jest 及关键传递依赖的实际解析版本，确认三个子包锁文件与工作区状态 | 三个 `package.json`、三个 `package-lock.json`、验证记录 | ✅ |
+| 0b | 运行游戏端、管理端、服务端单元测试，记录测试文件数、用例数、耗时、既有警告和受限环境问题 | 测试日志、v3.7 验证记录 | ✅ |
+| 0c | 运行两个前端生产构建及构建隔离检查，记录产物大小和既有 chunk 警告 | `client/build/`, `admin-client/build/`、验证记录 | ✅ |
+| 0d | 运行 Socket.IO 集成、E2E 清单、稳定 E2E、生命周期专项和管理端验收离线检查，记录各层实际收集/通过数量；稳定 E2E 以 v3.6 的 12 项、生命周期专项以 1 项为最低对照锚点 | 集成/E2E/验收报告 | ✅ |
+| 0e | 保存游戏首页、房间、三种游戏界面、赛果 Modal、管理首页、登录和词库管理关键截图，作为 antd 6 视觉对照 | `docs/acceptance/v3.7/` 或等价验证目录 | ✅ |
+
+### Phase 0 结果（2026-08-11）
+
+完整记录见 [`docs/acceptance/v3.7/verification.md`](docs/acceptance/v3.7/verification.md)。
+
+- **0a**：Node v24.18.0、npm 11.16.0；react 两端不一致（client 19.2.7 / admin-client 19.2.8）；jest 29.7.0 与 @types/jest 30.0.0 主版本错位；client 源码显式使用 `@ant-design/icons` 但 `package.json` 未声明直接依赖。
+- **0b**：server 342 / client 87 / admin-client 59 全过，三层均达 v3.6 锚点；记录 client jsdom `getComputedStyle` 与 admin `act(...)` 既有警告。
+- **0c**：两端生产构建成功，构建隔离检查通过；两端 chunk >500KB 既有警告。
+- **0d**：Socket.IO 集成 109/0；稳定 E2E 12 passed（2.1m）；生命周期专项 1 passed（50.3s）；管理端验收离线、网关离线检查均通过。
+- **0e**：9 张基线截图（游戏端 6 + 管理端 3）存于 `docs/acceptance/v3.7/baseline-screenshots/`，视口 1440×900。
+
+基线已冻结，可进入 Phase 1（Ant Design 6 升级前检查）。
 
 ## Phase 1：Ant Design 6 升级前检查
 
