@@ -4,8 +4,8 @@
 
 ```
 root package.json  (concurrently orchestrates all three)
-├── client/   React 19 + Vite + Antd v5 + Socket.IO client (port :3000)
-├── admin-client/ React 19 + Vite + Antd v5, no Socket.IO (port :3001)
+├── client/   React 19 + Vite + Antd v6 + Socket.IO client (port :3000)
+├── admin-client/ React 19 + Vite + Antd v6, no Socket.IO (port :3001)
 └── server/   Koa + Socket.IO + Jest + nodemon (port :4000)
 ```
 
@@ -66,7 +66,7 @@ root package.json  (concurrently orchestrates all three)
 - Client tests import `useSocket` — automock via `__mocks__/useSocket.js` in same directory.
 - Playwright acceptance: `admin-client/tests/acceptance/` (admin UI); Playwright e2e: `client/tests/e2e/` (game UI via `@playwright/test` standard runner). The server package has no browser-test dependency. Playwright is installed at root `node_modules/` shared by both sub-packages.
 - `setup-vitest.js` mocks `matchMedia`, `AudioContext`, suppresses React Router Future Flag warnings.
-- Server: Jest v29; Client: Vitest v3 + jsdom.
+- Server: Jest v30; Client: Vitest v3 + jsdom.
 
 ## UI / conventions
 

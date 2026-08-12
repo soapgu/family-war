@@ -534,7 +534,7 @@ MatchResult.jsx
 
 | 项目 | 说明 |
 |------|------|
-| 框架 | 服务端 Jest v29；游戏端和管理端 Vitest v3 + jsdom；Playwright（共用根 node_modules） |
+| 框架 | 服务端 Jest v30；游戏端和管理端 Vitest v3 + jsdom；Playwright（共用根 node_modules） |
 | 服务端单元测试 | `server/__tests__/roomManager.test.js`、`gameManager.test.js`、`unsplashClient.test.js`、`wordBank.test.js` |
 | 服务端集成测试 | `server/tests/integration.js`（真实 Socket 连接走完整流程） |
 | 游戏端单元测试 | `client/src/__tests__/*.test.jsx` |

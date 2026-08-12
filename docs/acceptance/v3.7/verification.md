@@ -437,3 +437,71 @@ browser-use 驱动 IAB 验证（dev 环境 server:4000 + admin:3001）：
 ### Phase 4 结论
 
 Jest 29 -> 30 升级零回归，所有 Mock 行为、假定时器、Supertest 接口测试在 Jest 30 下表现一致。可进入 Phase 5（全量回归与发布准备）。
+
+## Phase 5：全量回归与发布准备
+
+运行时间：2026-08-11
+
+### 5a-5d 全量回归
+
+| 步骤 | 项 | 结果 |
+|---|---|---|
+| 5a | 根项目全量单测 | server 342 / client 87 / admin 59 全过 |
+| 5b | Socket.IO 集成测试 | 109 通过 / 0 失败 |
+| 5c | 两端生产构建 + 隔离检查 | 构建成功，隔离检查通过 |
+| 5d | E2E 清单 / 验收离线 / 网关离线 | 13 项 / 7 步骤 / 通过 |
+
+### 5e 依赖树审计
+
+- 重复依赖：两端 `npm ls react react-dom antd @ant-design/icons` 无 ERR/invalid/WARN。
+- peer 冲突：无。
+- jest 对齐：server `jest@30.4.2` + `@types/jest@30.0.0` 主版本一致。
+- 安全审计：`npm audit` 因 registry 镜像不支持 audit API 返回 NOT_IMPLEMENTED（环境限制，非升级引入）。
+- 锁文件可复现性：Phase 2/4 安装均成功，间接验证锁文件一致。
+
+### 5f 版本号统一
+
+根项目、client、admin-client、server 四个 `package.json` 的 `version` 统一为 `3.7.0`。
+
+### 5g 文档更新
+
+| 文档 | 更新内容 |
+|---|---|
+| AGENTS.md | 架构事实：client/admin `Antd v5` -> `Antd v6`；testing quirks：`Jest v29` -> `Jest v30` |
+| README.md | 测试框架：`Jest v29` -> `Jest v30` |
+| road-map.md | v3.7 状态 `准备实施` -> `已完成`；追加发布结果段 |
+| step.md | Phase 0-5 全部标记 ✅ 并补充结果摘要 |
+
+### 5h 预发布全链路验收
+
+dev 环境（server:4000 + client:3000 + admin:3001）全链路验收：
+
+| 端点 | 状态码 | 说明 |
+|---|---|---|
+| `GET /api/health` | 200 | `{"status":"ok"}` |
+| `GET /family-war/` | 200 | 游戏页面 |
+| `GET /admin/` | 200 | 管理页面 |
+| `GET /api/images/classroom.jpg` | 200 | 图片 API |
+| `GET /socket.io/?EIO=4&transport=polling` | 200 | Socket.IO polling 握手 |
+
+- Socket.IO WebSocket 升级由 5b 集成测试（109 项真实 Socket 连接）覆盖。
+- 无协议、路由、认证或游戏行为回归。
+
+### 5i 收尾
+
+- `git diff --check` 通过（无格式错误）。
+- v3.7 验证报告齐全：本文件（`docs/acceptance/v3.7/verification.md`）含 Phase 0-5 完整记录 + baseline-screenshots + v6-screenshots。
+- 不自动暂存或提交（遵循全局规则）。
+
+### v3.7.0 发布门禁核对
+
+- ✅ antd 6.6.0 + icons 6.3.2 兼容，react/react-dom 两端 19.2.8 一致。
+- ✅ jest 30.4.2 + @types/jest 30.0.0 主版本一致。
+- ✅ 依赖树无重复 React/antd、无 peer 冲突、无 v5 React 19 补丁。
+- ✅ 单测达 v3.6 基线（342/87/59）。
+- ✅ 集成 109、稳定 E2E 12、生命周期 1、构建隔离、网关离线检查全部通过。
+- ✅ 关键页面 1440×900 视觉对照无阻断性变化，控制台无新增兼容错误。
+- ✅ 生产服务端源码、Socket.IO 协议、公网路由、管理员认证、游戏规则无越界修改。
+- ✅ 根项目与三个子包版本均为 3.7.0，验证报告齐全。
+
+v3.7.0 全部发布门禁满足。
